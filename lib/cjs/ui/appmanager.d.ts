@@ -1,0 +1,37 @@
+import { PrinterBase } from "../misc";
+import { AppMain } from "./appmain";
+import { ReportMode, UIBase } from "./base";
+import { Collection } from "./collection";
+import { DialogForm } from "./dialogform";
+import { Field } from "./field";
+import { Menu } from "./menu";
+import { Report } from "./report";
+import { Selector } from "./selector";
+export declare class AppManager {
+    private static app;
+    private static printer;
+    private static channel;
+    private static appData;
+    static set(key: string | symbol, value: any): void;
+    static get(key: string | symbol): any;
+    static clear(): void;
+    static init(): void;
+    static setApp(app: AppMain): void;
+    static setPrinter(printer: PrinterBase): void;
+    static get $printer(): PrinterBase;
+    static on(name: string, listener: EventListener, reference?: string | symbol): void;
+    static emit(name: string, data?: any): void;
+    static once(name: string, listener: EventListener, reference?: string | symbol): void;
+    static clearListeners(reference?: string | symbol): void;
+    static removeListener(name: string, listenerToRemove?: EventListener): void;
+    static showMenu(menu: Menu, params?: any): Boolean;
+    static getUDFs(objectType: string | string[]): Promise<any[]>;
+    static makeUDF(options: any, mode?: ReportMode): Field | undefined;
+    static showCollection(collection: Collection, params?: any): boolean;
+    static showReport(report: Report, params?: any): boolean;
+    static showDialog(dialog: DialogForm, params?: any): boolean;
+    static showSelector(selector: Selector, params?: any): boolean;
+    static showUI(ui: UIBase, params?: any): boolean;
+    static reload(): boolean;
+    static back(): void;
+}

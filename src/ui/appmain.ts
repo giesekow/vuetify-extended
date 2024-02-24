@@ -1,0 +1,320 @@
+import { VNode, Ref } from "vue";
+import { ReportMode, UIBase } from "./base";
+import { Menu } from "./menu";
+import { Report } from "./report";
+import { Collection } from "./collection";
+import { Selector } from "./selector";
+import { sleep } from "../misc";
+import { Dialogs } from "./dialogs";
+import { Field } from "./field";
+import { Api } from "../api";
+import { Form } from "./form";
+import { DialogForm } from "./dialogform";
+
+export interface AppParams {
+  ref?: string;
+  udfQuery?: any;
+}
+
+export interface AppOptions {
+  menu?: (app: AppMain) => Promise<Menu|undefined>|Menu|undefined;
+  udfs?: (app: AppMain, objectType: string|string[], query: any) => Promise<any[]>;
+  makeUDF?: (app: AppMain, options: any) => Field|undefined;
+}
+
+export interface AppStackItem {
+  type: "menu"|"report"|"collection"|"selector"|"ui";
+  item: UIBase,
+  params: any
+}
+
+export class AppMain extends UIBase {
+  private params: Ref<AppParams>;
+  private options: AppOptions;
+
+  private stack: Array<AppStackItem>;
+  private loaded: Ref<boolean>;
+  private index: Ref<number>;
+  private selectors: Array<Selector>;
+  private selectorCount: Ref<number>;
+  private dialogs: Array<DialogForm>;
+  private dialogCount: Ref<number>;
+
+  constructor(params?: AppParams, options?: AppOptions) {
+    super();
+    this.params = this.$makeRef(params || {});
+    this.options = options || {};
+    this.stack = [];
+    this.loaded = this.$makeRef(false);
+    this.index = this.$makeRef(-1);
+    this.selectorCount = this.$makeRef(0);
+    this.dialogCount = this.$makeRef(0);
+    this.selectors = [];
+    this.dialogs = [];
+  }
+
+  get $ref() {
+    return this.params.value.ref;
+  }
+
+  setParams(params: AppParams) {
+    this.params.value = {...this.params.value, ...params};
+  }
+
+  get $params(): AppParams {
+    return this.params.value;
+  }
+
+  props() {
+    return []
+  }
+
+  async menu(): Promise<Menu|undefined> {
+    if (this.options.menu) {
+      return await this.options.menu(this);
+    }
+  }
+
+  render(props: any, context: any): VNode| VNode[] |undefined {
+    const h = this.$h;
+
+    if (!this.loaded.value) {
+      this.loadApp();
+      return undefined;
+    }
+
+    if (this.index.value >= 0 && this.index.value < this.stack.length) {
+      this.attachEvents(this.index.value);
+      const item = this.stack[this.index.value].item;
+      item.show();
+      if (this.selectorCount.value > 0 || this.dialogCount.value > 0) {
+        return [
+          h(item.component),
+          ...this.selectors.map((s) => h(s.component)),
+          ...this.dialogs.map((d) => h(d.component))
+        ]
+      }
+      return h(item.component)
+    } else if (this.selectorCount.value > 0 || this.dialogCount.value > 0) {
+      return [
+        ...this.selectors.map((s) => h(s.component)),
+        ...this.dialogs.map((d) => h(d.component))
+      ]
+    }
+
+    return undefined;
+  }
+
+  private attachEvents(index: number) {
+    if (index > 0 && this.stack.length > 0) {
+      this.stack[index-1].item.clearListeners(this.$id);
+    }
+    if (index < this.stack.length) {
+      this.stack[index].item.clearListeners(this.$id);
+      this.stack[index].item.on('cancel', (item: any) => this.onCancel(item), this.$id);
+    }
+  }
+
+  async $reload() {
+    await this.loadApp();
+  }
+
+  private async loadApp() {
+    Dialogs.$showProgress({})
+    const menu = await this.menu();
+
+    this.stack.forEach((entry) => {
+      entry.item.removeEventListeners();
+    });
+
+    this.stack = [];
+    this.selectors = [];
+    this.index.value = -1;
+    this.selectorCount.value = 0;
+
+    if (menu) {
+      await this.$showMenu(menu);
+    }
+    this.loaded.value = true;
+    Dialogs.$hideProgress();
+  }
+
+  async $getUDFs(objectType: string|string[]): Promise<any[]> {
+    if (this.options.udfs) return await this.options.udfs(this, objectType, this.params.value.udfQuery || {});
+
+    try {
+      const items = await Api.instance.service('udfs').findAll({query: {$sort: {sort: 1}, inactive: {$ne: true}, ...(this.params.value.udfQuery ? this.params.value.udfQuery : {}), objectTypes: {$in: Array.isArray(objectType) ? objectType : [objectType]}}});
+      return items
+    } catch (error) {
+      return [];
+    }
+  }
+
+  $makeUDF (options: any, mode?: ReportMode): Field|undefined {
+    if (this.options.makeUDF) return this.options.makeUDF(this, options);
+
+    const ftype: any = options.fieldType;
+    if (!ftype) return;
+
+    const fieldMaps: any = {}
+
+    return new Field({
+      type: fieldMaps[ftype] || ftype,
+      label: options.fieldLabel,
+      hint: options.hint,
+      placeholder: options.placeholder,
+      icon: options.icon,
+      multiple: options.multiple || false,
+      storage: `udfs.${options._id}`,
+      cols: options.gridSize?.cols,
+      xs: options.gridSize?.xs,
+      sm: options.gridSize?.sm,
+      md: options.gridSize?.md,
+      lg: options.gridSize?.lg,
+      xl: options.gridSize?.xl,
+      xxl: options.gridSize?.xxl,
+      ...(options.defaultValue || options.defaultValue === 0  ? {default: options.defaultValue}: {}),
+      ...(options.fieldType === 'text' && options.isAutoGen && mode && ['create', 'edit'].includes(mode) ? {readonly: !options.autoGenInfo?.enableEdit, hint: 'Is Auto Generated', default: '<AUTO>'}: {})
+    }, {
+      selectOptions: () => options.options || []
+    })
+  }
+
+  async $showMenu(menu: Menu, params?: any) {
+    if (this.index.value >= 0 && this.index.value < this.stack.length) {
+      this.stack[this.index.value].item.removeEventListeners();
+    }
+
+    this.stack.push({
+      type: "menu",
+      item: menu,
+      params: params || {}
+    })
+
+    this.index.value = this.stack.length - 1;
+  }
+
+  async $showReport(report: Report, params?: any) {
+
+    if (this.index.value >= 0 && this.index.value < this.stack.length) {
+      this.stack[this.index.value].item.removeEventListeners();
+    }
+
+    this.stack.push({
+      type: "report",
+      item: report,
+      params: params || {}
+    })
+
+    this.index.value = this.stack.length - 1;
+  }
+
+  async $showCollection(collection: Collection, params?: any) {
+
+    if (this.index.value >= 0 && this.index.value < this.stack.length) {
+      this.stack[this.index.value].item.removeEventListeners();
+    }
+
+    this.stack.push({
+      type: "collection",
+      item: collection,
+      params: params || {}
+    })
+
+    this.index.value = this.stack.length - 1;
+  }
+
+  async $showUI(ui: UIBase, params?: any) {
+
+    if (this.index.value >= 0 && this.index.value < this.stack.length) {
+      this.stack[this.index.value].item.removeEventListeners();
+    }
+
+    this.stack.push({
+      type: "ui",
+      item: ui,
+      params: params || {}
+    })
+
+    this.index.value = this.stack.length - 1;
+  }
+
+  async $showSelector(selector: Selector, params?: any) {
+    this.selectors.push(selector)
+    this.selectorCount.value = this.selectors.length;
+    await sleep(100);
+    selector.on('cancel', () => this.onSelectorCancel(selector), this.$id);
+    selector.show();
+  }
+
+  async $showDialog(dialog: DialogForm, params?: any) {
+    this.dialogs.push(dialog)
+    this.dialogCount.value = this.dialogs.length;
+    await sleep(100);
+    dialog.on('cancel', () => this.onDialogCancel(dialog), this.$id);
+    dialog.show();
+  }
+
+  async $back() {
+    if (this.selectors.length > 0) {
+      this.selectors[this.selectors.length - 1].forceCancel();
+    } else if (this.stack.length > 1) {
+      this.stack[this.stack.length-1].item.forceCancel();
+    } else {
+      this.emit('close', this);
+    }
+  }
+
+  async $pop(count?: number) {
+    if (count === 0) return;
+    const rem = count || 1;
+    if (rem < this.stack.length) {
+      this.index.value -= rem;
+      for (let i = 0; i < rem; i++) {
+        const info = this.stack.pop();
+        if (info) info.item.removeEventListeners();
+      }
+    } else if (rem >= this.stack.length) {
+      this.loadApp();
+    }
+  }
+
+  private async onCancel(item: UIBase) {
+    const ui = this.stack.filter((inst) => inst.item.$id === item.$id)[0];
+    if (ui) {
+      const index = this.stack.indexOf(ui);
+      if (index >= 0) {
+        this.stack.splice(index, 1);
+        ui.item.clearListeners(this.$id);
+        this.index.value = this.stack.length - 1;
+      }
+    }
+  }
+
+  private async onSelectorCancel(item: UIBase) {
+    const ui = this.selectors.filter((inst) => inst.$id === item.$id)[0];
+    if (ui) {
+      const index = this.selectors.indexOf(ui);
+      if (index >= 0) {
+        this.selectors.splice(index, 1);
+        ui.clearListeners(this.$id);
+        this.selectorCount.value = this.selectors.length;
+      }
+    }
+  }
+
+  private async onDialogCancel(item: UIBase) {
+    const ui = this.dialogs.filter((inst) => inst.$id === item.$id)[0];
+    if (ui) {
+      const index = this.dialogs.indexOf(ui);
+      if (index >= 0) {
+        this.dialogs.splice(index, 1);
+        ui.clearListeners(this.$id);
+        this.dialogCount.value = this.dialogs.length;
+      }
+    }
+  }
+
+}
+
+export const $APP = (params?: AppParams, options?: AppOptions) => new AppMain(params || {}, options || {});

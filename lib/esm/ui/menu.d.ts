@@ -1,0 +1,101 @@
+import { VNode } from "vue";
+import { ReportMode, UIBase } from "./base";
+import { EventEmitter, OnHandler } from "./lib";
+import { Report } from "./report";
+import { Collection } from "./collection";
+export interface MenuParams {
+    ref?: string;
+    title?: string;
+    maxWidth?: number | string;
+    minWidth?: number | string;
+    width?: number | string;
+    xs?: number | string | undefined;
+    sm?: number | string | undefined;
+    md?: number | string | undefined;
+    lg?: number | string | undefined;
+    cols?: number | string | undefined;
+    xl?: number | string | undefined;
+    xxl?: number | string | undefined;
+    containerXs?: number | string | undefined;
+    containerSm?: number | string | undefined;
+    containerMd?: number | string | undefined;
+    containerLg?: number | string | undefined;
+    containerCols?: number | string | undefined;
+    containerXl?: number | string | undefined;
+    containerXxl?: number | string | undefined;
+    alignContent?: "center" | "end" | "start" | "space-around" | "space-between" | "space-evenly" | "stretch" | undefined;
+    dense?: boolean | undefined;
+    justify?: "center" | "end" | "start" | "space-around" | "space-between" | "space-evenly" | "stretch" | undefined;
+    align?: "center" | "end" | "start" | "stretch" | "baseline" | undefined;
+}
+export interface MenuOptions {
+    access?: (menu: Menu) => Promise<boolean | undefined> | boolean | undefined;
+    children?: (menu: Menu) => Promise<MenuItem[]> | MenuItem[];
+    setup?: (menu: Menu) => void;
+    on?: (menu: Menu) => OnHandler;
+}
+export declare class Menu extends UIBase {
+    private params;
+    private options;
+    private childrenInstances;
+    private loaded;
+    constructor(params?: MenuParams, options?: MenuOptions);
+    get $ref(): string | undefined;
+    access(): Promise<boolean | undefined>;
+    hasParent(): boolean;
+    setParent(parent: Menu): void;
+    setParams(params: MenuParams): void;
+    get $params(): MenuParams;
+    props(): never[];
+    children(): Promise<MenuItem[]>;
+    render(props: any, context: any): VNode | undefined;
+    build(props: any, context: any): VNode<import("vue").RendererNode, import("vue").RendererElement, {
+        [key: string]: any;
+    }>;
+    private prepareChildren;
+    private itemClicked;
+    private backClicked;
+    $reload(): Promise<void>;
+    forceCancel(): Promise<void>;
+    setup(props: any, context: any): void;
+    private handleOn;
+}
+export interface MenuItemParams {
+    action?: 'report' | 'collection' | 'function' | 'menu';
+    mode?: ReportMode;
+    text?: string;
+    subText?: string;
+    icon?: string;
+    color?: string;
+    textColor?: string;
+}
+export interface MenuItemOptions {
+    access?: (menuItem: MenuItem, mode?: ReportMode) => Promise<boolean | undefined> | boolean | undefined;
+    report?: (menuItem: MenuItem, mode?: ReportMode) => Promise<Report | undefined> | Report | undefined;
+    collection?: (menuItem: MenuItem, mode?: ReportMode) => Promise<Collection | undefined> | Collection | undefined;
+    menu?: (menuItem: MenuItem, mode?: ReportMode) => Promise<Menu | undefined> | Menu | undefined;
+    callback?: (menuItem: MenuItem, mode?: ReportMode) => Promise<void> | void;
+    setup?: (menuItem: MenuItem) => void;
+    on?: (menuItem: MenuItem) => OnHandler;
+}
+export declare class MenuItem extends EventEmitter {
+    private params;
+    private options;
+    private $id;
+    private parent?;
+    constructor(params?: MenuItemParams, options?: MenuItemOptions);
+    get $params(): MenuItemParams;
+    setParent(menu: Menu): void;
+    getParent(): Menu | undefined;
+    access(mode?: ReportMode): Promise<boolean | undefined>;
+    report(mode?: ReportMode): Promise<Report | undefined>;
+    collection(mode?: ReportMode): Promise<Collection | undefined>;
+    menu(mode?: ReportMode): Promise<Menu | undefined>;
+    callback(mode?: ReportMode): Promise<void>;
+    attachEventListeners(): void;
+    removeEventListeners(): void;
+    setup(props: any, context: any): void;
+    private handleOn;
+}
+export declare const $MN: (params?: MenuParams, options?: MenuOptions) => Menu;
+export declare const $MI: (params?: MenuItemParams, options?: MenuItemOptions) => MenuItem;

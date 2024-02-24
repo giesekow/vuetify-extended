@@ -1,0 +1,53 @@
+{
+  "name": "vuetify-ext",
+  "version": "1.0.0",
+  "description": "A plugin to use vuetify in javascript mode",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "npm run build-esm && npm run build-cjs",
+    "build-esm": "npx tsc -p tsconfig.json && cp -r src/css lib/esm/",
+    "build-cjs": "npx tsc -p tsconfig-cjs.json && cp -r src/css lib/cjs/",
+    "prepublishOnly": "npm run build"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/file-saver": "^2.0.7",
+    "typescript": "^4.4.4"
+  },
+  "main": "./lib/cjs/index.js",
+  "module": "./lib/esm/index.js",
+  "files": [
+    "lib/"
+  ],
+  "dependencies": {
+    "@feathersjs/client": "^4.5.11",
+    "@feathersjs/feathers": "^4.5.11",
+    "@feathersjs/rest-client": "^4.5.11",
+    "@feathersjs/socketio-client": "^4.5.11",
+    "@mdi/font": "^7.0.96",
+    "@tinymce/tinymce-vue": "^4.0.7",
+    "@vuepic/vue-datepicker": "^5.4.0",
+    "ace-builds": "^1.23.4",
+    "apexcharts": "^3.41.0",
+    "axios": "^1.5.0",
+    "browser-image-compression": "^2.0.2",
+    "ejs": "^3.1.9",
+    "exceljs": "^4.3.0",
+    "feathers-keycloak-connect-client": "^2.0.0",
+    "file-saver": "^2.0.5",
+    "js-base64": "^3.7.5",
+    "moment": "^2.29.4",
+    "nested-property": "^4.0.0",
+    "roboto-fontface": "^0.10.0",
+    "socket.io-client": "2.3.1",
+    "vue": "^3.2.0",
+    "vue-pdf-embed": "^1.1.6",
+    "vue3-ace-editor": "^2.2.2",
+    "vue3-apexcharts": "^1.4.1",
+    "vue3-editor": "^0.1.1",
+    "vue3-google-map": "^0.15.0",
+    "vuetify": "^3.0.0",
+    "webfontloader": "^1.0.0"
+  }
+}

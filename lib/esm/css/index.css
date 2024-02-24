@@ -1,0 +1,55 @@
+.dense-table td {
+  height: 36px !important;
+}
+
+.bordered-table table {
+  border-collapse: collapse;
+  border: 1px solid;
+}
+
+.bordered-table td, .bordered-table th {
+  border: thin solid gray;
+}
+
+
+.reporttable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.reporttable td {
+  padding: 4px;
+  border: 1px solid lightgray;
+}
+
+.reporttable th {
+  padding: 4px;
+  border: thin solid black;
+}
+
+.reporttable tbody {
+  display: block;
+  overflow-y: auto;
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;
+}
+
+.reporttable tbody::-webkit-scrollbar {
+  display: none;
+}
+
+.reporttable thead, .reporttable tfoot tr, .reporttable tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+  cursor: pointer;
+}
+
+.reporttable tbody tr:hover {
+  background-color: lightgrey;
+}
+
+.reporttable tbody tr:hover td {
+  border: 1px solid gray;
+  font-weight: bold;
+}
