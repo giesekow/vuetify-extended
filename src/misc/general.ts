@@ -98,10 +98,10 @@ export function sleep(time: number) {
         if (p.year && p.month && p.day) {
           this.timestamp = Math.ceil(moment({year: p.year, month: p.month, day: p.day}).unix() / this.secondsInDay);
         } else {
-          this.timestamp = Math.ceil(moment().unix() / this.secondsInDay);
+          this.timestamp = Math.floor(moment().unix() / this.secondsInDay);
         }
       } else {
-        this.timestamp = Math.ceil(moment().unix() / this.secondsInDay);
+        this.timestamp = Math.floor(moment().unix() / this.secondsInDay);
       }
     }
   

@@ -1,5 +1,5 @@
 {
-  "name": "vuetify-ext",
+  "name": "vuetify-extended",
   "version": "1.0.0",
   "description": "A plugin to use vuetify in javascript mode",
   "scripts": {
