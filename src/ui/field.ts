@@ -32,6 +32,18 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
                         'document'|'password'|'float'|'integer'|'decimal'|
                         'collection'|'textarea'|'boolean'|'table'|'reporttable'|'servertable';
 
+export const fieldTypeOptions = [
+  {name: 'Text', _id: 'text'}, {name: 'Select', _id: 'select'}, {name: 'Autocomplete', _id: 'autocomplete'},
+  {name: 'Label', _id: 'label'}, {name: 'Messaging Box', _id: 'messagingbox'}, {name: 'Chart', _id: 'chart'},
+  {name: 'View Table', _id: 'viewtable'}, {name: 'Map', _id: 'map'}, {name: 'Code', _id: 'code'},
+  {name: 'Color', _id: 'color'}, {name: 'HTML', _id: 'html'}, {name: 'Time', _id: 'time'},
+  {name: 'Date', _id: 'date'}, {name: 'Datetime', _id: 'datetime'}, {name: 'Button', _id: 'button'},
+  {name: 'Image', _id: 'image'}, {name: 'Document', _id: 'document'}, {name: 'Password', _id: 'password'},
+  {name: 'Float', _id: 'float'}, {name: 'Integer', _id: 'integer'}, {name: 'Decimal', _id: 'decimal'},
+  {name: 'Collection', _id: 'collection'}, {name: 'Textarea', _id: 'textarea'}, {name: 'Boolean', _id: 'boolean'},
+  {name: 'Table', _id: 'table'}, {name: 'Report Table', _id: 'reporttable'}, {name: 'Server Table', _id: 'servertable'},
+]
+
 export interface FieldParams {
   ref?: string;
   type?: FieldType;
@@ -71,12 +83,15 @@ export interface FieldParams {
   mapOptions?: any;
   mapZoom?: number;
   fileAccepts?: any;
+  fileMaxSize?: number; // In KB
   bordered?: boolean;
   default?: any;
   required?: boolean;
   decimalPlaces?: number;
   collectionStart?: number;
   collectionEnd?: number;
+  collectionDisableAdd?: boolean;
+  collectionDisableRemove?: boolean;
   hasFooter?: boolean;
   validation?: {
     range?: { from: any, to: any, converter?: any};
@@ -118,6 +133,8 @@ export interface FieldOptions {
   validate?: (field: Field) => Promise<string|undefined>|string|undefined;
   default?: (field: Field) => any;
   on?: (field: Field) => OnHandler;
+  canRemoveItem?: (field: Field, item: any) => Promise<boolean>|boolean|undefined;
+  canEditItem?: (field: Field, item: any) => Promise<boolean>|boolean|undefined;
 }
 
 export interface Refs {
@@ -1198,7 +1215,7 @@ export class Field extends UIBase {
             class: ['my-0', 'py-0']
           },
           () => [
-            ...(this.collectionSelectedItems.value.length > 0 && !this.$readonly ? [
+            ...(this.collectionSelectedItems.value.length > 0 && !this.$readonly && !this.params.value.collectionDisableRemove ? [
               h(
                 VBtn,
                 {
@@ -1215,7 +1232,7 @@ export class Field extends UIBase {
               )
             ] : []),
             ...(
-              this.$readonly || (this.params.value.collectionEnd !== undefined && this.params.value.collectionEnd <= (this.modelValue.value || []).length) ? [] : [
+              this.$readonly || this.params.value.collectionDisableAdd || (this.params.value.collectionEnd !== undefined && this.params.value.collectionEnd <= (this.modelValue.value || []).length) ? [] : [
                 h(
                   VBtn,
                   {
@@ -1559,8 +1576,12 @@ export class Field extends UIBase {
                       const files: FileList = await selectFile(this.params.value.fileAccepts, true);
                       const data: any[] = [];
                       for (let i = 0; i < files.length; i++) {
-                        const base64 = await fileToBase64(files[i]);
-                        data.push(base64);
+                        try {
+                          const base64 = await fileToBase64(files[i], this.params.value.fileMaxSize);
+                          data.push(base64);
+                        } catch (error) {
+                          Dialogs.$error((error as any).message)
+                        }
                       }
                       if (!this.modelValue.value) {
                         this.modelValue.value = data;
@@ -1667,7 +1688,7 @@ export class Field extends UIBase {
                 onClick: async () => {
                   try {
                     const files: FileList = await selectFile(this.params.value.fileAccepts);
-                    const base64 = await fileToBase64(files[0]);
+                    const base64 = await fileToBase64(files[0], this.params.value.fileMaxSize);
                     this.modelValue.value = base64;
                   } catch (error) {
                     Dialogs.$error((error as any).message);
@@ -1791,7 +1812,14 @@ export class Field extends UIBase {
       })
 
       for (let i = 0; i < items.length; i++) {
-        this.$master.$removeCollectionObject(this.params.value.storage, items[i]._id || (items[i].__index || items[i].__index === 0 ? items[i].__index.toString() : items[i].toString()), items[i]._id ? '_id' : '__index');
+        let canRemove: any = true;
+        
+        if (this.options.canRemoveItem) {
+          canRemove = await this.options.canRemoveItem(this, items[i]);
+        }
+        
+        if (canRemove) this.$master.$removeCollectionObject(this.params.value.storage, items[i]._id || (items[i].__index || items[i].__index === 0 ? items[i].__index.toString() : items[i].toString()), items[i]._id ? '_id' : '__index');
+        
       }
 
       this.collectionSelectedItems.value = [];
@@ -1800,6 +1828,11 @@ export class Field extends UIBase {
   }
 
   private async onCollectionItemClicked(item: any) {
+
+    let canEdit: any = true;
+    if (this.options.canEditItem) canEdit = await this.options.canEditItem(this, item);
+    if (!canEdit) return;
+
     await this.createCollectionForm();
     const value = this.currentCollectionItems.filter((i: any) => (i._id && i._id === item.raw._id) || i.__index === item.raw.__index)[0];
     await this.collectionFormMaster?.$reset(Object.assign({}, value || {}));

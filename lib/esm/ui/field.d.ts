@@ -7,6 +7,10 @@ import { Report } from "./report";
 import '@vuepic/vue-datepicker/dist/main.css';
 import { OnHandler } from "./lib";
 export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagingbox' | 'chart' | 'viewtable' | 'map' | 'code' | 'color' | 'html' | 'time' | 'date' | 'datetime' | 'button' | 'image' | 'document' | 'password' | 'float' | 'integer' | 'decimal' | 'collection' | 'textarea' | 'boolean' | 'table' | 'reporttable' | 'servertable';
+export declare const fieldTypeOptions: {
+    name: string;
+    _id: string;
+}[];
 export interface FieldParams {
     ref?: string;
     type?: FieldType;
@@ -46,12 +50,15 @@ export interface FieldParams {
     mapOptions?: any;
     mapZoom?: number;
     fileAccepts?: any;
+    fileMaxSize?: number;
     bordered?: boolean;
     default?: any;
     required?: boolean;
     decimalPlaces?: number;
     collectionStart?: number;
     collectionEnd?: number;
+    collectionDisableAdd?: boolean;
+    collectionDisableRemove?: boolean;
     hasFooter?: boolean;
     validation?: {
         range?: {
@@ -120,6 +127,8 @@ export interface FieldOptions {
     validate?: (field: Field) => Promise<string | undefined> | string | undefined;
     default?: (field: Field) => any;
     on?: (field: Field) => OnHandler;
+    canRemoveItem?: (field: Field, item: any) => Promise<boolean> | boolean | undefined;
+    canEditItem?: (field: Field, item: any) => Promise<boolean> | boolean | undefined;
 }
 export interface Refs {
     [key: string]: Field;

@@ -45,6 +45,7 @@ export interface TriggerOptions {
     query?: (search: string, trigger: Trigger, mode?: 'create' | 'edit' | 'display', searchFields?: any[]) => Promise<any>;
     setup?: (trigger: Trigger) => void;
     on?: (trigger: Trigger) => OnHandler;
+    format?: (trigger: Trigger, items: any[]) => Promise<any[] | undefined> | any[] | undefined;
 }
 export interface ServerTableOptions {
     page: number;

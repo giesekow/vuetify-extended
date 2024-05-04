@@ -51,6 +51,7 @@ export interface TriggerOptions {
   query?: (search: string, trigger: Trigger, mode?: 'create'|'edit'|'display', searchFields?: any[]) => Promise<any>;
   setup?: (trigger: Trigger) => void;
   on?: (trigger: Trigger) => OnHandler;
+  format?: (trigger: Trigger, items : any[]) => Promise<any[]| undefined>|any[]|undefined;
 }
 
 export interface ServerTableOptions {
@@ -252,13 +253,13 @@ export class Trigger extends UIBase {
     }
     
     if(Array.isArray(data)) {
-      this.items.value = data;
+      this.items.value = this.options.format ? await this.options.format(this, data) || [] : data;
       this.tableOptions.value.itemsPerPage = -1;
       this.tableOptions.value.total = data.length;
       this.tableOptions.value.page = 1;
     } else {
       this.tableOptions.value.total = data.total;
-      this.items.value = data.data;
+      this.items.value = this.options.format ? await this.options.format(this, data.data || []) || [] : data.data || [];
       this.tableOptions.value.itemsPerPage = data.limit;
       this.tableOptions.value.page = options.page;
     }

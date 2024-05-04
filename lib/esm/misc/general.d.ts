@@ -1,4 +1,4 @@
-import moment from "moment";
+import moment, { Moment } from "moment";
 export declare function sleep(time: number): Promise<unknown>;
 export declare function selectFile(accept?: any, multiple?: boolean): Promise<FileList>;
 export declare function fileToBase64(rawFile: File, maxSize?: any): Promise<unknown>;
@@ -12,7 +12,8 @@ export declare class SimpleDate {
     private timestamp;
     private secondsInDay;
     static now(): SimpleDate;
-    constructor(params?: SimpleDateParams | number | string);
+    static fromMoment(m: Moment): SimpleDate;
+    constructor(params?: SimpleDateParams | number | string | Moment);
     toString(): string;
     toDateString(): string;
     toShortString(): string;
@@ -58,3 +59,4 @@ export interface computeFunctionOptions {
 }
 export declare const computeFunctionalCodeAsync: (code: string, options: computeFunctionOptions) => Promise<any>;
 export declare const computeFunctionalCode: (code: string, options: computeFunctionOptions) => any;
+export declare const $moment: typeof moment;
