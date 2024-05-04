@@ -39,11 +39,11 @@ export async function fileToBase64 (rawFile: File, maxSize?: any) {
       const reader = new FileReader();
   
       reader.onload = (e: any) => {
-        const b = Buffer.from(e.target.result, "base64").length / 1000;
+        const b = Buffer.from(e.target.result, "base64").length / 1024;
         if (!maxSize || b <= maxSize) {
           resolve(e.target.result);
         } else {
-          reject(`File size of ${b}kB exceeds the max allowed size of ${maxSize}kB`);
+          reject(new Error(`File size of ${b}kB exceeds the max allowed size of ${maxSize}kB`));
         }
       }
   
@@ -55,7 +55,7 @@ export async function fileToBase64 (rawFile: File, maxSize?: any) {
     })
   }
 
-  if (rawFile.type.toLowerCase().includes('image') && (rawFile.size / 1000 > (maxSize || 500))) {
+  if (rawFile.type.toLowerCase().includes('image') && (rawFile.size / 1024 > (maxSize || 500))) {
     const options = {
       maxSizeMB: 0.5,
       maxWidthOrHeight: 1920,

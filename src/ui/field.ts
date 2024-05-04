@@ -1577,7 +1577,7 @@ export class Field extends UIBase {
                       const data: any[] = [];
                       for (let i = 0; i < files.length; i++) {
                         try {
-                          const base64 = await fileToBase64(files[i], this.params.value.fileMaxSize);
+                          const base64 = await fileToBase64(files[i], this.params.value.fileMaxSize || 500);
                           data.push(base64);
                         } catch (error) {
                           Dialogs.$error((error as any).message)
@@ -1688,7 +1688,7 @@ export class Field extends UIBase {
                 onClick: async () => {
                   try {
                     const files: FileList = await selectFile(this.params.value.fileAccepts);
-                    const base64 = await fileToBase64(files[0], this.params.value.fileMaxSize);
+                    const base64 = await fileToBase64(files[0], this.params.value.fileMaxSize || 500);
                     this.modelValue.value = base64;
                   } catch (error) {
                     Dialogs.$error((error as any).message);
