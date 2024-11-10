@@ -96,17 +96,17 @@ export class AppManager {
     }
   }
   
-  static showCollection(collection: Collection, params?: any) {
+  static showCollection(collection: Collection, params?: any, replace?: boolean) {
     if (AppManager.app) {
-      AppManager.app.$showCollection(collection, params);
+      AppManager.app.$showCollection(collection, params, replace);
       return true;
     }
     return false;
   }
   
-  static showReport(report: Report, params?: any) {
+  static showReport(report: Report, params?: any, replace?: boolean) {
     if (AppManager.app) {
-      AppManager.app.$showReport(report, params);
+      AppManager.app.$showReport(report, params, replace);
       return true;
     }
     return false;
@@ -128,9 +128,9 @@ export class AppManager {
     return false;
   }
 
-  static showUI(ui: UIBase, params?: any) {
+  static showUI(ui: UIBase, params?: any, replace?: boolean) {
     if (AppManager.app) {
-      AppManager.app.$showUI(ui, params);
+      AppManager.app.$showUI(ui, params, replace);
       return true;
     }
     return false;

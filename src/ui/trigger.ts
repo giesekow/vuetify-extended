@@ -2,8 +2,7 @@ import { VNode, Ref } from "vue";
 import { UIBase } from "./base";
 import { VDivider, VRow, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VCardSubtitle, VTextField, VCol, VContainer, VLayout, VAutocomplete } from 'vuetify/components';
 import { Button, ButtonParams } from "./button";
-import { VDataTableServer } from 'vuetify/labs/components';
-import { sleep } from "../misc";
+import { VDataTableServer } from 'vuetify/components';
 import { Dialogs } from "./dialogs";
 import { OnHandler } from "./lib";
 
@@ -657,7 +656,7 @@ export class Trigger extends UIBase {
   }
 
   private async onTableItemClicked(options: any) {
-    const item: any = options?.item?.value || {};
+    const item: any = options?.item || {};
     this.handleOn("selected", item);
   }
 

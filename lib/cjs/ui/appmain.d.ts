@@ -43,9 +43,9 @@ export declare class AppMain extends UIBase {
     $getUDFs(objectType: string | string[]): Promise<any[]>;
     $makeUDF(options: any, mode?: ReportMode): Field | undefined;
     $showMenu(menu: Menu, params?: any): Promise<void>;
-    $showReport(report: Report, params?: any): Promise<void>;
-    $showCollection(collection: Collection, params?: any): Promise<void>;
-    $showUI(ui: UIBase, params?: any): Promise<void>;
+    $showReport(report: Report, params?: any, replace?: boolean): Promise<void>;
+    $showCollection(collection: Collection, params?: any, replace?: boolean): Promise<void>;
+    $showUI(ui: UIBase, params?: any, replace?: boolean): Promise<void>;
     $showSelector(selector: Selector, params?: any): Promise<void>;
     $showDialog(dialog: DialogForm, params?: any): Promise<void>;
     $back(): Promise<void>;

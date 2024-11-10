@@ -7,7 +7,7 @@ import { Button, ButtonParams } from "./button";
 import { Dialogs } from "./dialogs";
 import { Report } from "./report";
 import { AppManager } from "./appmanager";
-import { Field } from "./field";
+import { Field, Refs } from "./field";
 import { OnHandler } from "./lib";
 
 export interface FormParams {
@@ -50,12 +50,15 @@ export interface FormOptions {
   validate?: (form: Form) => Promise<string|true|undefined|void>|string|true|undefined|void;
   saved?: (form: Form) => Promise<void>|void;
   cancel?: () => Promise<void>|void;
+  canCancel?: (form: Form) => Promise<boolean|undefined>|boolean|undefined
   access?: (form: Form) => Promise<boolean>|boolean;
   processUDF?: (form: Form, udfs: any[]) => Promise<any[]>;
   setup?: (form: Form) => void,
   preUDFOptions?: PartParams;
   postUDFOptions?: PartParams;
   on?: (form: Form) => OnHandler;
+  removeEventListeners?: (form: Form) => Promise<void>|void
+  attachEventListeners?: (form: Form) => Promise<void>|void
 }
 
 export class Form extends UIBase {
@@ -68,6 +71,7 @@ export class Form extends UIBase {
   private udfData: Array<any> = [];
   private formRef?: Ref<InstanceType<typeof VForm> | null>;
   private udfLoaded: Ref<boolean>;
+  private listenersAttached = false;
 
   constructor(params?: FormParams, options?: FormOptions) {
     super();
@@ -85,6 +89,14 @@ export class Form extends UIBase {
       if (ref && ref !== '') {
         items[ref] = this.childrenInstances[i];
       }
+    }
+    return items;
+  }
+
+  get $refs(): Refs {
+    let items: Refs = {};
+    for (let i = 0; i < this.childrenInstances.length; i++) {
+      items = {...items, ...this.childrenInstances[i].$refs}
     }
     return items;
   }
@@ -449,6 +461,14 @@ export class Form extends UIBase {
     ]
   }
 
+  async $save() {
+    await this.onSaveClicked();
+  }
+
+  async $cancel() {
+    await this.onCancelClicked();
+  }
+
   private async onSaveClicked(){
 
     if (this.$readonly) {
@@ -524,6 +544,10 @@ export class Form extends UIBase {
   }
 
   private async onCancelClicked(){
+    let canCancel = true
+    if (this.options.canCancel) canCancel = await this.options.canCancel(this) || false    
+    if (!canCancel) return;
+
     this.handleOn('before-cancel', this);
     
     if (this.options.cancel) {
@@ -544,6 +568,18 @@ export class Form extends UIBase {
     }
 
     this.emit(event, data)
+  }
+
+  attachEventListeners() {
+    if (this.options.attachEventListeners && !this.listenersAttached) this.options.attachEventListeners(this)
+    super.attachEventListeners()
+    this.listenersAttached = true;
+  }
+
+  removeEventListeners() {
+    if (this.options.removeEventListeners && this.listenersAttached) this.options.removeEventListeners(this);
+    super.removeEventListeners()
+    this.listenersAttached = false;
   }
 
 }

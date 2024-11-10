@@ -1,4 +1,4 @@
-import moment, { Moment } from "moment";
+import moment, { Moment } from "moment-timezone";
 export declare function sleep(time: number): Promise<unknown>;
 export declare function selectFile(accept?: any, multiple?: boolean): Promise<FileList>;
 export declare function fileToBase64(rawFile: File, maxSize?: any): Promise<unknown>;
@@ -13,7 +13,7 @@ export declare class SimpleDate {
     private secondsInDay;
     static now(): SimpleDate;
     static fromMoment(m: Moment): SimpleDate;
-    constructor(params?: SimpleDateParams | number | string | Moment);
+    constructor(params?: SimpleDateParams | number | string | Moment | SimpleDate);
     toString(): string;
     toDateString(): string;
     toShortString(): string;
@@ -22,13 +22,15 @@ export declare class SimpleDate {
     toSeconds(): number;
     toMilliseconds(): number;
     toMoment(): moment.Moment;
+    atTime(time: number | SimpleTime, timezone?: string): moment.Moment;
 }
 export declare class SimpleTime {
     private timestamp;
     static now(): SimpleTime;
-    constructor(params?: number | string);
+    constructor(params?: number | string | SimpleTime);
     toString(): string;
     toNumber(): number;
+    onDate(date: number | SimpleDate, timezone?: string): moment.Moment;
 }
 export declare const $amt: (v: any, def?: number) => number;
 export interface fAmtOptions {
@@ -39,6 +41,7 @@ export interface fAmtOptions {
     decimalSep?: string;
 }
 export declare const $famt: (amount: any, options?: fAmtOptions) => string;
+export declare const $zFill: (v: any, precision?: number) => string;
 export declare const toDecimal: (value: any, decimals?: number) => {
     $numberDecimal: string;
 };

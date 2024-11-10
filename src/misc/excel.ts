@@ -167,8 +167,8 @@ export const writeData = function(sheetNames: string[], data: any, workbook?: Ex
               const val = getField(item, hd)
               curCol += writeCellItem(sheet, val, curRow, curCol);
             } else if (typeof hd === "object") {
-              if (hd.value) {
-                const val = hd.format ? hd.format(getField(item, hd.value), item) : getField(item, hd.value);
+              if (hd.key) {
+                const val = hd.format ? hd.format(getField(item, hd.key), item) : getField(item, hd.key);
                 curCol += writeCellItem(sheet, val, curRow, curCol);
               } else {
                 curCol += 1;
@@ -239,7 +239,7 @@ export const writeTables = function(sheetNames: string[], data: any, workbook?: 
         if (typeof headerItem === "string") {
           curCol += writeCellItem(sheet, headerItem, curRow, curCol);
         } else if (typeof headerItem === "object") {
-          curCol += writeCellItem(sheet, headerItem.text, curRow, curCol, headerItem.colspan || 1);
+          curCol += writeCellItem(sheet, headerItem.title, curRow, curCol, headerItem.colspan || 1);
         }
       }
       curRow += 1;
@@ -254,7 +254,7 @@ export const writeTables = function(sheetNames: string[], data: any, workbook?: 
           const value: any = getField(item, headerItem) || "";
           curCol += writeCellItem(sheet, value, curRow, curCol);
         } else if (typeof headerItem === "object") {
-          let value: any = headerItem.value ? getField(item, headerItem.value) : "";
+          let value: any = headerItem.key ? getField(item, headerItem.key) : "";
           if (headerItem.exportFormat && typeof headerItem.exportFormat === "function") value = headerItem.exportFormat(value, item);
           else if (headerItem.format && typeof headerItem.format === "function") value = headerItem.format(value, item);
           curCol += writeCellItem(sheet, value, curRow, curCol);
@@ -272,7 +272,7 @@ export const writeTables = function(sheetNames: string[], data: any, workbook?: 
           const value: any = item[headerItem] || "";
           curCol += writeCellItem(sheet, value, curRow, curCol);
         } else if (typeof headerItem === "object") {
-          let value: any = headerItem.value ? getField(item, headerItem.value) : "";
+          let value: any = headerItem.key ? getField(item, headerItem.key) : "";
           if (headerItem.footerExportFormat && typeof headerItem.footerExportFormat === "function") value = headerItem.footerExportFormat(value, item);
            else if (headerItem.footerFormat && typeof headerItem.footerFormat === "function") value = headerItem.footerFormat(value, item);
           curCol += writeCellItem(sheet, value, curRow, curCol);

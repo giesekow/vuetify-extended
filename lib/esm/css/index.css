@@ -53,3 +53,15 @@
   border: 1px solid gray;
   font-weight: bold;
 }
+
+.tox.tox-tinymce-aux {
+  z-index: 4000;
+}
+
+.vef-radio-select .v-label {
+  opacity: 1.0 !important;
+}
+
+.vef-check-select .v-label {
+  opacity: 1.0 !important;
+}

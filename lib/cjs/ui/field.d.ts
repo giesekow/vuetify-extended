@@ -6,7 +6,7 @@ import { Form } from "./form";
 import { Report } from "./report";
 import '@vuepic/vue-datepicker/dist/main.css';
 import { OnHandler } from "./lib";
-export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagingbox' | 'chart' | 'viewtable' | 'map' | 'code' | 'color' | 'html' | 'time' | 'date' | 'datetime' | 'button' | 'image' | 'document' | 'password' | 'float' | 'integer' | 'decimal' | 'collection' | 'textarea' | 'boolean' | 'table' | 'reporttable' | 'servertable';
+export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagingbox' | 'chart' | 'viewtable' | 'map' | 'code' | 'color' | 'html' | 'htmlview' | 'listselect' | 'time' | 'date' | 'datetime' | 'button' | 'image' | 'document' | 'password' | 'float' | 'integer' | 'decimal' | 'collection' | 'textarea' | 'boolean' | 'table' | 'reporttable' | 'servertable';
 export declare const fieldTypeOptions: {
     name: string;
     _id: string;
@@ -28,9 +28,12 @@ export interface FieldParams {
     icon?: string;
     clearable?: boolean;
     autofocus?: boolean;
+    inline?: boolean;
     color?: string;
     itemValue?: string;
     itemTitle?: string;
+    returnObject?: boolean;
+    itemsPerPage?: string | number;
     class?: string[];
     style?: any;
     height?: number;
@@ -60,6 +63,7 @@ export interface FieldParams {
     collectionDisableAdd?: boolean;
     collectionDisableRemove?: boolean;
     hasFooter?: boolean;
+    checkbox?: boolean;
     validation?: {
         range?: {
             from: any;
@@ -204,9 +208,18 @@ export declare class Field extends UIBase {
     buildLabel(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;
+    buildHTMLView(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
+        [key: string]: any;
+    }>;
     buildSelect(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;
+    buildRadioSelect(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
+        [key: string]: any;
+    }>[];
+    buildCheckboxSelect(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
+        [key: string]: any;
+    }>[];
     buildAutocomplete(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;

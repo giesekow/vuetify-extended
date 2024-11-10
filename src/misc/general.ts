@@ -1,4 +1,4 @@
-import moment, { Moment } from "moment";
+import moment, { Moment } from "moment-timezone";
 import imageCompression from 'browser-image-compression';
 import { Buffer } from "buffer";
 
@@ -93,8 +93,10 @@ export class SimpleDate {
     return new SimpleDate(timestamp);
   }
 
-  constructor(params?: SimpleDateParams|number|string|Moment) {
-    if (params && typeof params === 'number') {
+  constructor(params?: SimpleDateParams|number|string|Moment|SimpleDate) {
+    if (params instanceof SimpleDate) {
+      this.timestamp = params.toNumber()
+    } else if (params && typeof params === 'number') {
       this.timestamp = params || 0;
     } else if (params && typeof params === "string") {
       this.timestamp = Math.ceil(moment(params).unix() / this.secondsInDay);
@@ -142,6 +144,12 @@ export class SimpleDate {
   toMoment() {
     return moment.unix(this.toSeconds());
   }
+
+  atTime(time: number|SimpleTime, timezone?: string) {
+    const dtStr = this.toMoment().format('YYYY-MM-DD')
+    const tmStr = time instanceof SimpleTime ? time.toString() : new SimpleTime(time).toString()
+    return moment.tz(`${dtStr} ${tmStr}`, timezone || moment.tz.guess())
+  }
 }
 
 export class SimpleTime {
@@ -152,8 +160,10 @@ export class SimpleTime {
     return new SimpleTime();
   }
 
-  constructor(params?: number|string) {
-    if (params && typeof params === 'number') {
+  constructor(params?: number|string|SimpleTime) {
+    if (params instanceof SimpleTime) {
+      this.timestamp = params.toNumber()
+    } else if (params && typeof params === 'number') {
       this.timestamp = params || 0;
     } else if (params && typeof params === "string") {
       const pts = params.trim().split(':');
@@ -172,6 +182,12 @@ export class SimpleTime {
 
   toNumber() {
     return this.timestamp;
+  }
+
+  onDate(date: number|SimpleDate, timezone?: string) {
+    const dtStr = date instanceof SimpleDate ? date.toMoment().format('YYYY-MM-DD') : new SimpleDate(date).toMoment().format('YYYY-MM-DD')
+    const tmStr = this.toString()
+    return moment.tz(`${dtStr} ${tmStr}`, timezone || moment.tz.guess())
   }
 }
 
@@ -213,6 +229,11 @@ export const $famt = (amount: any, options?: fAmtOptions) => {
   const re = '\\d(?=(\\d{' + 3 + '})+' + (n > 0 ? '\\D' : '$') + ')'
   const num = Number(v).toFixed(Math.max(0, ~~n));
   return (c ? num.replace('.', c) : num).replace(new RegExp(re, 'g'), '$&' + (s || ','));
+}
+
+export const $zFill = (v: any, precision?: number): string => {
+  if (!precision || precision <= 0) return String(v)
+  return String(v).padStart(precision, '0')
 }
 
 export const toDecimal = (value: any, decimals?: number) => {

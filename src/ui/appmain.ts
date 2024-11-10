@@ -86,6 +86,7 @@ export class AppMain extends UIBase {
     if (this.index.value >= 0 && this.index.value < this.stack.length) {
       this.attachEvents(this.index.value);
       const item = this.stack[this.index.value].item;
+      item.attachEventListeners()
       item.show();
       if (this.selectorCount.value > 0 || this.dialogCount.value > 0) {
         return [
@@ -194,11 +195,13 @@ export class AppMain extends UIBase {
     this.index.value = this.stack.length - 1;
   }
 
-  async $showReport(report: Report, params?: any) {
+  async $showReport(report: Report, params?: any, replace?: boolean) {
 
     if (this.index.value >= 0 && this.index.value < this.stack.length) {
       this.stack[this.index.value].item.removeEventListeners();
     }
+
+    if (replace) this.$pop()
 
     this.stack.push({
       type: "report",
@@ -209,11 +212,13 @@ export class AppMain extends UIBase {
     this.index.value = this.stack.length - 1;
   }
 
-  async $showCollection(collection: Collection, params?: any) {
+  async $showCollection(collection: Collection, params?: any, replace?: boolean) {
 
     if (this.index.value >= 0 && this.index.value < this.stack.length) {
       this.stack[this.index.value].item.removeEventListeners();
     }
+
+    if (replace) this.$pop()
 
     this.stack.push({
       type: "collection",
@@ -224,11 +229,13 @@ export class AppMain extends UIBase {
     this.index.value = this.stack.length - 1;
   }
 
-  async $showUI(ui: UIBase, params?: any) {
+  async $showUI(ui: UIBase, params?: any, replace?: boolean) {
 
     if (this.index.value >= 0 && this.index.value < this.stack.length) {
       this.stack[this.index.value].item.removeEventListeners();
     }
+
+    if (replace) this.$pop()
 
     this.stack.push({
       type: "ui",
@@ -244,6 +251,7 @@ export class AppMain extends UIBase {
     this.selectorCount.value = this.selectors.length;
     await sleep(100);
     selector.on('cancel', () => this.onSelectorCancel(selector), this.$id);
+    selector.attachEventListeners()
     selector.show();
   }
 
@@ -252,6 +260,7 @@ export class AppMain extends UIBase {
     this.dialogCount.value = this.dialogs.length;
     await sleep(100);
     dialog.on('cancel', () => this.onDialogCancel(dialog), this.$id);
+    dialog.attachEventListeners()
     dialog.show();
   }
 

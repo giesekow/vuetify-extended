@@ -4,6 +4,7 @@ import { Master } from "../master";
 import { Part, PartParams, PRefs } from "./part";
 import { Button, ButtonParams } from "./button";
 import { Report } from "./report";
+import { Refs } from "./field";
 import { OnHandler } from "./lib";
 export interface FormParams {
     ref?: string;
@@ -44,12 +45,15 @@ export interface FormOptions {
     validate?: (form: Form) => Promise<string | true | undefined | void> | string | true | undefined | void;
     saved?: (form: Form) => Promise<void> | void;
     cancel?: () => Promise<void> | void;
+    canCancel?: (form: Form) => Promise<boolean | undefined> | boolean | undefined;
     access?: (form: Form) => Promise<boolean> | boolean;
     processUDF?: (form: Form, udfs: any[]) => Promise<any[]>;
     setup?: (form: Form) => void;
     preUDFOptions?: PartParams;
     postUDFOptions?: PartParams;
     on?: (form: Form) => OnHandler;
+    removeEventListeners?: (form: Form) => Promise<void> | void;
+    attachEventListeners?: (form: Form) => Promise<void> | void;
 }
 export declare class Form extends UIBase {
     private params;
@@ -61,8 +65,10 @@ export declare class Form extends UIBase {
     private udfData;
     private formRef?;
     private udfLoaded;
+    private listenersAttached;
     constructor(params?: FormParams, options?: FormOptions);
     get $prefs(): PRefs;
+    get $refs(): Refs;
     get $ref(): string | undefined;
     get $readonly(): any;
     get $parentReport(): Report | undefined;
@@ -93,10 +99,14 @@ export declare class Form extends UIBase {
     private buildTopActions;
     private buildBottomActions;
     private buildDefaultButtons;
+    $save(): Promise<void>;
+    $cancel(): Promise<void>;
     private onSaveClicked;
     private save;
     setup(props: any, context: any): void;
     private onCancelClicked;
     private handleOn;
+    attachEventListeners(): void;
+    removeEventListeners(): void;
 }
 export declare const $FM: (params?: FormParams, options?: FormOptions) => Form;

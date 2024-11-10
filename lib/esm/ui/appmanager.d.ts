@@ -27,11 +27,11 @@ export declare class AppManager {
     static showMenu(menu: Menu, params?: any): Boolean;
     static getUDFs(objectType: string | string[]): Promise<any[]>;
     static makeUDF(options: any, mode?: ReportMode): Field | undefined;
-    static showCollection(collection: Collection, params?: any): boolean;
-    static showReport(report: Report, params?: any): boolean;
+    static showCollection(collection: Collection, params?: any, replace?: boolean): boolean;
+    static showReport(report: Report, params?: any, replace?: boolean): boolean;
     static showDialog(dialog: DialogForm, params?: any): boolean;
     static showSelector(selector: Selector, params?: any): boolean;
-    static showUI(ui: UIBase, params?: any): boolean;
+    static showUI(ui: UIBase, params?: any, replace?: boolean): boolean;
     static reload(): boolean;
     static back(): void;
 }

@@ -320,7 +320,7 @@ export class Dialogs {
       Dialogs.progressValue.value = value < 0 ? 0 : (value > 100 ? 100 : value);
     }
 
-    if (text || text === '') Dialogs.progressText = text || '';
+    if (text || text === '') Dialogs.progressText.value = text || '';
     Dialogs.progressDialog.value = true;
   }
 

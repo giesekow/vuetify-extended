@@ -4,6 +4,8 @@ import { Master } from "../master";
 import { Form } from './form';
 import { Button, ButtonParams } from "./button";
 import { OnHandler } from "./lib";
+import { PRefs } from "./part";
+import { Refs } from "./field";
 export interface ReportParams {
     objectType?: any;
     objectId?: any;
@@ -11,6 +13,9 @@ export interface ReportParams {
     title?: string;
     hideMode?: boolean;
     cancelButton?: ButtonParams;
+    nextButton?: ButtonParams;
+    prevButton?: ButtonParams;
+    finishButton?: ButtonParams;
     multiple?: boolean;
     setActionButtons?: boolean;
     forms?: number;
@@ -42,6 +47,12 @@ export interface ReportOptions {
     beforeExport?: (report: Report, mode?: ReportMode) => Promise<any | undefined> | any | undefined;
     exportTemplate?: (report: Report, mode?: ReportMode) => Promise<ExportTemplateInfo | undefined> | ExportTemplateInfo | undefined;
     on?: (report: Report) => OnHandler;
+    loaded?: (report: Report) => void;
+    hasNextForm?: (report: Report, index: number) => Promise<boolean | undefined> | boolean | undefined;
+    hasPrevForm?: (report: Report, index: number) => Promise<boolean | undefined> | boolean | undefined;
+    removeEventListeners?: (report: Report) => Promise<void> | void;
+    attachEventListeners?: (report: Report) => Promise<void> | void;
+    title?: (report: Report, index?: number) => string;
 }
 export interface ExportTemplateInfo {
     template?: any;
@@ -58,8 +69,12 @@ export declare class Report extends UIBase {
     private currentIndex;
     private hasNext;
     private hasPrev;
+    private listenersAttached;
     constructor(params?: ReportParams, options?: ReportOptions);
     get $parentReport(): Report | undefined;
+    get $prefs(): PRefs;
+    get $currentForm(): Form | undefined;
+    get $refs(): Refs;
     get objectType(): any;
     get objectId(): any;
     set objectType(v: any);
@@ -75,6 +90,8 @@ export declare class Report extends UIBase {
     access(): Promise<boolean>;
     form(props: any, context: any, index: number): Promise<Form | undefined>;
     hasForm(props: any, context: any, index: number): Promise<boolean>;
+    hasPrevForm(props: any, context: any, index: number): Promise<boolean | undefined>;
+    hasNextForm(props: any, context: any, index: number): Promise<boolean | undefined>;
     props(): never[];
     render(props: any, context: any): VNode | undefined;
     private prepareForm;
@@ -87,6 +104,7 @@ export declare class Report extends UIBase {
     private save;
     private oncancel;
     forceCancel(): Promise<void>;
+    forceSave(): Promise<void>;
     setup(props: any, context: any): void;
     print(): Promise<void>;
     beforePrint(): Promise<any | undefined>;
@@ -97,5 +115,7 @@ export declare class Report extends UIBase {
     exportTemplate(): Promise<ExportTemplateInfo | undefined>;
     private exportAction;
     private handleOn;
+    attachEventListeners(): void;
+    removeEventListeners(): void;
 }
 export declare const $RP: (params?: ReportParams, options?: ReportOptions) => Report;

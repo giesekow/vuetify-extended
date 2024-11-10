@@ -1,13 +1,13 @@
 import { Ref, RendererNode, VNode, watch } from "vue";
 import { ReportMode, UIBase } from "./base";
-import { VAutocomplete, VBtn, VCard, VCardActions, VCardText, VCardTitle, VCol, VColorPicker, VCombobox, VContainer, VDialog, VIcon, VImg, VListItem, VRow, VSelect, VSheet, VSpacer, VSwitch, VTable, VTextField, VTextarea, VToolbar } from 'vuetify/components';
+import { VAutocomplete, VBtn, VCard, VCardActions, VCardText, VCardTitle, VCheckbox, VCheckboxBtn, VCol, VColorPicker, VCombobox, VContainer, VDialog, VIcon, VImg, VListItem, VRadio, VRadioGroup, VRow, VSelect, VSheet, VSpacer, VSwitch, VTable, VTextField, VTextarea, VToolbar } from 'vuetify/components';
 import { VAceEditor } from 'vue3-ace-editor';
 import { Master } from "../master";
 import { Button } from "./button";
 // import { VueEditor } from "vue3-editor";
 import ace from 'ace-builds';
 import { SimpleDate, SimpleTime, fileToBase64, selectFile, sleep } from "../misc";
-import { VDataTable, VDataTableFooter, VDataTableServer, VDataTableVirtual } from "vuetify/lib/labs/components.mjs";
+import { VDataTable, VDataTableFooter, VDataTableServer, VDataTableVirtual } from "vuetify/components";
 import Datepicker from '@vuepic/vue-datepicker';
 import { Form } from "./form";
 import { Report } from "./report";
@@ -27,7 +27,7 @@ ace.config.set("basePath", "https://cdn.jsdelivr.net/npm/ace-builds@" + ace.vers
 
 export type FieldType = 'text'|'select'|'autocomplete'|'label'|
                         'messagingbox'|'chart'| 'viewtable'|
-                        'map'|'code'|'color'|'html'|
+                        'map'|'code'|'color'|'html'|'htmlview'|'listselect'|
                         'time'|'date'|'datetime'|'button'|'image'|
                         'document'|'password'|'float'|'integer'|'decimal'|
                         'collection'|'textarea'|'boolean'|'table'|'reporttable'|'servertable';
@@ -61,9 +61,12 @@ export interface FieldParams {
   icon?: string;
   clearable?: boolean;
   autofocus?: boolean;
+  inline?: boolean;
   color?: string;
   itemValue?: string;
   itemTitle?: string;
+  returnObject?: boolean;
+  itemsPerPage?: string|number;
   class?: string[];
   style?: any;
   height?: number;
@@ -93,6 +96,7 @@ export interface FieldParams {
   collectionDisableAdd?: boolean;
   collectionDisableRemove?: boolean;
   hasFooter?: boolean;
+  checkbox?: boolean;
   validation?: {
     range?: { from: any, to: any, converter?: any};
     max?: {value: any, converter?: any};
@@ -586,6 +590,8 @@ export class Field extends UIBase {
         return this.buildMap(props, context);
       case 'html':
         return this.buildHTML(props, context);
+      case 'htmlview':
+        return this.buildHTMLView(props, context);
       case 'image':
         {
           if (!this.params.value.fileAccepts) {
@@ -609,6 +615,14 @@ export class Field extends UIBase {
         return this.buildReportTable(props, context);
       case 'time':
         return this.buildTime(props, context);
+      case 'listselect':
+        {
+          if (!this.optionLoaded.value) {
+            this.optionLoaded.value = true;
+            this.loadOptions();
+          }
+          return this.params.value.multiple ? this.buildCheckboxSelect(props, context) : this.buildRadioSelect(props, context);
+        }
     }
 
     return this.$h('div');
@@ -669,9 +683,21 @@ export class Field extends UIBase {
       'div',
       {
         class: this.params.value.class || ['text-subtitle-2'],
-        style: this.params.value.style || {}
+        style: this.params.value.style || {},
+        innerHTML: this.params.value.label
       },
-      this.params.value.label
+    );
+  }
+
+  buildHTMLView(props: any, context: any) {
+    const h = this.$h;
+    return h(
+      'div',
+      {
+        class: this.params.value.class || [],
+        style: this.params.value.style || {},
+        innerHTML: this.modelValue.value
+      },
     );
   }
 
@@ -701,6 +727,104 @@ export class Field extends UIBase {
     );
   }
 
+  buildRadioSelect(props: any, context: any) {
+    const h = this.$h;
+    return [
+      h(
+        'div',
+        {
+          class: ['ml-4', 'mb-4'],
+          innerHTML: this.params.value.label
+        }
+      ),
+      h(
+        VRadioGroup,
+        {
+          modelValue: this.modelValue,
+          autofocus: this.params.value.autofocus,
+          label: this.params.value.label || "",
+          hint: this.params.value.hint || "",
+          persistentHint: this.params.value.hint ? true : false,
+          placeholder: this.params.value.placeholder || "",
+          clearable: this.params.value.clearable || false,
+          color: this.params.value.color || "primary",
+          variant: this.params.value.variant || Field.defaultParams?.variant,
+          readonly: this.$readonly,
+          class: ['vef-radio-select'].concat(this.params.value.class || []),
+          style: this.params.value.style || {},
+          rules: this.rules(),
+          inline: this.params.value.inline
+        },
+        () => (this.selectItems.value || []).map(
+          (item: any) => h(
+            VRadio,
+            {
+              value: item[this.params.value.itemValue || '_id'],
+              inline: this.params.value.inline
+            },
+            {
+              label: () => h(
+                'div',
+                {
+                  ...(item.props || {}),
+                  innerHTML: item[this.params.value.itemTitle || 'name']
+                }
+              )
+            }
+          ),
+        )
+      )
+    ];
+  }
+
+  buildCheckboxSelect(props: any, context: any) {
+    const h = this.$h;
+    
+    if (this.params.value.multiple) {
+      if (!this.modelValue.value) {
+        const curValue = this.$master?.$get(this.params.value.storage || '')
+        if (!curValue) this.modelValue.value = []
+        else this.modelValue.value = curValue
+      }
+    }
+
+    return [
+      h(
+        'div',
+        {
+          class: ['ml-4', 'mb-4'],
+          innerHTML: this.params.value.label
+        }
+      ),
+      ...(this.selectItems.value || []).map(
+        (item: any) => h(
+          VCheckboxBtn,
+          {
+            value: item[this.params.value.itemValue || '_id'],
+            modelValue: this.modelValue,
+            readonly: this.$readonly,
+            class: ['vef-check-select'].concat(this.params.value.class || []),
+            style: this.params.value.style || {},
+            color: this.params.value.color || "primary",
+            hint: this.params.value.hint || "",
+            multiple: this.params.value.multiple,
+            persistentHint: this.params.value.hint ? true : false,
+            inline: this.params.value.inline
+          },
+          {
+            label: () => h(
+              'div',
+              {
+                ...(item.props || {}),
+                innerHTML: item[this.params.value.itemTitle || 'name'],
+              }
+            )
+          }
+        ),
+      )
+    ];
+  }
+
   buildAutocomplete(props: any, context: any) {
     const h = this.$h;
     return h(
@@ -719,6 +843,8 @@ export class Field extends UIBase {
         itemValue: this.params.value.itemValue || '_id',
         readonly: this.$readonly,
         items: this.selectItems.value,
+        autoSelectFirst: true,
+        returnObject: this.params.value.returnObject,
         multiple: this.params.value.multiple,
         class: this.params.value.class || [],
         style: this.params.value.style || {},
@@ -826,7 +952,21 @@ export class Field extends UIBase {
           this.params.value.label
         ),
       ),
-      editor
+      editor,
+      ...(
+        this.params.value.hint ?
+        [h(
+          'div',
+          {
+            class: ['ml-4', 'mb-4']
+          },
+          h(
+            'label',
+            {},
+            this.params.value.hint
+          ),
+        )] : []
+      )
     ];
   }
 
@@ -1069,9 +1209,9 @@ export class Field extends UIBase {
       h(
         'div',
         {
-          class: ['mb-2', 'ml-4']
+          class: ['mb-2', 'ml-4'],
+          innerHTML: this.params.value.label || ""
         },
-        this.params.value.label || "",
       ),
       h(
         Datepicker,
@@ -1277,15 +1417,16 @@ export class Field extends UIBase {
                 density: 'compact',
                 showSelect: !this.$readonly,
                 itemValue: '__index',
+                itemsPerPage: this.params.value.itemsPerPage || 10,
                 returnObject: true,
                 fixedHeader: true,
                 fixedFooter: true,
                 height: this.params.value.height || 200,
                 modelValue: this.collectionSelectedItems.value,
-                "onUpdate:modelValue": (value) => {
+                "onUpdate:modelValue": (value: any) => {
                   this.collectionSelectedItems.value = value;
                 },
-                "onClick:row": (_, {item}) => {
+                "onClick:row": (_: any, {item}: any) => {
                   this.onCollectionItemClicked(item);
                 }
               },
@@ -1295,7 +1436,7 @@ export class Field extends UIBase {
                     h(
                       VDataTable,
                       {
-                        headers: options.headers,
+                        headers: options.headers[0],
                         density: 'compact',
                         hideNoData: true,
                         items: this.currentCollectionFooter
@@ -1416,16 +1557,16 @@ export class Field extends UIBase {
       h(
         'div',
         {
-          class: ['ml-2', 'mb-4']
-        },
-        this.params.value.label
+          class: ['ml-2', 'mb-4'],
+          innerHTML: this.params.value.label
+        }
       ),
       h(
-        VueApexCharts,
+        VueApexCharts as any,
         {
           type: this.params.value.chartType,
-          options: this.chartOpts.value,
-          series: this.chartValue.value,
+          options: this.chartOpts.value || {},
+          series: this.chartValue.value || [],
           height: this.params.value.height || 300,
           width: this.maxWidth.value,
         },
@@ -1834,7 +1975,7 @@ export class Field extends UIBase {
     if (!canEdit) return;
 
     await this.createCollectionForm();
-    const value = this.currentCollectionItems.filter((i: any) => (i._id && i._id === item.raw._id) || i.__index === item.raw.__index)[0];
+    const value = this.currentCollectionItems.filter((i: any) => (i._id && i._id === item._id) || i.__index === item.__index)[0];
     await this.collectionFormMaster?.$reset(Object.assign({}, value || {}));
     if (this.collectionForm) {
       this.collectionForm.$params.mode = this.$readonly ? 'display': 'edit';
@@ -1892,7 +2033,7 @@ export class Field extends UIBase {
   buildBoolean(props: any, context: any) {
     const h = this.$h;
     return h(
-      VSwitch,
+      this.params.value.checkbox ? VCheckboxBtn : VSwitch,
       {
         modelValue: this.modelValue,
         autofocus: this.params.value.autofocus,
@@ -1906,7 +2047,8 @@ export class Field extends UIBase {
         readonly: this.$readonly,
         class: this.params.value.class || [],
         style: this.params.value.style || {},
-        rules: this.rules()
+        rules: this.rules(),
+        inline: this.params.value.inline
       },
     );
   }
@@ -1956,6 +2098,7 @@ export class Field extends UIBase {
                 class: [...(this.params.value.class || []), 'dense-table', ...(this.params.value.bordered ? ['bordered-table'] : [])],
                 showSelect: !this.$readonly,
                 itemValue: this.params.value.idField || '_id',
+                itemsPerPage: this.params.value.itemsPerPage || 10,
                 returnObject: true,
                 fixedHeader: true,
                 fixedFooter: true,
@@ -1965,7 +2108,7 @@ export class Field extends UIBase {
                 "onUpdate:modelValue": (value) => {
                   this.modelValue.value = value;
                 },
-                "onClick:row": (_, {item}) => {
+                "onClick:row": (_: any, {item}: any) => {
                   this.handleOn('click:row', item);
                 }
               },
@@ -1975,7 +2118,7 @@ export class Field extends UIBase {
                     h(
                       VDataTable,
                       {
-                        headers: options.headers,
+                        headers: options.headers[0],
                         density: 'compact',
                         hideNoData: true,
                         items: this.currentCollectionFooter,
@@ -2059,6 +2202,7 @@ export class Field extends UIBase {
                 returnObject: true,
                 fixedHeader: true,
                 fixedFooter: true,
+                density: 'compact',
                 height: this.params.value.height || 400,
                 page: this.tablePage.value,
                 itemsLength: this.tableTotalItems.value,
@@ -2072,7 +2216,7 @@ export class Field extends UIBase {
                 "onUpdate:modelValue": (value) => {
                   this.modelValue.value = value;
                 },
-                "onClick:row": (_, {item}) => {
+                "onClick:row": (_: any, {item}: any) => {
                   this.handleOn('click:row', item);
                 }
               },
@@ -2082,7 +2226,7 @@ export class Field extends UIBase {
                     h(
                       VDataTable,
                       {
-                        headers: options.headers,
+                        headers: options.headers[0],
                         density: 'compact',
                         hideNoData: true,
                         items: this.currentCollectionFooter
@@ -2152,6 +2296,7 @@ export class Field extends UIBase {
                 class: [...(this.params.value.class || []), 'dense-table', ...(this.params.value.bordered ? ['bordered-table'] : [])],
                 showSelect: !this.$readonly,
                 itemValue: this.params.value.idField || '_id',
+                itemsPerPage: this.params.value.itemsPerPage || 10,
                 returnObject: true,
                 fixedHeader: true,
                 fixedFooter: true,
@@ -2161,7 +2306,7 @@ export class Field extends UIBase {
                 "onUpdate:modelValue": (value) => {
                   this.modelValue.value = value;
                 },
-                "onClick:row": (_, {item}) => {
+                "onClick:row": (_: any, {item}: any) => {
                   this.handleOn('click:row', item);
                 }
               },
@@ -2171,7 +2316,7 @@ export class Field extends UIBase {
                     h(
                       VDataTable,
                       {
-                        headers: options.headers,
+                        headers: options.headers[0],
                         density: 'compact',
                         hideNoData: true,
                         items: this.currentCollectionFooter

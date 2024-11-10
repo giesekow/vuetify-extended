@@ -8,6 +8,8 @@ import { $excel, computeFunctionalCodeAsync, sleep } from "../misc";
 import { AppManager } from "./appmanager";
 import { Dialogs } from "./dialogs";
 import { OnHandler } from "./lib";
+import { PRefs } from "./part";
+import { Refs } from "./field";
 
 export interface ReportParams {
   objectType?: any;
@@ -16,6 +18,9 @@ export interface ReportParams {
   title?: string;
   hideMode?: boolean;
   cancelButton?: ButtonParams;
+  nextButton?: ButtonParams;
+  prevButton?: ButtonParams;
+  finishButton?: ButtonParams;
   multiple?: boolean;
   setActionButtons?: boolean;
   forms?: number;
@@ -48,6 +53,12 @@ export interface ReportOptions {
   beforeExport?: (report: Report, mode?: ReportMode) => Promise<any|undefined>|any|undefined;
   exportTemplate?: (report: Report, mode?: ReportMode) => Promise<ExportTemplateInfo|undefined>|ExportTemplateInfo|undefined;
   on?: (report: Report) => OnHandler;
+  loaded?: (report: Report) => void;
+  hasNextForm?: (report: Report, index: number) => Promise<boolean|undefined>|boolean|undefined
+  hasPrevForm?: (report: Report, index: number) => Promise<boolean|undefined>|boolean|undefined
+  removeEventListeners?: (report: Report) => Promise<void>|void
+  attachEventListeners?: (report: Report) => Promise<void>|void
+  title?: (report: Report, index?: number) => string
 }
 
 export interface ExportTemplateInfo {
@@ -66,6 +77,7 @@ export class Report extends UIBase {
   private currentIndex: Ref<number>;
   private hasNext = false;
   private hasPrev = false;
+  private listenersAttached = false;
 
   constructor(params?: ReportParams, options?: ReportOptions) {
     super();
@@ -85,6 +97,18 @@ export class Report extends UIBase {
 
   get $parentReport(): Report|undefined {
     return this;
+  }
+
+  get $prefs(): PRefs {
+    return this.currentForm?.$prefs || {}
+  }
+
+  get $currentForm(): Form|undefined {
+    return this.currentForm;
+  }
+
+  get $refs(): Refs {
+    return this.currentForm?.$refs || {}
   }
 
   get objectType() {
@@ -142,6 +166,9 @@ export class Report extends UIBase {
       this.$master.$type = this.params.value.objectType;
       await this.$master.$load();
     }
+    if (this.options.loaded) {
+      this.options.loaded(this)
+    }
     this.handleOn('loaded', this);
   }
 
@@ -159,6 +186,17 @@ export class Report extends UIBase {
 
   async hasForm(props: any, context: any, index: number): Promise<boolean> {
     return index < (this.params.value.forms || 1) ;
+  }
+
+  async hasPrevForm(props: any, context: any, index: number): Promise<boolean|undefined> {
+    if (this.options.hasPrevForm) return await this.options.hasPrevForm(this, index);
+    if (index <= 0) return false;
+    return this.options.hasForm ? await this.options.hasForm(props, context, index-1) : await this.hasForm(props, context, index-1);
+  }
+
+  async hasNextForm(props: any, context: any, index: number): Promise<boolean|undefined> {
+    if (this.options.hasNextForm) return await this.options.hasNextForm(this, index);
+    return this.options.hasForm ? await this.options.hasForm(props, context, index + 1) : await this.hasForm(props, context, index + 1);
   }
 
   props() {
@@ -264,13 +302,13 @@ export class Report extends UIBase {
     const hasForm = this.options.hasForm ? await this.options.hasForm(props, context, index) : await this.hasForm(props, context, index);
 
     if (hasForm) {
-      const hasNext = this.options.hasForm ? await this.options.hasForm(props, context, index + 1) : await this.hasForm(props, context, index + 1);
+      const hasNext = await this.hasNextForm(props, context, index);
       this.hasNext = hasNext || false;
 
       if (index <= 0) {
         this.hasPrev = false;
       } else {
-        const hasPrev = this.options.hasForm ? await this.options.hasForm(props, context, index) : await this.hasForm(props, context, index);
+        const hasPrev = await this.hasPrevForm(props, context, index);
         this.hasPrev = hasPrev || false;
       }
 
@@ -278,36 +316,49 @@ export class Report extends UIBase {
       if (newForm) {
         newForm.setParent(this);
         newForm.$params.sub = this.hasNext;
-        newForm.$params.auto = this.hasNext;
+        newForm.$params.auto = newForm.$params.auto === undefined ? this.hasNext : newForm.$params.auto;
         newForm.$params.mode = this.params.value.mode;
         if (this.params.value.title && !newForm.$params.subtitle) {
           newForm.$params.subtitle = newForm.$params.title;
-          newForm.$params.title = this.params.value.title;
+          newForm.$params.title = this.options.title ? this.options.title(this, index) : this.params.value.title;
         }
 
         if (this.params.value.setActionButtons || this.params.value.setActionButtons === undefined) {
           if (this.hasNext) {
             newForm.$params.saveButton = {
-              text: 'Next'
+              ...(this.params.value.nextButton || {text: 'Next'}),
+              ...(newForm.$params.saveButton || {}),
             }
           } else if (index > 0) {
             newForm.$params.showSaveInReadonly = true;
             if (this.params.value.mode === 'display') {
               newForm.$params.saveButton = {
-                text: 'Finish'
+                ...(this.params.value.finishButton || {text: 'Finish'}),
+                ...(newForm.$params.saveButton || {}),
+              }
+            } else if (this.params.value.finishButton) {
+              newForm.$params.saveButton = {
+                ...(this.params.value.finishButton || {text: 'Save'}),
+                ...(newForm.$params.saveButton || {}),
               }
             }
           }
 
           if (this.hasPrev) {
             newForm.$params.cancelButton = {
-              text: 'Prev'
+              ...(this.params.value.prevButton || {text: 'Prev'}),
+              ...(newForm.$params.cancelButton || {}),
             }
           }
         }
 
+        if (this.currentForm) {
+          this.currentForm.removeEventListeners()
+        }
+
         this.currentForm = newForm
         this.currentIndex.value = index;
+        this.currentForm.attachEventListeners();
       }
 
     } else {
@@ -321,6 +372,7 @@ export class Report extends UIBase {
     const h = this.$h;
 
     const modes = {create: 'Create', edit: 'Edit', display: 'Display'};
+    const title = this.options.title ? this.options.title(this) : this.$params.title
 
     return h(
       VCardTitle,
@@ -328,7 +380,7 @@ export class Report extends UIBase {
       () => h(
         'span',
         {},
-        this.$params.mode ? (this.$params.hideMode ? this.$params.title : `${modes[this.$params.mode]} ${this.$params.title || ''}`) : (this.$params.title || '')
+        this.$params.mode ? (this.$params.hideMode ? title : `${modes[this.$params.mode]} ${title || ''}`) : (title || '')
       )
     );
   }
@@ -489,6 +541,10 @@ export class Report extends UIBase {
     this.oncancel(null, null);
   }
 
+  async forceSave() {
+    this.save(null, null)
+  }
+
   setup(props: any, context: any) {
     if (this.options.setup) this.options.setup(this);
     this.handleOn('setup', this);
@@ -566,6 +622,21 @@ export class Report extends UIBase {
     }
 
     this.emit(event, data)
+  }
+
+  attachEventListeners() {
+    if (this.options.attachEventListeners && !this.listenersAttached) this.options.attachEventListeners(this)
+    super.attachEventListeners()
+    this.listenersAttached = true;
+  }
+
+  removeEventListeners() {
+    if (this.options.removeEventListeners && this.listenersAttached) {
+      this.options.removeEventListeners(this);
+      if (this.currentForm) this.currentForm.removeEventListeners()
+    }
+    super.removeEventListeners()
+    this.listenersAttached = false;
   }
 
 }
