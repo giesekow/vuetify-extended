@@ -9,15 +9,8 @@ export interface DialogParams {
   ref?: string;
   invisible?: boolean;
   mode?: 'create'|'edit'|'display';
-  elevation?: number;
   closeOnSave?: boolean;
-  maxWidth?: number|string|undefined;
-  minWidth?: number|string|undefined;
-  width?: number|string|undefined;
-  alignContent?: "center" | "end" | "start" | "space-around" | "space-between" | "space-evenly" | "stretch" | undefined;
-  dense?: boolean | undefined;
-  justify?: "center" | "end" | "start" | "space-around" | "space-between" | "space-evenly" | "stretch" | undefined;
-  align?: "center" | "end" | "start" | "stretch" | "baseline" | undefined;
+  fullscreen?: boolean|undefined;
 }
 
 export interface DialogFormOptions {
@@ -111,9 +104,8 @@ export class DialogForm extends UIBase {
       {
         modelValue: this.dialog.value,
         persistent: true,
-        maxWidth: this.params.value.maxWidth,
-        width: this.params.value.width,
-        minWidth: this.params.value.minWidth
+        width: "auto",
+        fullscreen: this.params.value.fullscreen,
       },
       () => this.buildBody(props, context)
     );
