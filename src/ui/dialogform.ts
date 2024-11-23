@@ -7,6 +7,8 @@ import { OnHandler } from "./lib";
 
 export interface DialogParams {
   ref?: string;
+  objectType?: any;
+  objectId?: any;
   invisible?: boolean;
   mode?: 'create'|'edit'|'display';
   closeOnSave?: boolean;
@@ -40,6 +42,11 @@ export class DialogForm extends UIBase {
     this.dialog = this.$makeRef(false);
     this.currentForm = undefined;
     this.loading = this.$makeRef(false);
+    if (options?.master) {
+      this.setMaster(options?.master);
+    } else {
+      this.setMaster(new Master({type: this.params.value.objectType, id: this.params.value.objectId}));
+    }
   }
 
   get $ref() {
@@ -251,6 +258,7 @@ export class DialogForm extends UIBase {
     if (this.hasAccess.value) {
       this.currentForm = await this.form(props, context);
       if (this.currentForm) {
+        this.currentForm.setParent(this)
         this.currentForm.$params.mode = this.params.value.mode;
         this.currentForm.on('cancel', () => this.onCancelClicked())
         this.currentForm.on('saved', () => this.onSaved())

@@ -5,6 +5,8 @@ import { Master } from "../master";
 import { OnHandler } from "./lib";
 export interface DialogParams {
     ref?: string;
+    objectType?: any;
+    objectId?: any;
     invisible?: boolean;
     mode?: 'create' | 'edit' | 'display';
     closeOnSave?: boolean;
