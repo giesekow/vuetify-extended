@@ -1,9 +1,11 @@
 import io from 'socket.io-client';
-import feathers from '@feathersjs/feathers';
+import { feathers } from '@feathersjs/feathers';
+import type { Application } from '../declarations';
 import socketio from '@feathersjs/socketio-client';
 import rest from '@feathersjs/rest-client';
 import axios from 'axios';
-import { AuthConfigure, KeycloakClientConfig } from 'feathers-keycloak-connect-client'
+import { AuthConfigure } from 'feathers-keycloak-connect-client'
+import type { KeycloakClientConfig } from 'feathers-keycloak-connect-client'
 import findOne from './find-one';
 import count from './count';
 import findAll from './find-all';
@@ -15,10 +17,11 @@ export interface SocketIOOptions {
 }
 
 export class Api {
-  static instance: feathers.Application;
+  static instance: Application;
 
   static setup(apiURL:any, keycloakConfig: KeycloakClientConfig, soptions?: SocketIOOptions) {
-    const client = feathers();
+    const appCreator: any = feathers
+    const client: any = appCreator()
 
     if (soptions?.useSocket) {
       const socket = io(apiURL, { transports: soptions?.transports || ['websocket'], timeout: soptions?.timeout || 6*1000});

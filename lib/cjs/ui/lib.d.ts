@@ -24,5 +24,5 @@ export declare class EventEmitter {
         } | undefined): boolean;
         ObjectPrototypeMutationError: ErrorConstructor;
     };
-    get $app(): import("@feathersjs/feathers").Application<{}>;
+    get $app(): import("../declarations").Application;
 }
