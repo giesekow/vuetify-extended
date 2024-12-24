@@ -165,6 +165,7 @@ export class AppMain extends UIBase {
       hint: options.hint,
       placeholder: options.placeholder,
       icon: options.icon,
+      required: options.isRequired,
       multiple: options.multiple || false,
       storage: `udfs.${options._id}`,
       cols: options.gridSize?.cols,
