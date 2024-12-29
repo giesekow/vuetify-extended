@@ -403,6 +403,14 @@ export class Field extends UIBase {
         return { $numberDecimal: Number(value || 0).toFixed(dp) }
       }
     }
+
+    if (this.params.value.type === 'float') {
+      return Number(value || 0);
+    }
+    
+    if (this.params.value.type === 'integer') {
+      return Number(value || 0);
+    }
     
     return value;
   }
