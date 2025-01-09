@@ -1,3 +1,4 @@
+import { Application } from '../declarations';
 export interface CustomEventHandler {
     isOnce: boolean;
     ref?: string | symbol;
@@ -24,5 +25,5 @@ export declare class EventEmitter {
         } | undefined): boolean;
         ObjectPrototypeMutationError: ErrorConstructor;
     };
-    get $app(): import("../declarations").Application;
+    get $app(): Application;
 }

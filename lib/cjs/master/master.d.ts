@@ -12,6 +12,8 @@ export declare class Master extends EventEmitter {
     private parent?;
     private idField?;
     private validates;
+    private postprocesses;
+    private preprocesses;
     constructor(options?: MasterOptions);
     get $type(): any;
     set $type(value: any);
@@ -25,6 +27,12 @@ export declare class Master extends EventEmitter {
     addValidation(name: string, callback: any): void;
     removeValidation(name: string): void;
     validate(data: any): Promise<any>;
+    addPreprocess(name: string, callback: (master: Master, data: any) => Promise<any | undefined> | any | undefined): void;
+    addPostprocess(name: string, callback: (master: Master, data: any) => Promise<any | undefined> | any | undefined): void;
+    removePreprocess(name: string): void;
+    removePostprocess(name: string): void;
+    preprocess(data: any): Promise<any>;
+    postprocess(data: any): Promise<any>;
     $set(key: string, data: any): void;
     $get(key: string, def?: any): any;
     $has(key: string, options?: any): boolean;

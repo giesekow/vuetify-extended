@@ -1,5 +1,6 @@
 import nestedproperty from 'nested-property';
 import { Api } from '../api';
+import { Application } from '../declarations';
 
 export interface CustomEventHandler {
   isOnce: boolean;
@@ -66,7 +67,7 @@ export class EventEmitter {
     return nestedproperty;
   }
 
-  get $app() {
+  get $app(): Application {
     return Api.instance
   }
 }
