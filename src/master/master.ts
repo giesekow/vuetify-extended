@@ -14,7 +14,9 @@ export class Master extends EventEmitter {
   private itemType?: any;
   private parent?: Master;
   private idField?: any;
-  private validates: any = [];
+  private validates: any[] = [];
+  private postprocesses: any[] = [];
+  private preprocesses: any[] = [];
 
   constructor(options?: MasterOptions) {
     super();
@@ -77,6 +79,42 @@ export class Master extends EventEmitter {
       }
     }
     return true;
+  }
+
+  addPreprocess(name: string, callback: (master: Master, data: any) => Promise<any|undefined>|any|undefined) {
+    this.preprocesses.push({name, callback});
+  }
+
+  addPostprocess(name: string, callback: (master: Master, data: any) => Promise<any|undefined>|any|undefined) {
+    this.postprocesses.push({name, callback});
+  }
+
+  removePreprocess(name: string) {
+    this.preprocesses = this.preprocesses.filter((v: any) => v.name !== name);
+  }
+
+  removePostprocess(name: string) {
+    this.postprocesses = this.postprocesses.filter((v: any) => v.name !== name);
+  }
+
+  async preprocess(data: any) {
+    let d: any = {...(data || {})};
+
+    for (let v = 0; v < this.preprocesses.length; v++) {
+      const r: any = await this.preprocesses[v].callback(d);
+      if (r) d = r;
+    }
+    return d;
+  }
+
+  async postprocess(data: any) {
+    let d: any = {...(data || {})};
+
+    for (let v = 0; v < this.postprocesses.length; v++) {
+      const r: any = await this.postprocesses[v].callback(d);
+      if (r) d = r;
+    }
+    return d;
   }
 
   $set(key: string, data: any): void {
@@ -270,7 +308,8 @@ export class Master extends EventEmitter {
     this.emit("before-saved", {type: this.itemType, id: this.itemId});
 
     if (this.itemType && (this.itemId || mode === "create")) {
-      const data: any = mode === "create" ? await this.$app.service(this.itemType).create(this.data) : await this.$app.service(this.itemType).patch(this.itemId, this.data);
+      const postprocessedData = await this.postprocess(this.data);
+      const data: any = mode === "create" ? await this.$app.service(this.itemType).create(postprocessedData) : await this.$app.service(this.itemType).patch(this.itemId, postprocessedData);
       this.data = data;
     }
 
@@ -346,7 +385,7 @@ export class Master extends EventEmitter {
 
   async $reset(data?: any, id?: any) {
     this.emit("before-reset", {data: data || {}, id});
-    this.data = data || {};
+    this.data = await this.preprocess(data);
     this.itemId = id;
     this.emit("reset", {data: this.data, id: this.itemId});
   }
