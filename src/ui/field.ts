@@ -278,7 +278,7 @@ export class Field extends UIBase {
     }
 
     this.changing = true;
-    const value = this.postprocess(newValue !== undefined ? newValue : this.modelValue.value);
+    const value = this.postprocess(newValue !== undefined ? newValue : this.modelValue.value, true);
     if (this.$master && this.params.value.storage) {
       this.$master.$set(this.params.value.storage, value);
     }
@@ -372,15 +372,23 @@ export class Field extends UIBase {
     }
 
     if (this.params.value.type === 'decimal') {
+      const dp = this.params.value.decimalPlaces || 2;
       if (value.$numberDecimal !== undefined) {
-        return value.$numberDecimal
+        return Number(value.$numberDecimal).toFixed(dp)
+      } else {
+        try {
+          const dvalue = Number(value.$numberDecimal).toFixed(dp)
+          return dvalue
+        } catch (error) {
+          
+        }
       }
     }
 
     return value;
   }
 
-  private postprocess(value: any) {
+  private postprocess(value: any, update?: boolean) {
     if (value === undefined || value === null) return value;
     
     if (this.params.value.type === "date") {
@@ -400,7 +408,13 @@ export class Field extends UIBase {
     if (this.params.value.type === 'decimal') {
       if (value.$numberDecimal === undefined && value !== undefined && value !== null) {
         const dp = this.params.value.decimalPlaces || 2;
-        return { $numberDecimal: Number(value || 0).toFixed(dp) }
+        const strValue = Number(value || 0).toFixed(dp)
+        
+        if (update) {
+          this.modelValue.value = strValue
+        }
+
+        return { $numberDecimal: strValue }
       }
     }
 
