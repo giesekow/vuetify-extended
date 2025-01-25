@@ -133,6 +133,7 @@ export interface FieldOptions {
   messageFormat?: (field: Field, data: any) => any[];
   rules?: (field: Field) => any[];
   changed?: (field: Field) => void;
+  focusChanged?: (field: Field, focused: boolean) => void;
   setup?: (field: Field) => void;
   validate?: (field: Field) => Promise<string|undefined>|string|undefined;
   default?: (field: Field) => any;
@@ -172,6 +173,7 @@ export class Field extends UIBase {
   private loading: Ref<boolean>;
   private currentCollectionItems: any[];
   private currentCollectionFooter: any[];
+  private isEditting: boolean;
 
   private static defaultParams: FieldParams = {};
   private maxWidth: Ref;
@@ -202,6 +204,7 @@ export class Field extends UIBase {
     this.currentCollectionItems = [];
     this.currentCollectionFooter = [];
     this.maxWidth = this.$makeRef(null);
+    this.isEditting = false;
   }
 
   static setDefault(value: FieldParams, reset?: boolean): void {
@@ -278,7 +281,7 @@ export class Field extends UIBase {
     }
 
     this.changing = true;
-    const value = this.postprocess(newValue !== undefined ? newValue : this.modelValue.value, true);
+    const value = this.postprocess(newValue !== undefined ? newValue : this.modelValue.value);
     if (this.$master && this.params.value.storage) {
       this.$master.$set(this.params.value.storage, value);
     }
@@ -377,7 +380,7 @@ export class Field extends UIBase {
         return Number(value.$numberDecimal).toFixed(dp)
       } else {
         try {
-          const dvalue = Number(value.$numberDecimal).toFixed(dp)
+          const dvalue = Number(value).toFixed(dp)
           return dvalue
         } catch (error) {
           
@@ -388,7 +391,7 @@ export class Field extends UIBase {
     return value;
   }
 
-  private postprocess(value: any, update?: boolean) {
+  private postprocess(value: any) {
     if (value === undefined || value === null) return value;
     
     if (this.params.value.type === "date") {
@@ -408,13 +411,7 @@ export class Field extends UIBase {
     if (this.params.value.type === 'decimal') {
       if (value.$numberDecimal === undefined && value !== undefined && value !== null) {
         const dp = this.params.value.decimalPlaces || 2;
-        const strValue = Number(value || 0).toFixed(dp)
-        
-        if (update) {
-          this.modelValue.value = strValue
-        }
-
-        return { $numberDecimal: strValue }
+        return { $numberDecimal: Number(value || 0).toFixed(dp) }
       }
     }
 
@@ -673,7 +670,7 @@ export class Field extends UIBase {
           class: this.params.value.class || [],
           style: this.params.value.style || {},
           rules: this.rules(),
-  
+          "onUpdate:focused": (ev) => this.onFocusChanged(ev)
         },
       );
     } else {
@@ -693,7 +690,8 @@ export class Field extends UIBase {
           class: this.params.value.class || [],
           style: this.params.value.style || {},
           rules: this.rules(),
-          type
+          type,
+          "onUpdate:focused": (ev) => this.onFocusChanged(ev)
         },
       );
     }
@@ -744,7 +742,8 @@ export class Field extends UIBase {
         multiple: this.params.value.multiple,
         class: this.params.value.class || [],
         style: this.params.value.style || {},
-        rules: this.rules()
+        rules: this.rules(),
+        "onUpdate:focused": (ev) => this.onFocusChanged(ev)
       },
     );
   }
@@ -775,7 +774,8 @@ export class Field extends UIBase {
           class: ['vef-radio-select'].concat(this.params.value.class || []),
           style: this.params.value.style || {},
           rules: this.rules(),
-          inline: this.params.value.inline
+          inline: this.params.value.inline,
+          "onUpdate:focused": (ev) => this.onFocusChanged(ev)
         },
         () => (this.selectItems.value || []).map(
           (item: any) => h(
@@ -831,7 +831,7 @@ export class Field extends UIBase {
             hint: this.params.value.hint || "",
             multiple: this.params.value.multiple,
             persistentHint: this.params.value.hint ? true : false,
-            inline: this.params.value.inline
+            inline: this.params.value.inline,
           },
           {
             label: () => h(
@@ -870,7 +870,8 @@ export class Field extends UIBase {
         multiple: this.params.value.multiple,
         class: this.params.value.class || [],
         style: this.params.value.style || {},
-        rules: this.rules()
+        rules: this.rules(),
+        "onUpdate:focused": (ev) => this.onFocusChanged(ev)
       },
     );
   }
@@ -1146,6 +1147,7 @@ export class Field extends UIBase {
           class: this.params.value.class || [],
           style: this.params.value.style || {},
           rules: this.rules(),
+          "onUpdate:focused": (ev) => this.onFocusChanged(ev)
         },
       );
     } else {
@@ -1165,7 +1167,8 @@ export class Field extends UIBase {
           class: this.params.value.class || [],
           style: this.params.value.style || {},
           rules: this.rules(),
-          type: "time"
+          type: "time",
+          "onUpdate:focused": (ev) => this.onFocusChanged(ev)
         },
       );
     }
@@ -1196,7 +1199,8 @@ export class Field extends UIBase {
           rules: this.rules(),
           "onUpdate:modelValue": (value: any[]) => {
             this.modelValue.value = value;
-          }
+          },
+          "onUpdate:focused": (ev) => this.onFocusChanged(ev)
         },
       );
     } else {
@@ -1219,7 +1223,8 @@ export class Field extends UIBase {
           type: "date",
           "onUpdate:modelValue": (value: any) => {
             this.modelValue.value = value;
-          }
+          },
+          "onUpdate:focused": (ev) => this.onFocusChanged(ev)
         },
       );
     }
@@ -1254,7 +1259,8 @@ export class Field extends UIBase {
           ...(this.options.datetimeOptions || {}),
           "onUpdate:model-value": (value: any) => {
             this.modelValue.value = value;
-          }
+          },
+          "onUpdate:focused": (ev: any) => this.onFocusChanged(ev)
         },
       )
     ];
@@ -1278,7 +1284,8 @@ export class Field extends UIBase {
         class: this.params.value.class || [],
         style: this.params.value.style || {},
         type: 'password',
-        rules: this.rules()
+        rules: this.rules(),
+        "onUpdate:focused": (ev) => this.onFocusChanged(ev)
       },
     );
   }
@@ -1301,7 +1308,8 @@ export class Field extends UIBase {
         type: 'number',
         class: this.params.value.class || [],
         style: this.params.value.style || {},
-        rules: this.rules()
+        rules: this.rules(),
+        "onUpdate:focused": (ev) => this.onFocusChanged(ev)
       },
     );
   }
@@ -1331,7 +1339,8 @@ export class Field extends UIBase {
         },
         class: this.params.value.class || [],
         style: this.params.value.style || {},
-        rules: this.rules()
+        rules: this.rules(),
+        "onUpdate:focused": (ev) => this.onFocusChanged(ev)
       },
     );
   }
@@ -1374,7 +1383,7 @@ export class Field extends UIBase {
             cols: 12,
             md: 3,
             align: "end",
-            class: ['my-0', 'py-0']
+            class: ['my-0', 'py-0', 'text-right']
           },
           () => [
             ...(this.collectionSelectedItems.value.length > 0 && !this.$readonly && !this.params.value.collectionDisableRemove ? [
@@ -1383,6 +1392,7 @@ export class Field extends UIBase {
                 {
                   color: 'error',
                   size: 28,
+                  icon: true,
                   class: ['mr-4'],
                   onClick: () => {
                     this.onCollectionItemRemoved();
@@ -1400,6 +1410,7 @@ export class Field extends UIBase {
                   {
                     color: 'primary',
                     size: 28,
+                    icon: true,
                     onClick: async () => {
                       await this.createCollectionForm();
                       if (this.collectionForm) {
@@ -2643,6 +2654,23 @@ export class Field extends UIBase {
     }
 
     this.emit(event, data)
+  }
+
+  onFocusChanged(focused: any) {
+    if (this.isEditting && !focused) {
+      if (this.params.value.type === 'decimal' && this.modelValue.value) {
+        this.changing = true;
+        const dp = this.params.value.decimalPlaces || 2;
+        const dvalue = Array.isArray(this.modelValue.value) ? this.modelValue.value.map((v: any) => Number(v).toFixed(dp)) : Number(this.modelValue.value).toFixed(dp)
+        this.modelValue.value = dvalue
+        this.changing = false;
+      }
+    }
+    this.isEditting = focused
+    this.handleOn('focus-changed', focused)
+    if(focused) this.handleOn('focus-gained')
+    else this.handleOn('focus-lost')
+    if (this.options?.focusChanged) this.options.focusChanged(this, focused)
   }
 
   mounted() {

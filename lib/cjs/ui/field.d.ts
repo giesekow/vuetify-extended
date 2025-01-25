@@ -127,6 +127,7 @@ export interface FieldOptions {
     messageFormat?: (field: Field, data: any) => any[];
     rules?: (field: Field) => any[];
     changed?: (field: Field) => void;
+    focusChanged?: (field: Field, focused: boolean) => void;
     setup?: (field: Field) => void;
     validate?: (field: Field) => Promise<string | undefined> | string | undefined;
     default?: (field: Field) => any;
@@ -162,6 +163,7 @@ export declare class Field extends UIBase {
     private loading;
     private currentCollectionItems;
     private currentCollectionFooter;
+    private isEditting;
     private static defaultParams;
     private maxWidth;
     constructor(params?: FieldParams, options?: FieldOptions);
@@ -305,6 +307,7 @@ export declare class Field extends UIBase {
     private makeReportTableFooter;
     private loadTableInformation;
     private handleOn;
+    onFocusChanged(focused: any): void;
     mounted(): void;
 }
 export declare const $FD: {

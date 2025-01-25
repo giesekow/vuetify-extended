@@ -192,6 +192,7 @@ export class SimpleTime {
 }
 
 export const $amt = (v: any, def?: number): number => {
+  if (!v && v !== 0) return def || 0
   let vv = v;
   if (v.$numberDecimal !== undefined && v.$numberDecimal !== null) vv = v.$numberDecimal;
   try {
