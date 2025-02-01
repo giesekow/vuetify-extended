@@ -2027,8 +2027,10 @@ export class Field extends UIBase {
 
   private attachIndex(data: any[]) {
     if (!data) return []
-    
+
     if (!Array.isArray(data)) data = [data];
+
+    data = data.filter((d: any) => d)
 
     data.forEach((item: any, index: number) => {
       item.__index = index;
