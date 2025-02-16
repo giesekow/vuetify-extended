@@ -1964,6 +1964,8 @@ export class Field extends UIBase {
       this.updateValue();
     }
 
+    this.handleOn('form-saved', this)
+
     if (this.collectionFormMaster && fm.$params.mode === 'create') {
       this.collectionFormMaster.$reset({});
     } else {
@@ -1973,6 +1975,7 @@ export class Field extends UIBase {
 
   private async onCollectionFormCancel() {
     this.collectionDialog.value = false;
+    this.handleOn('form-cancel', this)
   }
 
   private async onCollectionItemRemoved() {
@@ -1996,6 +1999,8 @@ export class Field extends UIBase {
         
       }
 
+      this.handleOn('item-removed', this)
+
       this.collectionSelectedItems.value = [];
     }
     this.updateValue();
@@ -2014,6 +2019,7 @@ export class Field extends UIBase {
       this.collectionForm.$params.mode = this.$readonly ? 'display': 'edit';
       this.collectionForm.setParent(this);
     }
+    this.handleOn('item-clicked', this)
     this.collectionDialog.value = true;
   }
 
