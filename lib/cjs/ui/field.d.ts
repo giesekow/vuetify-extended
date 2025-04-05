@@ -191,6 +191,7 @@ export declare class Field extends UIBase {
     button(): Button | undefined;
     form(): Promise<Form | undefined>;
     headers(): Promise<any[] | undefined>;
+    makeHTMLColumns(headers: any[]): any;
     items(options?: any): Promise<any[] | undefined>;
     chartOptions(): Promise<any | undefined>;
     chartData(): Promise<any | undefined>;

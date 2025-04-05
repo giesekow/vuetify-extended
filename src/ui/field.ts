@@ -445,6 +445,28 @@ export class Field extends UIBase {
     if (this.options.headers) return await this.options.headers(this);
   }
 
+  makeHTMLColumns(headers: any[]) {
+    const slots: any = {}
+
+    for (let i = 0; i < headers.length; i++) {
+      const header = headers[i];
+      if (header.isHTML) {
+        slots[`item.${header.key}`] = (options: any) => {
+          return this.$h(
+            header.tag || 'div',
+            {
+              innerHTML: options.value?.html ? options.value.html : options.value,
+              class: options.value?.class || [],
+              style: options.value?.style || {}
+            }
+          )
+        }
+      }
+    }
+
+    return slots;
+  }
+
   async items(options?: any): Promise<any[]|undefined> {
     if (this.options.items) return await this.options.items(this, options);
   }
@@ -2156,6 +2178,7 @@ export class Field extends UIBase {
                 }
               },
               {
+                ...this.makeHTMLColumns(this.tableHeaders.value),
                 ...(this.params.value.hasFooter ? {
                   bottom: (options: any) => [
                     h(
@@ -2264,6 +2287,7 @@ export class Field extends UIBase {
                 }
               },
               {
+                ...this.makeHTMLColumns(this.tableHeaders.value),
                 ...(this.params.value.hasFooter ? {
                   bottom: (options: any) => [
                     h(
@@ -2286,7 +2310,7 @@ export class Field extends UIBase {
                       {},
                     )
                   ]
-                } : {})
+                } : {}),
               }
             )
           )
@@ -2354,6 +2378,7 @@ export class Field extends UIBase {
                 }
               },
               {
+                ...this.makeHTMLColumns(this.tableHeaders.value),
                 ...(this.params.value.hasFooter ? {
                   bottom: (options: any) => [
                     h(
