@@ -568,7 +568,7 @@ export class Report extends UIBase {
     const template = await this.printTemplate();
     if (template) {
       const info = await this.beforePrint();
-      const data = {$info: info, $master: this.$master, $func: AppManager.$printer.printFunctions()};
+      const data = {$info: info, $master: this.$master, $rep: this, $func: AppManager.$printer.printFunctions()};
       this.handleOn('before-print', data);
       await AppManager.$printer.printReportById(template, data);
       this.handleOn('after-print', data);
@@ -597,7 +597,7 @@ export class Report extends UIBase {
 
     if (template) {
       const info = await this.beforeExport();
-      const data = {$info: info, $master: this.$master, $func: AppManager.$printer.printFunctions()};
+      const data = {$info: info, $master: this.$master, $rep: this, $func: AppManager.$printer.printFunctions()};
       this.handleOn('before-export', data);
       const code = await AppManager.$printer.getTemplate(template, "excel");
       
