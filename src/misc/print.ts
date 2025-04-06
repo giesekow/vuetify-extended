@@ -35,6 +35,14 @@ export class PrinterBase {
     return {}
   }
 
+  async getHeader(html: string, data: any) {
+    return ''
+  }
+
+  async getFooter(html: string, data: any) {
+    return ''
+  }
+
   printFunctions() {
     // Return functions which are available in print and export templates
     return {}
@@ -46,7 +54,10 @@ export class PrinterBase {
 
   async compileEJS(html: string, data: any): Promise<string> {
     const resolved: any = await this.handleIncludes(html, {}, []);
-    const fn: any = await ejs.compile(resolved, {client: true, delimiter: "%", openDelimiter: "<", closeDelimiter: ">", async: true});
+    const footer = await this.getFooter(html, data);
+    const header = await this.getHeader(html, data);
+    const mergedHtml = `${header}${resolved}${footer}`;
+    const fn: any = await ejs.compile(mergedHtml, {client: true, delimiter: "%", openDelimiter: "<", closeDelimiter: ">", async: true});
     const compiled: string = await fn(data, null);
     return compiled;
   }

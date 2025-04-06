@@ -5,6 +5,8 @@ export declare class PrinterBase {
     getTemplateNameById(tempId: any): Promise<string | undefined>;
     getTemplateByName(name: any, field?: string): Promise<string>;
     getVariables(varnames: any[]): Promise<any>;
+    getHeader(html: string, data: any): Promise<string>;
+    getFooter(html: string, data: any): Promise<string>;
     printFunctions(): {};
     printHTML(html: string): Promise<void>;
     compileEJS(html: string, data: any): Promise<string>;
