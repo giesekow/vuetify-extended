@@ -35,11 +35,11 @@ export class PrinterBase {
     return {}
   }
 
-  async getHeader(html: string, data: any) {
+  async getHeader(html: string, data: any): Promise<string> {
     return ''
   }
 
-  async getFooter(html: string, data: any) {
+  async getFooter(html: string, data: any): Promise<string> {
     return ''
   }
 
