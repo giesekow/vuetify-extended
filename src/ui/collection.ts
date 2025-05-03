@@ -17,7 +17,7 @@ export interface CollectionParams {
 }
 
 export interface CollectionOptions {
-  access?: (collection: Collection) => Promise<boolean|undefined>|boolean|undefined;
+  access?: (collection: Collection, mode: any) => Promise<boolean|undefined>|boolean|undefined;
   report?: (collection: Collection) => Promise<Report|undefined>|Report|undefined;
   trigger?: (collection: Collection) => Promise<Trigger|undefined>|Trigger|undefined;
   selector?: (collection: Collection) => Promise<Selector|undefined>|Selector|undefined;
@@ -44,8 +44,8 @@ export class Collection extends UIBase {
     this.prevState = undefined;
   }
 
-  async access(): Promise<boolean|undefined>{
-    return this.options.access ? await this.options.access(this) : true;
+  async access(mode: any): Promise<boolean|undefined>{
+    return this.options.access ? await this.options.access(this, mode) : true;
   }
 
   get $ref() {

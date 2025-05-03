@@ -20,7 +20,7 @@ export interface DialogFormOptions {
   form?: (props: any, context: any) => Promise<Form|undefined>|Form|undefined;
   saved?: () => Promise<void>|void;
   cancel?: () => Promise<void>|void;
-  access?: (dialog: DialogForm, mode?: 'create'|'edit'|'display') => Promise<boolean>|boolean;
+  access?: (dialog: DialogForm, mode?: any) => Promise<boolean>|boolean;
   setup?: (dialog: DialogForm) => void;
   on?: (dialog: DialogForm) => OnHandler;
 }
@@ -67,11 +67,7 @@ export class DialogForm extends UIBase {
 
   private async runAccess() {
     try {
-      if (this.options.access) {
-        this.hasAccess.value = await this.options.access(this, this.params.value.mode);
-      } else {
-        this.hasAccess.value = await this.access(this.params.value.mode);
-      }
+      this.hasAccess.value = await this.access(this.$params.mode) || false;
     } catch (error) {
       this.hasAccess.value = false;
     }
@@ -84,8 +80,8 @@ export class DialogForm extends UIBase {
 
   async cancel() {}
 
-  async access(mode?: 'create'|'edit'|'display'): Promise<boolean> {
-    return true;
+  async access(mode?: any): Promise<boolean> {
+    return this.options.access ? await this.options.access(this, mode) : true;
   }
 
   async query(search: string, mode?: 'create'|'edit'|'display'): Promise<any> {}

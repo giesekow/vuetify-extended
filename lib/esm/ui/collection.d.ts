@@ -15,7 +15,7 @@ export interface CollectionParams {
     mode?: 'create' | 'edit' | 'display';
 }
 export interface CollectionOptions {
-    access?: (collection: Collection) => Promise<boolean | undefined> | boolean | undefined;
+    access?: (collection: Collection, mode: any) => Promise<boolean | undefined> | boolean | undefined;
     report?: (collection: Collection) => Promise<Report | undefined> | Report | undefined;
     trigger?: (collection: Collection) => Promise<Trigger | undefined> | Trigger | undefined;
     selector?: (collection: Collection) => Promise<Selector | undefined> | Selector | undefined;
@@ -33,7 +33,7 @@ export declare class Collection extends UIBase {
     private selectedItems;
     private currentIndex;
     constructor(params?: CollectionParams, options?: CollectionOptions);
-    access(): Promise<boolean | undefined>;
+    access(mode: any): Promise<boolean | undefined>;
     get $ref(): string | undefined;
     get $readonly(): any;
     setParams(params: CollectionParams): void;

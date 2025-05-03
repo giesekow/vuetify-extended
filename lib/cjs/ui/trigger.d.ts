@@ -80,7 +80,7 @@ export declare class Trigger extends UIBase {
     validate(): Promise<string | true | undefined | void>;
     saved(): Promise<void>;
     cancel(): Promise<void>;
-    access(mode?: 'create' | 'edit' | 'display'): Promise<boolean>;
+    access(mode?: any): Promise<boolean>;
     removeAccess(): Promise<boolean>;
     canRemove(item: any): Promise<boolean>;
     remove(item: any): Promise<boolean | string>;

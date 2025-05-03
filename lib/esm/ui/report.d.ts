@@ -40,7 +40,7 @@ export interface ReportOptions {
     hasForm?: (props: any, context: any, index: number) => Promise<boolean | undefined> | boolean | undefined;
     saved?: () => Promise<void> | void;
     cancel?: () => Promise<void> | void;
-    access?: (report: Report) => Promise<boolean> | boolean;
+    access?: (report: Report, mode: any) => Promise<boolean> | boolean;
     setup?: (report: Report) => void;
     beforePrint?: (report: Report, mode?: ReportMode) => Promise<any | undefined> | any | undefined;
     printTemplate?: (report: Report, mode?: ReportMode) => Promise<any | undefined> | any | undefined;
@@ -61,6 +61,8 @@ export interface ExportTemplateInfo {
 export declare class Report extends UIBase {
     private params;
     private hasAccess;
+    private hasPrintAccess;
+    private hasExportAccess;
     private options;
     private loaded;
     private topButtonInstances;
@@ -87,7 +89,7 @@ export declare class Report extends UIBase {
     loadObject(): Promise<void>;
     saved(): Promise<void>;
     cancel(): Promise<void>;
-    access(): Promise<boolean>;
+    access(mode: any): Promise<boolean>;
     form(props: any, context: any, index: number): Promise<Form | undefined>;
     hasForm(props: any, context: any, index: number): Promise<boolean>;
     hasPrevForm(props: any, context: any, index: number): Promise<boolean | undefined>;

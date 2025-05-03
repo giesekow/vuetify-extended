@@ -321,7 +321,7 @@ export class Menu extends UIBase {
     if (item.$params.action === 'collection') {
       const collection = await item.collection();
       if (collection) {
-        if (await collection.access()) {
+        if (await collection.access(item.$params.mode)) {
           collection.$params.mode = item.$params.mode;
           AppManager.showCollection(collection);
         } else {
@@ -333,7 +333,7 @@ export class Menu extends UIBase {
     if (item.$params.action === 'report') {
       const report = await item.report();
       if (report) {
-        if (await report.access()) {
+        if (await report.access(item.$params.mode)) {
           report.$params.mode = item.$params.mode;
           AppManager.showReport(report);
         } else {

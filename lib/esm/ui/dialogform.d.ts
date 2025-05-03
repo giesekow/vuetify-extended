@@ -17,7 +17,7 @@ export interface DialogFormOptions {
     form?: (props: any, context: any) => Promise<Form | undefined> | Form | undefined;
     saved?: () => Promise<void> | void;
     cancel?: () => Promise<void> | void;
-    access?: (dialog: DialogForm, mode?: 'create' | 'edit' | 'display') => Promise<boolean> | boolean;
+    access?: (dialog: DialogForm, mode?: any) => Promise<boolean> | boolean;
     setup?: (dialog: DialogForm) => void;
     on?: (dialog: DialogForm) => OnHandler;
 }
@@ -38,7 +38,7 @@ export declare class DialogForm extends UIBase {
     validate(): Promise<string | true | undefined | void>;
     saved(): Promise<void>;
     cancel(): Promise<void>;
-    access(mode?: 'create' | 'edit' | 'display'): Promise<boolean>;
+    access(mode?: any): Promise<boolean>;
     query(search: string, mode?: 'create' | 'edit' | 'display'): Promise<any>;
     props(): never[];
     render(props: any, context: any): VNode | undefined;

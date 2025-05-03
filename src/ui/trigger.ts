@@ -114,18 +114,14 @@ export class Trigger extends UIBase {
 
   private async runAccess() {
     try {
-      if (this.options.access) {
-        this.hasAccess.value = await this.options.access(this, this.params.value.mode);
-      } else {
-        this.hasAccess.value = await this.access(this.params.value.mode);
-      }
-      if (this.options.removeAccess) {
-        this.hasRemoveAccess.value = await this.options.removeAccess(this);
-      } else {
-        this.hasRemoveAccess.value = await this.removeAccess();
-      }
+      this.hasAccess.value = await this.access(this.$params.mode) || false;
     } catch (error) {
       this.hasAccess.value = false;
+    }
+    try {
+      this.hasRemoveAccess.value = await this.removeAccess() || false;
+    } catch (error) {
+      this.hasRemoveAccess.value = false;
     }
   }
 
@@ -136,12 +132,12 @@ export class Trigger extends UIBase {
 
   async cancel() {}
 
-  async access(mode?: 'create'|'edit'|'display'): Promise<boolean> {
-    return true;
+  async access(mode?: any): Promise<boolean> {
+    return this.options.access ? await this.options.access(this, mode) : true;
   }
 
   async removeAccess (): Promise<boolean> {
-    return true;
+    return this.options.removeAccess ? await this.options.removeAccess(this) : true;
   }
 
   async canRemove (item: any): Promise<boolean> {

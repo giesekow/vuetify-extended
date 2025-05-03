@@ -79,11 +79,7 @@ export class Selector extends UIBase {
 
   private async runAccess() {
     try {
-      if (this.options.access) {
-        this.hasAccess.value = await this.options.access(this, this.params.value.mode);
-      } else {
-        this.hasAccess.value = await this.access(this.params.value.mode);
-      }
+      this.hasAccess.value = await this.access(this.$params.mode) || false;
     } catch (error) {
       this.hasAccess.value = false;
     }
@@ -101,7 +97,7 @@ export class Selector extends UIBase {
   async cancel() {}
 
   async access(mode?: 'create'|'edit'|'display'): Promise<boolean> {
-    return true;
+    return this.options.access ? await this.options.access(this, mode) : true;
   }
 
   async load(mode?: 'create'|'edit'|'display'): Promise<any[]> {

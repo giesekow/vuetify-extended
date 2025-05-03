@@ -51,7 +51,7 @@ export interface FormOptions {
   saved?: (form: Form) => Promise<void>|void;
   cancel?: () => Promise<void>|void;
   canCancel?: (form: Form) => Promise<boolean|undefined>|boolean|undefined
-  access?: (form: Form) => Promise<boolean>|boolean;
+  access?: (form: Form, mode: any) => Promise<boolean>|boolean;
   processUDF?: (form: Form, udfs: any[]) => Promise<any[]>;
   setup?: (form: Form) => void,
   preUDFOptions?: PartParams;
@@ -129,11 +129,7 @@ export class Form extends UIBase {
 
   async runAccess() {
     try {
-      if (this.options.access) {
-        this.hasAccess.value = await this.options.access(this);
-      } else {
-        this.hasAccess.value = await this.access();
-      }
+      this.hasAccess.value = await this.access(this.$params.mode) || false;
     } catch (error) {
       this.hasAccess.value = false;
     }
@@ -155,8 +151,8 @@ export class Form extends UIBase {
 
   async cancel() {}
 
-  async access(): Promise<boolean> {
-    return true;
+  async access(mode: any): Promise<boolean> {
+    return this.options.access ? await this.options.access(this, mode) : true;
   }
 
   async processUDF(udfs: any[]): Promise<any[]> {

@@ -46,7 +46,7 @@ export interface ReportOptions {
   hasForm?: (props: any, context: any, index: number) => Promise<boolean|undefined>|boolean|undefined;
   saved?: () => Promise<void>|void;
   cancel?: () => Promise<void>|void;
-  access?: (report: Report) => Promise<boolean>|boolean;
+  access?: (report: Report, mode: any) => Promise<boolean>|boolean;
   setup?: (report: Report) => void;
   beforePrint?: (report: Report, mode?: ReportMode) => Promise<any|undefined>|any|undefined;
   printTemplate?: (report: Report, mode?: ReportMode) => Promise<any|undefined>|any|undefined;
@@ -69,6 +69,8 @@ export interface ExportTemplateInfo {
 export class Report extends UIBase {
   private params: Ref<ReportParams>;
   private hasAccess: Ref<boolean>;
+  private hasPrintAccess: Ref<boolean>;
+  private hasExportAccess: Ref<boolean>;
   private options: ReportOptions;
   private loaded = false;
   private topButtonInstances: Array<Button> = [];
@@ -91,6 +93,8 @@ export class Report extends UIBase {
     }
 
     this.hasAccess = this.$makeRef(true);
+    this.hasPrintAccess = this.$makeRef(true);
+    this.hasExportAccess = this.$makeRef(true);
     this.currentIndex = this.$makeRef(-1);
     this.currentForm = undefined;
   }
@@ -156,7 +160,23 @@ export class Report extends UIBase {
   }
 
   private async runAccess() {
-    this.hasAccess.value = await this.access() || false;
+    try {
+      this.hasAccess.value = await this.access(this.$params.mode) || false;
+    } catch (error) {
+      this.hasAccess.value = false;
+    }
+
+    try {
+      this.hasPrintAccess.value = await this.access('print') || false;
+    } catch (error) {
+      this.hasPrintAccess.value = false;
+    }
+
+    try {
+      this.hasExportAccess.value = await this.access('export') || false;
+    } catch (error) {
+      this.hasExportAccess.value = false;
+    }
   }
 
   async loadObject() {
@@ -176,8 +196,8 @@ export class Report extends UIBase {
 
   async cancel() {}
 
-  async access(): Promise<boolean> {
-    return this.options.access ? await this.options.access(this) : true;
+  async access(mode: any): Promise<boolean> {
+    return this.options.access ? await this.options.access(this, mode) : true;
   }
 
   async form(props: any, context: any, index: number): Promise<Form|undefined> {
@@ -473,7 +493,7 @@ export class Report extends UIBase {
     if (this.params.value.mode === 'create') return [];
 
     const btns: Button[] = [];
-    if (this.params.value.canPrint) {
+    if (this.params.value.canPrint && this.hasPrintAccess.value) {
       btns.push(
         new Button({text: 'Print', color: 'primary'}, {
           onClicked: () => {
@@ -483,7 +503,7 @@ export class Report extends UIBase {
       )
     }
 
-    if (this.params.value.canExport) {
+    if (this.params.value.canExport && this.hasExportAccess.value) {
       btns.push(
         new Button({text: 'Export', color: 'primary'}, {
           onClicked: () => {

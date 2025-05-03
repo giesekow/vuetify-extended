@@ -46,7 +46,7 @@ export interface FormOptions {
     saved?: (form: Form) => Promise<void> | void;
     cancel?: () => Promise<void> | void;
     canCancel?: (form: Form) => Promise<boolean | undefined> | boolean | undefined;
-    access?: (form: Form) => Promise<boolean> | boolean;
+    access?: (form: Form, mode: any) => Promise<boolean> | boolean;
     processUDF?: (form: Form, udfs: any[]) => Promise<any[]>;
     setup?: (form: Form) => void;
     preUDFOptions?: PartParams;
@@ -79,7 +79,7 @@ export declare class Form extends UIBase {
     validate(): Promise<string | true | undefined | void>;
     saved(): Promise<void>;
     cancel(): Promise<void>;
-    access(): Promise<boolean>;
+    access(mode: any): Promise<boolean>;
     processUDF(udfs: any[]): Promise<any[]>;
     props(): never[];
     topChildren(props: any, context: any): Array<Part>;
