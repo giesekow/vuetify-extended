@@ -44,6 +44,7 @@ export interface FormOptions {
     bottomLeftButtons?: (props: any, context: any) => Array<Button>;
     validate?: (form: Form) => Promise<string | true | undefined | void> | string | true | undefined | void;
     saved?: (form: Form) => Promise<void> | void;
+    afterSaved?: (form: Form) => Promise<void> | void;
     cancel?: () => Promise<void> | void;
     canCancel?: (form: Form) => Promise<boolean | undefined> | boolean | undefined;
     access?: (form: Form, mode: any) => Promise<boolean> | boolean;
@@ -78,6 +79,7 @@ export declare class Form extends UIBase {
     runAccess(): Promise<void>;
     validate(): Promise<string | true | undefined | void>;
     saved(): Promise<void>;
+    afterSaved(): Promise<void>;
     cancel(): Promise<void>;
     access(mode: any): Promise<boolean>;
     processUDF(udfs: any[]): Promise<any[]>;

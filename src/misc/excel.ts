@@ -42,14 +42,14 @@ function writeCellItem(sheet: any, item: any, row: number, col: number, colspan?
   if (item instanceof Date) {
     const rowItem = sheet.getRow(row)
     rowItem.getCell(col).value = item
-  } else if (typeof item === "object") {
+  } else if (typeof item === 'object') {
     const rowItem = sheet.getRow(row)
-    rowItem.getCell(col).value = item.value || "";
+    rowItem.getCell(col).value = item.formula && Object.keys(item).includes('result') ? item : (item.value || '')
   } else {
     const rowItem = sheet.getRow(row)
-    if (typeof item === "string") {
+    if (typeof item === 'string') {
       let itm = item;
-      for(const rep of replacements) {
+      for (const rep of replacements) {
         const re = new RegExp(rep[0], 'gi')
         itm = itm.replace(re, rep[1])
       }

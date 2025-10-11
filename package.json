@@ -21,10 +21,10 @@
     "lib/"
   ],
   "dependencies": {
-    "@feathersjs/client": "^5.0.31",
-    "@feathersjs/feathers": "^5.0.31",
-    "@feathersjs/rest-client": "^5.0.31",
-    "@feathersjs/socketio-client": "^5.0.31",
+    "@feathersjs/client": "5.0.33",
+    "@feathersjs/feathers": "5.0.33",
+    "@feathersjs/rest-client": "5.0.33",
+    "@feathersjs/socketio-client": "5.0.33",
     "@mdi/font": "^7.0.96",
     "@tinymce/tinymce-vue": "^4.0.7",
     "@vuepic/vue-datepicker": "^5.4.0",
@@ -41,14 +41,14 @@
     "moment-timezone": "0.5.45",
     "nested-property": "^4.0.0",
     "roboto-fontface": "^0.10.0",
-    "socket.io-client": "^4.7.4",
+    "socket.io-client": "4.7.4",
     "vue": "^3.2.0",
     "vue-pdf-embed": "^1.1.6",
     "vue3-ace-editor": "^2.2.2",
     "vue3-apexcharts": "^1.4.1",
     "vue3-editor": "^0.1.1",
     "vue3-google-map": "^0.15.0",
-    "vuetify": "^3.7.3",
+    "vuetify": "3.7.3",
     "webfontloader": "^1.0.0"
   }
 }
