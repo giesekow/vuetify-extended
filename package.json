@@ -13,6 +13,7 @@
   "license": "ISC",
   "devDependencies": {
     "@types/file-saver": "^2.0.7",
+    "@types/katex": "^0.16.7",
     "typescript": "^4.4.4"
   },
   "main": "./lib/cjs/index.js",
@@ -21,6 +22,7 @@
     "lib/"
   ],
   "dependencies": {
+    "@dimakorotkov/tinymce-mathjax": "^1.0.11",
     "@feathersjs/client": "5.0.33",
     "@feathersjs/feathers": "5.0.33",
     "@feathersjs/rest-client": "5.0.33",
@@ -36,12 +38,18 @@
     "exceljs": "^4.3.0",
     "feathers-keycloak-connect-client": "^2.1.0",
     "file-saver": "^2.0.5",
+    "gunshi": "^0.26.3",
+    "hyphenation.de": "^0.2.1",
+    "hyphenation.en-us": "^0.2.1",
     "js-base64": "^3.7.5",
+    "katex": "^0.16.24",
     "moment": "^2.29.4",
     "moment-timezone": "0.5.45",
     "nested-property": "^4.0.0",
+    "prettier": "^3.6.2",
     "roboto-fontface": "^0.10.0",
     "socket.io-client": "4.7.4",
+    "tinymce": "^8.1.2",
     "vue": "^3.2.0",
     "vue-pdf-embed": "^1.1.6",
     "vue3-ace-editor": "^2.2.2",
@@ -49,6 +57,7 @@
     "vue3-editor": "^0.1.1",
     "vue3-google-map": "^0.15.0",
     "vuetify": "3.7.3",
-    "webfontloader": "^1.0.0"
+    "webfontloader": "^1.0.0",
+    "webtex": "^0.20.0"
   }
 }

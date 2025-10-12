@@ -6,6 +6,7 @@ import { Form } from "./form";
 import { Report } from "./report";
 import '@vuepic/vue-datepicker/dist/main.css';
 import { OnHandler } from "./lib";
+import 'katex/dist/katex.min.css';
 export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagingbox' | 'chart' | 'viewtable' | 'map' | 'code' | 'color' | 'html' | 'htmlview' | 'listselect' | 'time' | 'date' | 'datetime' | 'button' | 'image' | 'document' | 'password' | 'float' | 'integer' | 'decimal' | 'collection' | 'textarea' | 'boolean' | 'table' | 'reporttable' | 'servertable';
 export declare const fieldTypeOptions: {
     name: string;
@@ -22,7 +23,7 @@ export interface FieldParams {
     readonly?: boolean;
     invisible?: boolean;
     idField?: string;
-    lang?: 'html' | 'json' | 'javascript' | 'python' | 'python' | 'text' | 'ejs';
+    lang?: 'html' | 'json' | 'javascript' | 'python' | 'python' | 'text' | 'ejs' | 'latex';
     codeTheme?: 'chrome' | 'xcode';
     hint?: string;
     icon?: string;
@@ -166,6 +167,7 @@ export declare class Field extends UIBase {
     private isEditting;
     private static defaultParams;
     private maxWidth;
+    private codePreview;
     constructor(params?: FieldParams, options?: FieldOptions);
     static setDefault(value: FieldParams, reset?: boolean): void;
     get $refs(): Refs;
@@ -184,6 +186,9 @@ export declare class Field extends UIBase {
     attachEventListeners(): void;
     removeEventListeners(): void;
     updateValue(): void;
+    private renderMathInHtml;
+    private renderLatex;
+    private showPreviewFullscreen;
     private isEqual;
     private preprocess;
     private postprocess;

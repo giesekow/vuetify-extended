@@ -4,7 +4,7 @@ import { VAutocomplete, VBtn, VCard, VCardActions, VCardText, VCardTitle, VCheck
 import { VAceEditor } from 'vue3-ace-editor';
 import { Master } from "../master";
 import { Button } from "./button";
-// import { VueEditor } from "vue3-editor";
+import * as webtex from 'webtex';
 import ace from 'ace-builds';
 import { SimpleDate, SimpleTime, fileToBase64, selectFile, sleep } from "../misc";
 import { VDataTable, VDataTableFooter, VDataTableServer, VDataTableVirtual } from "vuetify/components";
@@ -20,6 +20,8 @@ import '@vuepic/vue-datepicker/dist/main.css';
 import { Dialogs } from "./dialogs";
 import nestedProperty from "nested-property";
 import { OnHandler } from "./lib";
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
 
 
 ace.config.set("basePath", "https://cdn.jsdelivr.net/npm/ace-builds@" + ace.version + "/src-noconflict/");
@@ -31,6 +33,25 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
                         'time'|'date'|'datetime'|'button'|'image'|
                         'document'|'password'|'float'|'integer'|'decimal'|
                         'collection'|'textarea'|'boolean'|'table'|'reporttable'|'servertable';
+
+const latexPackages = [
+  'amsmath',
+  'amsthm',
+  'bussproofs',
+  'color',
+  'xcolor',
+  'echo',
+  'gensymb',
+  'graphics',
+  'graphicx',
+  'hyperref',
+  'latexsym',
+  'minted',
+  'multicol',
+  'stix',
+  'textcomp',
+  'textgreek',
+]
 
 export const fieldTypeOptions = [
   {name: 'Text', _id: 'text'}, {name: 'Select', _id: 'select'}, {name: 'Autocomplete', _id: 'autocomplete'},
@@ -55,7 +76,7 @@ export interface FieldParams {
   readonly?: boolean;
   invisible?: boolean;
   idField?: string;
-  lang?: 'html'|'json'|'javascript'|'python'|'python'|'text'|'ejs';
+  lang?: 'html'|'json'|'javascript'|'python'|'python'|'text'|'ejs'|'latex';
   codeTheme?: 'chrome'|'xcode';
   hint?: string;
   icon?: string;
@@ -178,6 +199,8 @@ export class Field extends UIBase {
   private static defaultParams: FieldParams = {};
   private maxWidth: Ref;
 
+  private codePreview: Ref<any>;
+
   constructor(params?: FieldParams, options?: FieldOptions) {
     super();
     this.params = this.$makeRef(params || {});
@@ -205,6 +228,7 @@ export class Field extends UIBase {
     this.currentCollectionFooter = [];
     this.maxWidth = this.$makeRef(null);
     this.isEditting = false;
+    this.codePreview = this.$makeRef("");
   }
 
   static setDefault(value: FieldParams, reset?: boolean): void {
@@ -282,6 +306,7 @@ export class Field extends UIBase {
 
     this.changing = true;
     const value = this.postprocess(newValue !== undefined ? newValue : this.modelValue.value);
+    this.renderLatex(value);
     if (this.$master && this.params.value.storage) {
       this.$master.$set(this.params.value.storage, value);
     }
@@ -343,6 +368,67 @@ export class Field extends UIBase {
       }
       this.changing = false;
     }
+  }
+
+  private renderMathInHtml(html: string): string {
+    // Render display math first ($$...$$)
+    html = html.replace(/\$\$([\s\S]+?)\$\$/g, (_, math) => {
+      try {
+        return katex.renderToString(math, { displayMode: true });
+      } catch (err) {
+        return `<span class="katex-error">${math}</span>`;
+      }
+    });
+
+    // Render inline math ($...$)
+    html = html.replace(/\$([^\$]+?)\$/g, (_, math) => {
+      try {
+        return katex.renderToString(math, { displayMode: false });
+      } catch (err) {
+        return `<span class="katex-error">${math}</span>`;
+      }
+    });
+
+    return html;
+  }
+
+  private renderLatex(value: any) {
+    if (this.params.value.type === 'code' && this.params.value.lang === 'latex') {
+      try {
+        let fulltext: string = value || ''
+        fulltext = fulltext.trim()
+
+        const hasClass = fulltext.includes('\\documentclass')
+        const hasBegin = fulltext.includes('\\begin{document}')
+        const hasEnd = fulltext.includes('\\end{document}')
+
+        if (!hasClass) {
+          if (!hasBegin) {
+            fulltext = `\\begin{document}\n${fulltext}`;
+          }
+          
+          fulltext = `\\documentclass{article}\n${latexPackages.map((p: string) => '\\usepackage{' + p + '}').join('\n')}\n${fulltext}`;
+
+          if (!hasEnd) {
+            fulltext = `${fulltext}\n\\end{document}`;
+          }
+        }
+
+        const generator = new webtex.HtmlGenerator({ hyphenate: false });
+        const doc = webtex.parse(value, { generator }).htmlDocument();
+        this.codePreview.value = `<!DOCTYPE html>${doc.documentElement.outerHTML}`;
+      } catch (err: any) {
+        this.codePreview.value = `<!DOCTYPE html><html><body><span style="color:red">${err.message}</span></body></html>`
+      }
+    }
+  }
+
+  private showPreviewFullscreen(html: string) {
+    const newWindow = window.open('', '_blank')
+    if (!newWindow) return
+    newWindow.document.open()
+    newWindow.document.write(html)
+    newWindow.document.close()
   }
 
   private isEqual(value1: any, value2: any) {
@@ -901,6 +987,48 @@ export class Field extends UIBase {
   buildHTML(props: any, context: any) {
     const h = this.$h;
 
+    const editor = h(
+      VueEditor,
+      {
+        apiKey: 'ee1xu2usg9edqb2dtfggyg50ghsc6snlrhdkagr9425luz2a',
+        modelValue: this.modelValue.value,
+        readonly: this.$readonly,
+        disabled: this.$readonly,
+        init: {
+          plugins: 'lists link table image emoticons autoresize'
+        },
+        placeholder: this.params.value.placeholder,
+        height: this.params.value.height || 300,
+        class: this.params.value.class || [],
+        style: this.params.value.style || {},
+        "onUpdate:modelValue": (v: any) => {
+          this.modelValue.value = v;
+        }
+      }
+    )
+
+    const fullscreenBtn = h(VBtn, {
+      icon: 'mdi-fullscreen',
+      size: 'small',
+      style: {
+        'margin-top': '-64px'
+      },
+      onClick: () => {
+        const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Preview</title>
+          <link rel="stylesheet" href="katex/dist/katex.min.css">
+        </head>
+        <bod>${this.renderMathInHtml(this.modelValue.value ?? "")}</body>
+        </html>
+        `
+        this.showPreviewFullscreen(html)
+      }
+    })
+
     return h(
       VRow,
       {},
@@ -930,25 +1058,7 @@ export class Field extends UIBase {
               maxWidth: this.maxWidth.value,
               elevation: 0
             },
-            () => h(
-              VueEditor,
-              {
-                apiKey: 'ee1xu2usg9edqb2dtfggyg50ghsc6snlrhdkagr9425luz2a',
-                modelValue: this.modelValue.value,
-                readonly: this.$readonly,
-                disabled: this.$readonly,
-                init: {
-                  plugins: 'lists link table image emoticons autoresize'
-                },
-                placeholder: this.params.value.placeholder,
-                height: this.params.value.height || 300,
-                class: this.params.value.class || [],
-                style: this.params.value.style || {},
-                "onUpdate:modelValue": (v: any) => {
-                  this.modelValue.value = v;
-                }
-              }
-            )
+            () => [editor, fullscreenBtn]
           )
         ),
       ]
@@ -964,19 +1074,18 @@ export class Field extends UIBase {
 
   buildCode(props: any, context: any) {
     const h = this.$h;
-    if (!this.modelValue.value) this.modelValue.value = "";
 
     const editor: any = h(
       VAceEditor,
       {
-        value: this.modelValue.value,
+        value: this.modelValue.value ?? "",
         lang: this.params.value.lang || 'text',
         theme: this.params.value.codeTheme || "chrome",
         readonly: this.$readonly,
         placeholder: this.params.value.placeholder,
         class: this.params.value.class || [],
         style: {"font-size": "12pt", ...(this.params.value.style || {}), height: this.params.value.height || "300px", "max-width": this.maxWidth.value},
-        onInit: (e) => {
+        onInit: (e: any) => {
           e.setOptions({useWorker: ['json', 'javascript', 'html'].includes(this.params.value.lang || 'text')})
         },
         "onUpdate:value": (v: any) => {
@@ -984,6 +1093,15 @@ export class Field extends UIBase {
         }
       }
     )
+
+    const fullscreenBtn = h(VBtn, {
+      icon: 'mdi-fullscreen',
+      size: 'small',
+      onClick: () => {
+        this.renderLatex(this.modelValue.value ?? "")
+        this.showPreviewFullscreen(this.codePreview.value)
+      }
+    })
 
     return [
       h(
@@ -997,7 +1115,7 @@ export class Field extends UIBase {
           this.params.value.label
         ),
       ),
-      editor,
+      ...(this.params.value.lang === 'latex' ? [editor, fullscreenBtn] : [editor]),
       ...(
         this.params.value.hint ?
         [h(
