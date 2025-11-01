@@ -1,5 +1,5 @@
 // For more information about this file see https://dove.feathersjs.com/guides/cli/typescript.html
-import { Application as FeathersApplication } from '@feathersjs/feathers'
+import type { Application as FeathersApplication } from '@feathersjs/feathers'
 
 export type Application = FeathersApplication
 

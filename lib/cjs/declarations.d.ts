@@ -1,4 +1,4 @@
-import { Application as FeathersApplication } from '@feathersjs/feathers';
+import type { Application as FeathersApplication } from '@feathersjs/feathers';
 export type Application = FeathersApplication;
 declare module '@feathersjs/feathers' {
     interface ServiceAddons {
