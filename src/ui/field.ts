@@ -118,6 +118,7 @@ export interface FieldParams {
   collectionDisableRemove?: boolean;
   hasFooter?: boolean;
   checkbox?: boolean;
+  resolveFormulas?: boolean;
   validation?: {
     range?: { from: any, to: any, converter?: any};
     max?: {value: any, converter?: any};
@@ -824,7 +825,7 @@ export class Field extends UIBase {
       {
         class: this.params.value.class || [],
         style: this.params.value.style || {},
-        innerHTML: this.modelValue.value
+        innerHTML: this.params.value.resolveFormulas ? this.renderMathInHtml(this.modelValue.value) : this.modelValue.value
       },
     );
   }

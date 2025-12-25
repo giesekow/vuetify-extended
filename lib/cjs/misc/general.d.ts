@@ -1,4 +1,5 @@
 import moment, { Moment } from "moment-timezone";
+import 'katex/dist/katex.min.css';
 export declare function sleep(time: number): Promise<unknown>;
 export declare function selectFile(accept?: any, multiple?: boolean): Promise<FileList>;
 export declare function fileToBase64(rawFile: File, maxSize?: any): Promise<unknown>;
@@ -62,4 +63,5 @@ export interface computeFunctionOptions {
 }
 export declare const computeFunctionalCodeAsync: (code: string, options: computeFunctionOptions) => Promise<any>;
 export declare const computeFunctionalCode: (code: string, options: computeFunctionOptions) => any;
+export declare const renderMathInHtml: (html: string) => string;
 export declare const $moment: typeof moment;

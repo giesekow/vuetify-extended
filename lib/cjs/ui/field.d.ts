@@ -65,6 +65,7 @@ export interface FieldParams {
     collectionDisableRemove?: boolean;
     hasFooter?: boolean;
     checkbox?: boolean;
+    resolveFormulas?: boolean;
     validation?: {
         range?: {
             from: any;

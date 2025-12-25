@@ -1,6 +1,8 @@
 import moment, { Moment } from "moment-timezone";
 import imageCompression from 'browser-image-compression';
 import { Buffer } from "buffer";
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
 
 export function sleep(time: number) {
   return new Promise((resolve: any) => {
@@ -354,6 +356,28 @@ export const computeFunctionalCode = (code: string, options: computeFunctionOpti
   } catch (error) {
     return null;
   }
+}
+
+export const renderMathInHtml = (html: string): string => {
+  // Render display math first ($$...$$)
+  html = html.replace(/\$\$([\s\S]+?)\$\$/g, (_, math) => {
+    try {
+      return katex.renderToString(math, { displayMode: true });
+    } catch (err) {
+      return `<span class="katex-error">${math}</span>`;
+    }
+  });
+
+  // Render inline math ($...$)
+  html = html.replace(/\$([^\$]+?)\$/g, (_, math) => {
+    try {
+      return katex.renderToString(math, { displayMode: false });
+    } catch (err) {
+      return `<span class="katex-error">${math}</span>`;
+    }
+  });
+
+  return html;
 }
 
 export const $moment = moment;
