@@ -373,6 +373,8 @@ export class Field extends UIBase {
 
   private renderMathInHtml(html: string): string {
     // Render display math first ($$...$$)
+    if(!html) return html
+    
     html = html.replace(/\$\$([\s\S]+?)\$\$/g, (_, math) => {
       try {
         return katex.renderToString(math, { displayMode: true });
