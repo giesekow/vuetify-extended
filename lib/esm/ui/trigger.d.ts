@@ -2,6 +2,8 @@ import { VNode } from "vue";
 import { UIBase } from "./base";
 import { ButtonParams } from "./button";
 import { OnHandler } from "./lib";
+import { Part, PRefs } from "./part";
+import { Field, Refs } from "./field";
 export interface TriggerParams {
     ref?: string;
     invisible?: boolean;
@@ -46,6 +48,9 @@ export interface TriggerOptions {
     setup?: (trigger: Trigger) => void;
     on?: (trigger: Trigger) => OnHandler;
     format?: (trigger: Trigger, items: any[]) => Promise<any[] | undefined> | any[] | undefined;
+    topChildren?: (props: any, context: any) => Array<Part | Field>;
+    bottomChildren?: (props: any, context: any) => Array<Part | Field>;
+    processQuery?: (query: any, trigger: Trigger, mode?: 'create' | 'edit' | 'display', search?: string, searchFields?: any[]) => Promise<any>;
 }
 export interface ServerTableOptions {
     page: number;
@@ -64,6 +69,7 @@ export declare class Trigger extends UIBase {
     private selected;
     private searchText;
     private selectedSearchFields;
+    private childrenInstances;
     private searchFieldItems;
     private searchFieldData;
     private currentSearchText;
@@ -72,6 +78,8 @@ export declare class Trigger extends UIBase {
     private loaded;
     private loading;
     constructor(params?: TriggerParams, options?: TriggerOptions);
+    get $refs(): Refs;
+    get $prefs(): PRefs;
     get $ref(): string | undefined;
     setParams(params: TriggerParams): void;
     get $params(): TriggerParams;
@@ -102,6 +110,8 @@ export declare class Trigger extends UIBase {
     private buildTopActions;
     private buildBottomActions;
     private buildDefaultButtons;
+    topChildren(props: any, context: any): Array<Part | Field>;
+    bottomChildren(props: any, context: any): Array<Part | Field>;
     private onProcessMultiple;
     private onCancelClicked;
     private onRemoveClicked;

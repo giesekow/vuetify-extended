@@ -5,6 +5,8 @@ import { Button, ButtonParams } from "./button";
 import { VDataTableServer } from 'vuetify/components';
 import { Dialogs } from "./dialogs";
 import { OnHandler } from "./lib";
+import { Part, PRefs } from "./part";
+import { Field, Refs } from "./field";
 
 export interface TriggerParams {
   ref?: string;
@@ -51,6 +53,9 @@ export interface TriggerOptions {
   setup?: (trigger: Trigger) => void;
   on?: (trigger: Trigger) => OnHandler;
   format?: (trigger: Trigger, items : any[]) => Promise<any[]| undefined>|any[]|undefined;
+  topChildren?: (props: any, context: any) => Array<Part|Field>;
+  bottomChildren?: (props: any, context: any) => Array<Part|Field>;
+  processQuery?: (query: any, trigger: Trigger, mode?: 'create'|'edit'|'display', search?: string, searchFields?: any[]) => Promise<any>;
 }
 
 export interface ServerTableOptions {
@@ -71,6 +76,7 @@ export class Trigger extends UIBase {
   private selected: Ref<any[]|undefined>;
   private searchText: Ref<string>;
   private selectedSearchFields: Ref<any[]>;
+  private childrenInstances: Array<Part|Field> = [];
   private searchFieldItems: Ref<any[]>;
   private searchFieldData: any;
   private currentSearchText: string;
@@ -94,6 +100,32 @@ export class Trigger extends UIBase {
     this.currentSearchText = "";
     this.searchFieldItems = this.$makeRef([]);
     this.searchFieldData = {};
+  }
+
+  get $refs(): Refs {
+    const items: Refs = {};
+    for (let i = 0; i < this.childrenInstances.length; i++) {
+      if (this.childrenInstances[i] instanceof Field) {
+        const ref = this.childrenInstances[i].$ref;
+        if (ref && ref !== '') {
+          items[ref] = (this.childrenInstances[i] as Field);
+        }
+      }
+    }
+    return items;
+  }
+
+  get $prefs(): PRefs {
+    const items: PRefs = {};
+    for (let i = 0; i < this.childrenInstances.length; i++) {
+      if (this.childrenInstances[i] instanceof Part) {
+        const ref = this.childrenInstances[i].$ref;
+        if (ref && ref !== '') {
+          items[ref] = (this.childrenInstances[i] as Part);
+        }
+      }
+    }
+    return items;
   }
 
   get $ref() {
@@ -168,11 +200,6 @@ export class Trigger extends UIBase {
       } else {
         query.$paginate = false;
       }
-
-      if (this.selectedSearchFields.value && this.selectedSearchFields.value.length > 0) {
-
-      }
-
       data = await this.$app.service(this.params.value.objectType).find({query});
     }
 
@@ -221,6 +248,9 @@ export class Trigger extends UIBase {
         }
 
       }
+    }
+    if (this.options.processQuery) {
+      query = (await this.options.processQuery(query, this, mode, search, this.selectedSearchFields.value || [])) || query;
     }
     return query;
   }
@@ -378,11 +408,23 @@ export class Trigger extends UIBase {
           dense: this.params.value.dense,
           alignContent: this.params.value.alignContent,
         },
-        () => [
-          ...this.buildSearchBar(),
-          ...(this.searchFieldItems.value.length > 0 ? this.buildFilterBar() : []),
-          ...this.buildResultTable()
-        ]
+        () => {
+          const top = this.options.topChildren ? this.options.topChildren(props, context) : this.topChildren(props, context);
+          const bot = this.options.bottomChildren ? this.options.bottomChildren(props, context) : this.bottomChildren(props, context);
+
+          this.childrenInstances = top.concat(bot);
+          this.childrenInstances.forEach((instance) => {
+            instance.setParent(this);
+          })
+
+          return [
+            ...this.buildSearchBar(),
+            ...(this.searchFieldItems.value.length > 0 ? this.buildFilterBar() : []),
+            ...(top.map((instance) => this.$h(instance))),
+            ...this.buildResultTable(),
+            ...(bot.map((instance) => this.$h(instance))),
+          ]
+        }
       )
     )
   }
@@ -588,6 +630,14 @@ export class Trigger extends UIBase {
         )
       ]
     }
+  }
+
+  topChildren (props: any, context: any): Array<Part|Field> {
+    return []
+  }
+
+  bottomChildren (props: any, context: any): Array<Part|Field> {
+    return []
   }
 
   private async onProcessMultiple() {
