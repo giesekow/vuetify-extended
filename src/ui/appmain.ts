@@ -8,7 +8,6 @@ import { sleep } from "../misc";
 import { Dialogs } from "./dialogs";
 import { Field } from "./field";
 import { Api } from "../api";
-import { Form } from "./form";
 import { DialogForm } from "./dialogform";
 
 export interface AppParams {
