@@ -1,9 +1,10 @@
 import { VNode } from "vue";
-import { UIBase } from "./base";
-import { ButtonParams } from "./button";
+import { ReportMode, UIBase } from "./base";
+import { Button, ButtonParams } from "./button";
 import { OnHandler } from "./lib";
 import { Part, PRefs } from "./part";
 import { Field, Refs } from "./field";
+import { ExportTemplateInfo } from "./report";
 export interface TriggerParams {
     ref?: string;
     invisible?: boolean;
@@ -34,6 +35,11 @@ export interface TriggerParams {
     justify?: "center" | "end" | "start" | "space-around" | "space-between" | "space-evenly" | "stretch" | undefined;
     align?: "center" | "end" | "start" | "stretch" | "baseline" | undefined;
     query?: any;
+    canPrint?: boolean;
+    canExport?: boolean;
+    printTemplate?: string;
+    exportTemplate?: string;
+    exportFilename?: string;
 }
 export interface TriggerOptions {
     searchFields?: (tigger: Trigger, mode?: 'create' | 'edit' | 'display') => any | Promise<any>;
@@ -51,6 +57,10 @@ export interface TriggerOptions {
     topChildren?: (props: any, context: any) => Array<Part | Field>;
     bottomChildren?: (props: any, context: any) => Array<Part | Field>;
     processQuery?: (query: any, trigger: Trigger, mode?: 'create' | 'edit' | 'display', search?: string, searchFields?: any[]) => Promise<any>;
+    beforePrint?: (trigger: Trigger, mode?: ReportMode) => Promise<any | undefined> | any | undefined;
+    printTemplate?: (trigger: Trigger, mode?: ReportMode) => Promise<any | undefined> | any | undefined;
+    beforeExport?: (trigger: Trigger, mode?: ReportMode) => Promise<any | undefined> | any | undefined;
+    exportTemplate?: (trigger: Trigger, mode?: ReportMode) => Promise<ExportTemplateInfo | undefined> | ExportTemplateInfo | undefined;
 }
 export interface ServerTableOptions {
     page: number;
@@ -77,6 +87,8 @@ export declare class Trigger extends UIBase {
     private tableOptions;
     private loaded;
     private loading;
+    private hasPrintAccess;
+    private hasExportAccess;
     constructor(params?: TriggerParams, options?: TriggerOptions);
     get $refs(): Refs;
     get $prefs(): PRefs;
@@ -110,6 +122,7 @@ export declare class Trigger extends UIBase {
     private buildTopActions;
     private buildBottomActions;
     private buildDefaultButtons;
+    getAdditionalButtons(): Button[];
     topChildren(props: any, context: any): Array<Part | Field>;
     bottomChildren(props: any, context: any): Array<Part | Field>;
     private onProcessMultiple;
@@ -119,6 +132,14 @@ export declare class Trigger extends UIBase {
     private onTableItemClicked;
     private onSelectionChanged;
     setup(props: any, context: any): void;
+    print(): Promise<void>;
+    beforePrint(): Promise<any | undefined>;
+    printTemplate(): Promise<any | undefined>;
+    private printAction;
+    export(): Promise<void>;
+    beforeExport(): Promise<any | undefined>;
+    exportTemplate(): Promise<ExportTemplateInfo | undefined>;
+    private exportAction;
     private handleOn;
 }
 export declare const $TG: (params?: TriggerParams, options?: TriggerOptions) => Trigger;

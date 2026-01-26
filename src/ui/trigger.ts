@@ -1,5 +1,5 @@
 import { VNode, Ref } from "vue";
-import { UIBase } from "./base";
+import { ReportMode, UIBase } from "./base";
 import { VDivider, VRow, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VCardSubtitle, VTextField, VCol, VContainer, VLayout, VAutocomplete } from 'vuetify/components';
 import { Button, ButtonParams } from "./button";
 import { VDataTableServer } from 'vuetify/components';
@@ -7,6 +7,9 @@ import { Dialogs } from "./dialogs";
 import { OnHandler } from "./lib";
 import { Part, PRefs } from "./part";
 import { Field, Refs } from "./field";
+import { ExportTemplateInfo } from "./report";
+import { AppManager } from "./appmanager";
+import { $excel, computeFunctionalCodeAsync } from "../misc";
 
 export interface TriggerParams {
   ref?: string;
@@ -38,6 +41,11 @@ export interface TriggerParams {
   justify?: "center" | "end" | "start" | "space-around" | "space-between" | "space-evenly" | "stretch" | undefined;
   align?: "center" | "end" | "start" | "stretch" | "baseline" | undefined;
   query?: any;
+  canPrint?: boolean;
+  canExport?: boolean;
+  printTemplate?: string;
+  exportTemplate?: string;
+  exportFilename?: string;
 }
 
 export interface TriggerOptions {
@@ -56,6 +64,10 @@ export interface TriggerOptions {
   topChildren?: (props: any, context: any) => Array<Part|Field>;
   bottomChildren?: (props: any, context: any) => Array<Part|Field>;
   processQuery?: (query: any, trigger: Trigger, mode?: 'create'|'edit'|'display', search?: string, searchFields?: any[]) => Promise<any>;
+  beforePrint?: (trigger: Trigger, mode?: ReportMode) => Promise<any|undefined>|any|undefined;
+  printTemplate?: (trigger: Trigger, mode?: ReportMode) => Promise<any|undefined>|any|undefined;
+  beforeExport?: (trigger: Trigger, mode?: ReportMode) => Promise<any|undefined>|any|undefined;
+  exportTemplate?: (trigger: Trigger, mode?: ReportMode) => Promise<ExportTemplateInfo|undefined>|ExportTemplateInfo|undefined;
 }
 
 export interface ServerTableOptions {
@@ -84,6 +96,8 @@ export class Trigger extends UIBase {
   private tableOptions: Ref<ServerTableOptions>;
   private loaded = false;
   private loading: Ref<boolean> = this.$makeRef(false);
+  private hasPrintAccess: Ref<boolean>;
+  private hasExportAccess: Ref<boolean>;
 
   constructor(params?: TriggerParams, options?: TriggerOptions) {
     super();
@@ -100,6 +114,9 @@ export class Trigger extends UIBase {
     this.currentSearchText = "";
     this.searchFieldItems = this.$makeRef([]);
     this.searchFieldData = {};
+
+    this.hasPrintAccess = this.$makeRef(true);
+    this.hasExportAccess = this.$makeRef(true);
   }
 
   get $refs(): Refs {
@@ -154,6 +171,18 @@ export class Trigger extends UIBase {
       this.hasRemoveAccess.value = await this.removeAccess() || false;
     } catch (error) {
       this.hasRemoveAccess.value = false;
+    }
+
+    try {
+      this.hasPrintAccess.value = await this.access('print') || false;
+    } catch (error) {
+      this.hasPrintAccess.value = false;
+    }
+
+    try {
+      this.hasExportAccess.value = await this.access('export') || false;
+    } catch (error) {
+      this.hasExportAccess.value = false;
     }
   }
 
@@ -590,7 +619,7 @@ export class Trigger extends UIBase {
   private buildDefaultButtons(): Button[] {
 
     if (this.hasRemoveAccess.value && this.selected.value && this.selected.value.length > 0) {
-      return [
+      return this.getAdditionalButtons().concat([
         new Button(
           {text: 'Remove', color: 'warning', ...(this.params.value.removeButton || {})},
           {
@@ -611,9 +640,9 @@ export class Trigger extends UIBase {
             onClicked: () => this.onCancelClicked()
           }
         )
-      ]
+      ])
     } else {
-      return [
+      return this.getAdditionalButtons().concat([
         ...(this.params.value.multiple && this.selected.value && this.selected.value.length > 0 ? [
           new Button(
             {text: this.params.value.mode === 'display' ? 'View': 'Edit', color: 'success', ...(this.params.value.mode === 'display' ? this.params.value.viewButton || {} : this.params.value.editButton || {})},
@@ -628,8 +657,35 @@ export class Trigger extends UIBase {
             onClicked: () => this.onCancelClicked()
           }
         )
-      ]
+      ])
     }
+  }
+
+  getAdditionalButtons(): Button[] {
+    if (this.params.value.mode === 'create') return [];
+
+    const btns: Button[] = [];
+    if (this.params.value.canPrint && this.hasPrintAccess.value) {
+      btns.push(
+        new Button({text: 'Print', color: 'primary'}, {
+          onClicked: () => {
+            this.printAction()
+          }
+        })
+      )
+    }
+
+    if (this.params.value.canExport && this.hasExportAccess.value) {
+      btns.push(
+        new Button({text: 'Export', color: 'primary'}, {
+          onClicked: () => {
+            this.exportAction()
+          }
+        })
+      )
+    }
+
+    return btns
   }
 
   topChildren (props: any, context: any): Array<Part|Field> {
@@ -713,6 +769,69 @@ export class Trigger extends UIBase {
   setup(props: any, context: any) {
     if (this.options.setup) this.options.setup(this);
     this.handleOn('setup', this);
+  }
+
+  async print() {
+    await this.printAction();
+  }
+
+  async beforePrint(): Promise<any|undefined> {
+    if (this.options.beforePrint) return await this.options.beforePrint(this, this.params.value.mode);
+  }
+
+  async printTemplate(): Promise<any|undefined> {
+    if (this.options.printTemplate) return await this.options.printTemplate(this, this.params.value.mode);
+    return await AppManager.$printer.getTemplateIdByName(this.params.value.printTemplate);
+  }
+
+  private async printAction() {
+    Dialogs.$showProgress({});
+    const template = await this.printTemplate();
+    if (template) {
+      const info = await this.beforePrint();
+      const data = {$info: info, $master: this.$master, $rep: this, $func: AppManager.$printer.printFunctions()};
+      this.handleOn('before-print', data);
+      await AppManager.$printer.printReportById(template, data);
+      this.handleOn('after-print', data);
+    }
+    Dialogs.$hideProgress();
+  }
+
+  async export() {
+    await this.exportAction()
+  }
+
+  async beforeExport(): Promise<any|undefined> {
+    if (this.options.beforeExport) return await this.options.beforeExport(this, this.params.value.mode);
+  }
+
+  async exportTemplate(): Promise<ExportTemplateInfo|undefined> {
+    if (this.options.exportTemplate) return await this.options.exportTemplate(this, this.params.value.mode);
+    const temp = await AppManager.$printer.getTemplateIdByName(this.params.value.exportTemplate);
+    return {template: temp, filename: 'data.xlsx'}
+  }
+
+  private async exportAction() {
+    Dialogs.$showProgress({});
+    const templateInfo = await this.exportTemplate();
+    const template = templateInfo?.template;
+
+    if (template) {
+      const info = await this.beforeExport();
+      const data = {$info: info, $master: this.$master, $rep: this, $func: AppManager.$printer.printFunctions()};
+      this.handleOn('before-export', data);
+      const code = await AppManager.$printer.getTemplate(template, "excel");
+      
+      const excelData: any = await computeFunctionalCodeAsync(code, {
+        params: ['$info', '$master', '$func'],
+        data
+      });
+
+      const workbook = $excel.writeData(excelData.sheetNames || [], excelData.data || {});
+      await $excel.saveWorkBook(templateInfo.filename || 'data.xlsx', workbook);
+      this.handleOn('after-export', data);
+    }
+    Dialogs.$hideProgress()
   }
 
   private handleOn(event: string, data?: any) {
