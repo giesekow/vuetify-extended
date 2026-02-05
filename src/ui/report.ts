@@ -626,8 +626,11 @@ export class Report extends UIBase {
         data
       });
 
-      const workbook = $excel.writeData(excelData.sheetNames || [], excelData.data || {});
-      await $excel.saveWorkBook(templateInfo.filename || 'data.xlsx', workbook);
+      if (excelData) {
+        const workbook = $excel.writeData(excelData?.sheetNames || [], excelData?.data || {});
+        await $excel.saveWorkBook(templateInfo.filename || 'data.xlsx', workbook);  
+      }
+      
       this.handleOn('after-export', data);
     }
     Dialogs.$hideProgress()

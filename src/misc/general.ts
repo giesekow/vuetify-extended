@@ -325,8 +325,7 @@ export const sortArray = (arr: any[], fields: any, desc?: boolean): any[] => {
   return arr;
 }
 
-const AsyncFunction = (async function() {}).constructor;
-const NormalFunction = (function() {}).constructor;
+const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
 
 export interface computeFunctionOptions {
   params?: any[];
@@ -334,27 +333,61 @@ export interface computeFunctionOptions {
   defaultValue?: any;
 }
 
-export const computeFunctionalCodeAsync = async (code: string, options: computeFunctionOptions): Promise<any> => {
-  const evalStr: string = code;
-  const funcBody = options.params ? `return await (async ({${options.params.join(',')}}, __defaultValue) => {  try { ${evalStr} } catch (error) { return __defaultValue; } return __defaultValue; })(...arguments)` : `return await (async (__defaultValue) => {  try { ${evalStr} } catch (error) { return __defaultValue; } return __defaultValue; })(...arguments)`;
-  const func = AsyncFunction(funcBody);
+export const computeFunctionalCodeAsync = async (
+  code: string,
+  options: computeFunctionOptions
+): Promise<any> => {
+  const { params = [], data = {}, defaultValue } = options;
+
+  // Create an AsyncFunction with parameters directly
+  const func = new AsyncFunction(
+    ...params,
+    "__defaultValue",
+    `
+      try {
+        ${code}
+      } catch (error) {
+        return __defaultValue;
+      }
+      return __defaultValue;
+    `
+  );
+
   try {
-    const value = options.params ? await func(options.data || {}, options.defaultValue) : await func(options.defaultValue);
+    // Call it with data values spread + defaultValue
+    const args = params.map(p => data[p]);
+    const value = await func(...args, defaultValue);
     return value;
   } catch (error) {
+    console.error(error)
     return null;
   }
 }
 
 export const computeFunctionalCode = (code: string, options: computeFunctionOptions): any => {
-  const evalStr: string = code;
-  const funcBody = options.params ? `return (({${options.params.join(',')}}, __defaultValue) => {  try { ${evalStr} } catch (error) { return __defaultValue; } return __defaultValue; })(...arguments)` : `return ((__defaultValue) => {  try { ${evalStr} } catch (error) { return __defaultValue; } return __defaultValue; })(...arguments)`;
-  const func = NormalFunction(funcBody);
+  const { params = [], data = {}, defaultValue } = options;
+
+  // Build the function directly, no extra 'return'
+  const func = new Function(
+    ...params,
+    "__defaultValue",
+    `
+      try {
+        ${code}
+      } catch (error) {
+        return __defaultValue;
+      }
+      return __defaultValue;
+    `
+  );
+
   try {
-    const value = options.params ? func(options.data || {}, options.defaultValue) : func(options.defaultValue);
-    return value;
+    // Map data to parameters
+    const args = params.map(p => data[p]);
+    return func(...args, defaultValue);
   } catch (error) {
-    return null;
+    console.error(error)
+    return defaultValue;
   }
 }
 
