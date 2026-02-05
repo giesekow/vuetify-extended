@@ -325,8 +325,6 @@ export const sortArray = (arr: any[], fields: any, desc?: boolean): any[] => {
   return arr;
 }
 
-const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-
 export interface computeFunctionOptions {
   params?: any[];
   data?: any;
@@ -339,24 +337,26 @@ export const computeFunctionalCodeAsync = async (
 ): Promise<any> => {
   const { params = [], data = {}, defaultValue } = options;
 
-  // Create an AsyncFunction with parameters directly
-  const func = new AsyncFunction(
+  // Create an Function with parameters directly
+  const func = new Function(
     ...params,
     "__defaultValue",
     `
-      try {
-        ${code}
-      } catch (error) {
+      return async () => {
+        try {   
+          ${code}
+        } catch (error) {
+          return __defaultValue;
+        }
         return __defaultValue;
       }
-      return __defaultValue;
     `
   );
 
   try {
     // Call it with data values spread + defaultValue
     const args = params.map(p => data[p]);
-    const value = await func(...args, defaultValue);
+    const value = await(func(...args, defaultValue))();
     return value;
   } catch (error) {
     console.error(error)
