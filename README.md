@@ -528,6 +528,32 @@ $FD.setDefault({
 
 This is useful when you want consistent defaults across a whole app.
 
+The same pattern is available on the main UI classes, so a host app can define project-wide defaults once:
+
+```ts
+import { Report, Selector, DialogForm, Form } from 'vuetify-extended'
+
+Report.setDefault({
+  confirmOnCancel: false,
+  cancelButtonStyle: 'text',
+  prevButtonStyle: 'outlined',
+  nextButtonStyle: 'elevated',
+  finishButtonStyle: 'elevated',
+})
+
+Selector.setDefault({
+  persistent: true,
+})
+
+DialogForm.setDefault({
+  persistent: true,
+})
+
+Form.setDefault({
+  defaultButtonPosition: 'bottom',
+})
+```
+
 ## Building Layouts with `Part`
 
 `Part` is a grid container. It is the normal place to group fields into rows and responsive columns.
@@ -619,6 +645,8 @@ In multi-step reports, the default action model is now:
 - `Next` advances to the next form
 - `Save` or `Finish` completes the last step
 
+By default, a completed final save emits `finished`, and `AppMain` treats that as a close signal for the current report. In normal app-shell usage, a successful final save therefore returns the user to the previous menu or screen.
+
 If you want a confirmation prompt before exit, set `confirmOnCancel: true`:
 
 ```ts
@@ -628,6 +656,32 @@ const report = $RP({
   confirmOnCancel: true,
 })
 ```
+
+Report also supports default button style parameters for its standard actions:
+
+- `cancelButtonStyle`
+- `prevButtonStyle`
+- `nextButtonStyle`
+- `finishButtonStyle`
+
+Each accepts:
+
+- `text`
+- `outlined`
+- `elevated`
+
+The default styling is:
+
+- `Cancel`: `text`
+- `Prev`: `outlined`
+- `Next`: `elevated`
+- `Finish`: `elevated`
+
+Keyboard behavior in report-driven forms includes:
+
+- `Escape` triggers `Prev` when a previous step exists, otherwise `Cancel`
+- `Ctrl+S` and `Meta+S` trigger the current primary action
+- shortcuts still work when the form itself is active even if no child field is focused
 
 ## Menus
 
@@ -677,6 +731,13 @@ const personSelector = $SL(
 AppManager.showSelector(personSelector)
 ```
 
+Selector defaults and interaction notes:
+
+- `persistent` defaults to `true`
+- `Enter` confirms the current selection when possible
+- `Escape` cancels the selector
+- focus is restored to the triggering control after close when used through `AppMain`
+
 ## Dialog Forms
 
 Use `DialogForm` when you want a modal wrapper around a `Form`.
@@ -704,6 +765,8 @@ const dialog = $DF(
 AppManager.showDialog(dialog)
 ```
 
+`DialogForm` also exposes `persistent`, which defaults to `true`. Like selectors, dialog forms restore focus to the triggering control after close when shown through `AppMain`.
+
 ## Collections
 
 `Collection` handles flows where the user:
@@ -713,6 +776,51 @@ AppManager.showDialog(dialog)
 - returns to the previous flow when finished
 
 It is especially useful for batch edit or selection-driven workflows.
+
+In multi-item edit flows, the report stage now keeps visible progress context such as `Editing item 2 of 5`.
+
+## Message Box Field
+
+The `messagingbox` field type is intended for conversation-style history display.
+
+Current capabilities include:
+
+- grouped messages by sender
+- timestamps and day separators
+- system messages
+- attachment rendering for image and file-like payloads
+- incremental history rendering for long conversations
+
+For long histories, the field now renders the latest chunk first and exposes a `Load earlier messages` action. You can tune this with:
+
+- `messageInitialCount`
+- `messagePageSize`
+
+Example:
+
+```ts
+$FD({
+  type: 'messagingbox',
+  label: 'Conversation',
+  storage: 'conversation',
+  messageInitialCount: 30,
+  messagePageSize: 30,
+})
+```
+
+Attachments can be supplied as strings or objects with values such as `name`, `url`, `type`, and `size`.
+
+## Keyboard Shortcuts
+
+The library now includes several built-in keyboard affordances:
+
+- `MenuItem.shortcut` for menu-scoped shortcuts such as `Ctrl+N` or `Alt+1`
+- nested menus use `Escape` as a back action when no explicit item shortcut handles it
+- selectors support `Enter` to confirm and `Escape` to cancel
+- dialog forms support `Escape` to cancel
+- reports/forms support `Escape`, `Ctrl+S`, and `Meta+S`
+
+When multiple menu items register the same shortcut, the first visible matching item wins.
 
 ## App-Level Navigation
 

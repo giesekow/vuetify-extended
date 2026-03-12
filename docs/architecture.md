@@ -165,6 +165,8 @@ Supported field categories include:
 - Data display: `table`, `viewtable`, `servertable`, `reporttable`
 - Rich integrations: `chart`, `map`, `collection`, `button`, `color`
 
+Some of the heavier field renderers are now split into `src/ui/widgets/field-rich-widgets.ts` so `Field` can keep orchestration responsibilities while richer widget implementations evolve in a more isolated module.
+
 ### Binding model
 
 Each field can point to a storage path, for example:
@@ -245,8 +247,15 @@ In the current report design:
 - `Prev` moves back one step when a previous form exists
 - `Next` advances to the next step
 - `Save` or `Finish` completes the final step
+- A final successful save emits `finished`, which `AppMain` treats as a close signal for the active report screen
 
 `Report` can also require confirmation before exit by setting `confirmOnCancel: true`.
+
+The report layer also owns keyboard-oriented workflow behavior:
+
+- `Escape` triggers `Prev` when available, otherwise `Cancel`
+- `Ctrl+S` and `Meta+S` trigger the current primary action
+- focus is pushed into the active form when a report step becomes visible
 
 ## `Menu`
 
@@ -269,8 +278,16 @@ Responsibilities:
 - Render a `VAutocomplete`
 - Return a selected object or id
 - Support single or multiple selection
+- Support keyboard confirmation and cancel behavior
 
 Selectors are often used inside collection flows and secondary workflows.
+
+The current selector/dialog model also includes:
+
+- `persistent` configuration with a default of `true`
+- focus capture and restore through `AppMain`
+- `Enter` to confirm in `Selector`
+- `Escape` to cancel in `Selector` and `DialogForm`
 
 ## `Collection`
 
@@ -295,6 +312,8 @@ It is useful when:
 - You want save/cancel handling inside a modal
 - A full `Report` would be too heavy
 
+Like `Selector`, `DialogForm` now exposes a `persistent` parameter and participates in the shell-level focus restore behavior managed by `AppMain`.
+
 ## `AppMain` and `AppManager`
 
 `AppMain` is the shell that holds the active UI stack.
@@ -305,6 +324,7 @@ Responsibilities:
 - Push and pop `Menu`, `Report`, `Collection`, or generic `UIBase` instances
 - Show selectors and dialogs as overlay flows
 - Route cancel events back into stack management
+- Route report `finished` events back into stack management
 - Provide dynamic UDF loading and conversion
 
 `AppManager` is the static coordinator around `AppMain`.
@@ -317,6 +337,39 @@ Responsibilities:
 - Offer convenience methods like `showReport`, `showMenu`, `showDialog`, `back`, and `reload`
 
 This split gives the library a singleton-like application API while keeping the actual shell instance in `AppMain`.
+
+## Keyboard Model
+
+Keyboard support is intentionally layered rather than global.
+
+- `Menu` supports item-level shortcuts through `MenuItem.shortcut`
+- if multiple menu items claim the same shortcut, the first visible item wins
+- nested menus use `Escape` as a back action when no explicit item shortcut handles it
+- overlay flows such as `Selector` and `DialogForm` handle their own confirm/cancel shortcuts
+- form/report flows handle `Escape`, `Ctrl+S`, and `Meta+S`
+
+This keeps shortcuts close to the workflow object that owns the action, which reduces accidental cross-screen interference.
+
+## Messagebox Rendering Strategy
+
+The `messagingbox` field has started to move toward a richer conversation model.
+
+Current behavior includes:
+
+- sender grouping
+- day separators
+- timestamps
+- system-message rendering
+- attachment rendering
+- incremental rendering for longer histories
+
+For long histories, the current phase uses incremental prepend rather than true virtualization:
+
+- render only the latest chunk first
+- show a `Load earlier messages` control at the top
+- preserve scroll position when older messages are prepended
+
+This is a good fit for variable-height message rows, HTML content, and attachments, all of which are harder to virtualize safely than fixed-height tables.
 
 ## Event Model
 

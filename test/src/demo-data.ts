@@ -20,7 +20,7 @@ export interface DemoPerson {
   notesHtml: string;
   welcomeHtml: string;
   script: string;
-  conversation: Array<{ user: string; message: string; right?: boolean; color?: string; theme?: string }>;
+  conversation: Array<{ user: string; message: string; right?: boolean; color?: string; theme?: string; system?: boolean; createdAt?: string; status?: string; attachments?: Array<string | { name?: string; url?: string; type?: string; size?: number }> }>;
   lineItems: Array<{ _id: string; name: string; quantity: number; price: number; total: number; note?: string }>;
   avatar?: string;
   resume?: string;
@@ -113,8 +113,11 @@ export function createSeedStore() {
       welcomeHtml: '<div><h3>HTML View</h3><p>This field renders trusted HTML directly from storage.</p></div>',
       script: 'const milestone = "typed-ui";\nconsole.log(`shipping ${milestone}`);',
       conversation: [
-        { user: 'Ada', message: 'The report flow feels solid now.', color: 'blue-grey-lighten-5' },
-        { user: 'Review Bot', message: 'Selector and trigger bindings look good.', right: true, color: 'green-lighten-5' },
+        { user: 'System', message: 'Conversation imported from the demo memory API.', system: true, createdAt: '2026-03-12T08:00:00.000Z' },
+        { user: 'Ada', message: 'The report flow feels solid now.', color: 'blue-grey-lighten-5', createdAt: '2026-03-12T08:12:00.000Z' },
+        { user: 'Review Bot', message: 'Selector and trigger bindings look good.', right: true, color: 'green-lighten-5', createdAt: '2026-03-12T08:15:00.000Z', status: 'Seen' },
+        { user: 'Review Bot', message: 'The keyboard path is much smoother too.', right: true, color: 'green-lighten-5', createdAt: '2026-03-12T08:16:00.000Z', status: 'Seen' },
+        { user: 'Ada', message: 'Great. Let us refine the message widget next.', color: 'blue-grey-lighten-5', createdAt: '2026-03-13T09:05:00.000Z', attachments: [{ name: 'wireframe-notes.txt', url: 'data:text/plain;base64,VHlwaW5nIG5vdGVzIGZvciB0aGUgbWVzc2FnZSB3aWRnZXQu', type: 'text/plain', size: 38 }] },
       ],
       lineItems: [
         { _id: 'line-1', name: 'Architecture Review', quantity: 2, price: 180, total: 360, note: 'Kickoff session' },
@@ -150,7 +153,8 @@ export function createSeedStore() {
       welcomeHtml: '<p>Grace is using the read-only report mode in the demo.</p>',
       script: 'function estimate(days) {\n  return days * 3;\n}',
       conversation: [
-        { user: 'Grace', message: 'Server tables are loading from the memory API.', color: 'amber-lighten-5' },
+        { user: 'Grace', message: 'Server tables are loading from the memory API.', color: 'amber-lighten-5', createdAt: '2026-03-11T10:00:00.000Z', attachments: [{ name: 'server-flow.svg', url: 'data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"240\" height=\"120\"><rect width=\"240\" height=\"120\" rx=\"16\" fill=\"%23fff3cd\"/><text x=\"120\" y=\"52\" text-anchor=\"middle\" font-family=\"Arial\" font-size=\"18\" fill=\"%238a6d3b\">Server Table</text><text x=\"120\" y=\"82\" text-anchor=\"middle\" font-family=\"Arial\" font-size=\"14\" fill=\"%238a6d3b\">Memory API Preview</text></svg>', type: 'image/svg+xml', size: 5120 }] },
+        { user: 'System', message: 'Read-only mode keeps navigation active while blocking edits.', system: true, createdAt: '2026-03-11T10:03:00.000Z' },
       ],
       lineItems: [
         { _id: 'line-3', name: 'Roadmap Review', quantity: 1, price: 220, total: 220, note: 'Quarter planning' },
@@ -185,7 +189,8 @@ export function createSeedStore() {
       welcomeHtml: '<p>Katherine is the manager option for autocomplete fields.</p>',
       script: 'export const approve = () => true;',
       conversation: [
-        { user: 'Katherine', message: 'Collection mode should walk through selected records.', color: 'teal-lighten-5' },
+        { user: 'Katherine', message: 'Collection mode should walk through selected records.', color: 'teal-lighten-5', createdAt: '2026-03-10T14:10:00.000Z' },
+        { user: 'Ada', message: 'And it should keep the report context visible.', right: true, color: 'blue-lighten-5', createdAt: '2026-03-10T14:12:00.000Z', status: 'Delivered' },
       ],
       lineItems: [
         { _id: 'line-4', name: 'Manager Sync', quantity: 3, price: 90, total: 270, note: 'Cross-functional' },

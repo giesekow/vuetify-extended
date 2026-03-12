@@ -127,6 +127,7 @@ export class AppMain extends UIBase {
     if (index < this.stack.length) {
       this.stack[index].item.clearListeners(this.$id);
       this.stack[index].item.on('cancel', (item: any) => this.onCancel(item), this.$id);
+      this.stack[index].item.on('finished', (item: any) => this.onCancel(item), this.$id);
       await this.stack[index].item.show();
     }
   }

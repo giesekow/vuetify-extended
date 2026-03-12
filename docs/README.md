@@ -27,4 +27,6 @@ These docs describe the code currently present in this repository:
 - TypeScript-first UI composition on top of Vue 3 and Vuetify 3
 - A shared API facade with both Feathers and axios-backed Keycloak integrations
 - Class-based screen, form, field, selector, dialog, and menu composition
+- Keyboard-first workflow helpers for menus, selectors, dialogs, forms, and reports
+- Rich messagebox rendering with attachments and incremental history loading
 - Build outputs published under `lib/cjs` and `lib/esm`

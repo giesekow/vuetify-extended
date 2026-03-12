@@ -57,6 +57,8 @@ Key exports:
 - `AppMain`
 - `AppManager`
 
+Most of the main UI classes also now expose `setDefault(...)` so a host app can establish project-wide defaults without repeating constructor params everywhere.
+
 ## `master`
 
 The `master` module exports:
@@ -178,6 +180,7 @@ For multi-step reports, mode now works alongside separate navigation actions:
 - `cancelButton` remains a true cancel/exit action
 - `prevButton` is used for previous-step navigation
 - `confirmOnCancel` can require a confirmation dialog before exit
+- final successful completion emits `finished`, which the app shell treats as a close signal
 
 ## 4. `setup` and `on` are common extension points
 
@@ -231,6 +234,8 @@ Common usage patterns include:
 - menu-driven navigation
 - print and export flows
 - UDF-backed dynamic fields
+- keyboard-driven menu and workflow navigation
+- long-form message history display through `messagingbox`
 
 ## Notable Integrations
 
@@ -333,6 +338,57 @@ A few files carry a lot of responsibility:
 - `src/ui/form.ts`
 
 This makes the library powerful, but these files deserve extra care when refactoring.
+
+One refactoring step already in place is the extraction of heavier field widget renderers into:
+
+- `src/ui/widgets/field-rich-widgets.ts`
+
+That module currently hosts widget implementations such as:
+
+- `html`
+- `code`
+- `messagingbox`
+- `chart`
+- `map`
+- image/document rendering helpers
+
+## Keyboard and Focus Notes
+
+Current keyboard behavior includes:
+
+- `MenuItem.shortcut` for menu-scoped shortcuts
+- first matching visible menu item wins on conflicts
+- nested-menu `Escape` to go back
+- selector `Enter` to confirm and `Escape` to cancel
+- dialog-form `Escape` to cancel
+- form/report `Escape` and `Ctrl+S`/`Meta+S`
+
+Focus handling has also been improved in the current codebase:
+
+- selectors and dialog forms restore focus to the triggering control after close
+- selectors, dialog forms, and reports attempt to focus the first actionable control when opened
+- readonly controls are skipped when looking for the initial focus target
+
+## Messagebox Notes
+
+The `messagingbox` field now supports richer conversation rendering features:
+
+- grouped messages
+- timestamps and day separators
+- system messages
+- file and image attachments
+- incremental loading for long histories
+
+Relevant field params include:
+
+- `messageInitialCount`
+- `messagePageSize`
+
+The current long-history strategy is incremental rendering rather than full virtualization:
+
+- render the newest chunk first
+- prepend older chunks on demand
+- preserve scroll offset when older messages are loaded
 
 ## Testing Status
 

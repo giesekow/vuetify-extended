@@ -1,20 +1,16 @@
-import { Ref, RendererNode, VNode, watch } from "vue";
+import { Ref, RendererNode, VNode, nextTick, watch } from "vue";
 import { ReportMode, UIBase } from "./base";
-import { VAutocomplete, VBtn, VCard, VCardActions, VCardText, VCardTitle, VCheckbox, VCheckboxBtn, VCol, VColorPicker, VCombobox, VContainer, VDialog, VIcon, VImg, VListItem, VRadio, VRadioGroup, VRow, VSelect, VSheet, VSpacer, VSwitch, VTable, VTextField, VTextarea, VToolbar } from 'vuetify/components';
-import { VAceEditor } from 'vue3-ace-editor';
+import { VAutocomplete, VBtn, VCard, VCardActions, VCardText, VCardTitle, VCheckbox, VCheckboxBtn, VCol, VColorPicker, VCombobox, VContainer, VDialog, VIcon, VListItem, VRadio, VRadioGroup, VRow, VSelect, VSpacer, VSwitch, VTable, VTextField, VTextarea, VToolbar } from 'vuetify/components';
 import { Master } from "../master";
 import { Button } from "./button";
 import * as webtex from 'webtex';
-import ace from 'ace-builds';
-import { SimpleDate, SimpleTime, fileToBase64, selectFile, sleep } from "../misc";
+import { SimpleDate, SimpleTime, sleep } from "../misc";
 import { VDataTable, VDataTableFooter, VDataTableServer, VDataTableVirtual } from "vuetify/components";
 import Datepicker from '@vuepic/vue-datepicker';
 import { Form } from "./form";
 import { Report } from "./report";
-import VueApexCharts from 'vue3-apexcharts';
-import { GoogleMap, Marker } from "vue3-google-map";
-import VueEditor from '@tinymce/tinymce-vue'
 import { $v } from "../misc";
+import { buildChartWidget, buildCodeWidget, buildHTMLWidget, buildImageWidget, buildMapWidget, buildMessageBoxWidget, RichWidgetContext } from "./widgets/field-rich-widgets";
 
 import '@vuepic/vue-datepicker/dist/main.css';
 import { Dialogs } from "./dialogs";
@@ -22,9 +18,6 @@ import nestedProperty from "nested-property";
 import { OnHandler } from "./lib";
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
-
-
-ace.config.set("basePath", "https://cdn.jsdelivr.net/npm/ace-builds@" + ace.version + "/src-noconflict/");
 
 
 export type FieldType = 'text'|'select'|'autocomplete'|'label'|
@@ -108,6 +101,8 @@ export interface FieldParams {
   mapZoom?: number;
   fileAccepts?: any;
   fileMaxSize?: number; // In KB
+  messageInitialCount?: number;
+  messagePageSize?: number;
   bordered?: boolean;
   default?: any;
   required?: boolean;
@@ -202,6 +197,9 @@ export class Field extends UIBase {
 
   private codePreview: Ref<any>;
   private htmlEditor: any;
+  private messageVisibleCount: Ref<number>;
+  private messageContainer: Ref<HTMLElement|undefined>;
+  private pendingMessageScrollRestore?: { scrollTop: number; scrollHeight: number };
 
   constructor(params?: FieldParams, options?: FieldOptions) {
     super();
@@ -232,6 +230,9 @@ export class Field extends UIBase {
     this.isEditting = false;
     this.codePreview = this.$makeRef("");
     this.htmlEditor = undefined;
+    this.messageVisibleCount = this.$makeRef(0);
+    this.messageContainer = this.$makeRef();
+    this.pendingMessageScrollRestore = undefined;
   }
 
   static setDefault(value: FieldParams, reset?: boolean): void {
@@ -998,94 +999,123 @@ export class Field extends UIBase {
     );
   }
 
-  buildHTML(props: any, context: any) {
-    const h = this.$h;
-
-    const editor = h(
-      VueEditor,
-      {
-        apiKey: 'ee1xu2usg9edqb2dtfggyg50ghsc6snlrhdkagr9425luz2a',
-        modelValue: this.modelValue.value,
-        readonly: this.$readonly,
-        disabled: this.$readonly,
-        init: {
-          plugins: 'lists link table image emoticons autoresize',
-          setup: (editor: any) => {
-            this.registerHtmlEditor(editor);
-          }
-        },
-        placeholder: this.params.value.placeholder,
-        height: this.params.value.height || 300,
-        class: this.params.value.class || [],
-        style: this.params.value.style || {},
-        onInit: (_evt: any, editor: any) => {
-          this.htmlEditor = editor;
-          if (this.params.value.autofocus) {
-            this.focusHtmlEditor();
-          }
-        },
-        "onUpdate:modelValue": (v: any) => {
-          this.modelValue.value = v;
+  private richWidgetContext(): RichWidgetContext {
+    return {
+      $h: this.$h,
+      $readonly: this.$readonly,
+      params: this.params,
+      modelValue: this.modelValue,
+      maxWidth: this.maxWidth,
+      codePreview: this.codePreview,
+      chartLoaded: this.chartLoaded,
+      chartOpts: this.chartOpts,
+      chartValue: this.chartValue,
+      renderMathInHtml: (html: string) => this.renderMathInHtml(html),
+      showPreviewFullscreen: (html: string) => this.showPreviewFullscreen(html),
+      registerHtmlEditor: (editor: any) => this.registerHtmlEditor(editor),
+      onHtmlEditorReady: (editor: any) => {
+        this.htmlEditor = editor;
+        if (this.params.value.autofocus) {
+          this.focusHtmlEditor();
         }
-      }
-    )
-
-    const fullscreenBtn = h(VBtn, {
-      icon: 'mdi-fullscreen',
-      size: 'small',
-      style: {
-        'margin-top': '-64px'
       },
-      onClick: () => {
-        const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Preview</title>
-          <link rel="stylesheet" href="katex/dist/katex.min.css">
-        </head>
-        <bod>${this.renderMathInHtml(this.modelValue.value ?? "")}</body>
-        </html>
-        `
-        this.showPreviewFullscreen(html)
-      }
-    })
+      renderLatex: (value: string) => this.renderLatex(value),
+      loadChart: () => this.loadChart(),
+      messageFormat: (data: any) => this.messageFormat(data),
+      showMediaFullscreen: (data: string) => this.showFullscreen(data),
+      getMessageWindow: (items: any[]) => this.getMessageWindow(items),
+      loadEarlierMessages: (total: number) => this.loadEarlierMessages(total),
+      setMessageScrollContainer: (el: Element | any) => this.setMessageScrollContainer(el),
+    };
+  }
 
-    return h(
-      VRow,
-      {},
-      () => [
-        h(
-          VCol,
-          {
-            cols: 12
-          },
-          () => h(
-            'div',
-            {
-              class: ['text-subtitle-2']
-            },
-            this.params.value.label
-          )
-        ),
-        h(
-          VCol,
-          {
-            cols: 12,
-          },
-          () => h(
-            VCard,
-            {
-              class: ['overflow-auto', 'mx-auto', 'pa-0'],
-              maxWidth: this.maxWidth.value,
-              elevation: 0
-            },
-            () => [editor, fullscreenBtn]
-          )
-        ),
-      ]
-    )
+  private getMessageWindow(items: any[]) {
+    const total = Array.isArray(items) ? items.length : 0;
+
+    if (total === 0) {
+      this.messageVisibleCount.value = 0;
+      return { items: [], hasEarlier: false, earlierCount: 0, pageSize: this.messagePageSize() };
+    }
+
+    const initialCount = this.messageInitialRenderCount(total);
+    if (this.messageVisibleCount.value <= 0) {
+      this.messageVisibleCount.value = initialCount;
+    } else if (this.messageVisibleCount.value > total) {
+      this.messageVisibleCount.value = total;
+    } else if (total <= initialCount) {
+      this.messageVisibleCount.value = total;
+    }
+
+    const visibleCount = Math.min(total, this.messageVisibleCount.value || total);
+    const earlierCount = Math.max(0, total - visibleCount);
+
+    return {
+      items: items.slice(total - visibleCount),
+      hasEarlier: earlierCount > 0,
+      earlierCount,
+      pageSize: this.messagePageSize(),
+    };
+  }
+
+  private messageInitialRenderCount(total: number) {
+    const configured = this.params.value.messageInitialCount;
+    if (typeof configured === 'number' && configured > 0) {
+      return Math.min(total, configured);
+    }
+
+    if (total > 50) {
+      return Math.min(total, 50);
+    }
+
+    return total;
+  }
+
+  private messagePageSize() {
+    const configured = this.params.value.messagePageSize;
+    if (typeof configured === 'number' && configured > 0) {
+      return configured;
+    }
+
+    return 50;
+  }
+
+  private async loadEarlierMessages(total: number) {
+    const container = this.messageContainer.value;
+    if (container) {
+      this.pendingMessageScrollRestore = {
+        scrollTop: container.scrollTop,
+        scrollHeight: container.scrollHeight,
+      };
+    }
+
+    this.messageVisibleCount.value = Math.min(total, (this.messageVisibleCount.value || 0) + this.messagePageSize());
+    await nextTick();
+    this.restoreMessageScrollPosition();
+  }
+
+  private setMessageScrollContainer(el: Element | any) {
+    if (el instanceof HTMLElement) {
+      this.messageContainer.value = el;
+    } else {
+      const root = el?.$el;
+      this.messageContainer.value = root instanceof HTMLElement ? root : undefined;
+    }
+
+    this.restoreMessageScrollPosition();
+  }
+
+  private restoreMessageScrollPosition() {
+    if (!this.pendingMessageScrollRestore || !this.messageContainer.value) {
+      return;
+    }
+
+    const delta = this.messageContainer.value.scrollHeight - this.pendingMessageScrollRestore.scrollHeight;
+    this.messageContainer.value.scrollTop = this.pendingMessageScrollRestore.scrollTop + delta;
+    this.pendingMessageScrollRestore = undefined;
+  }
+
+  buildHTML(props: any, context: any) {
+    return buildHTMLWidget(this.richWidgetContext());
   }
 
   private registerHtmlEditor(editor: any) {
@@ -1169,64 +1199,7 @@ export class Field extends UIBase {
   }
 
   buildCode(props: any, context: any) {
-    const h = this.$h;
-
-    const editor: any = h(
-      VAceEditor,
-      {
-        value: this.modelValue.value ?? "",
-        lang: this.params.value.lang || 'text',
-        theme: this.params.value.codeTheme || "chrome",
-        readonly: this.$readonly,
-        placeholder: this.params.value.placeholder,
-        class: this.params.value.class || [],
-        style: {"font-size": "12pt", ...(this.params.value.style || {}), height: this.params.value.height || "300px", "max-width": this.maxWidth.value},
-        onInit: (e: any) => {
-          e.setOptions({useWorker: ['json', 'javascript', 'html'].includes(this.params.value.lang || 'text')})
-        },
-        "onUpdate:value": (v: any) => {
-          this.modelValue.value = v;
-        }
-      }
-    )
-
-    const fullscreenBtn = h(VBtn, {
-      icon: 'mdi-fullscreen',
-      size: 'small',
-      onClick: () => {
-        this.renderLatex(this.modelValue.value ?? "")
-        this.showPreviewFullscreen(this.codePreview.value)
-      }
-    })
-
-    return [
-      h(
-        'div',
-        {
-          class: ['ml-4', 'mb-4']
-        },
-        h(
-          'label',
-          {},
-          this.params.value.label
-        ),
-      ),
-      ...(this.params.value.lang === 'latex' ? [editor, fullscreenBtn] : [editor]),
-      ...(
-        this.params.value.hint ?
-        [h(
-          'div',
-          {
-            class: ['ml-4', 'mb-4']
-          },
-          h(
-            'label',
-            {},
-            this.params.value.hint
-          ),
-        )] : []
-      )
-    ];
+    return buildCodeWidget(this.richWidgetContext());
   }
 
   buildColor(props: any, context: any) {
@@ -1756,397 +1729,19 @@ export class Field extends UIBase {
   }
 
   buildMessageBox(props: any, context: any) {
-    const h = this.$h;
-    let items: any = this.modelValue.value || [];
-    if (!Array.isArray(items)) items = [items];
-
-    items = this.messageFormat(items);
-
-    return h(
-      VRow,
-      {},
-      () => [
-        h(
-          VCol,
-          {},
-          () => h(
-            'span',
-            {},
-            this.params.value.label
-          )
-        ),
-        ...items.map((item: any) => h(
-          VCol,
-          {
-            cols: 12,
-            align: item.right ? 'right' : 'left'
-          },
-          () => h(
-            VSheet,
-            {
-              rounded: true,
-              border: true,
-              elevation: 1,
-              minWidth: item.minWidth,
-              maxWidth: item.maxWidth,
-              width: item.width,
-              class: ["pa-4"],
-              color: item.color,
-              theme: item.theme
-            },
-            () => [
-              h(
-                'span',
-                {
-                  class: ['caption','font-weight-bold']
-                },
-                item.user
-              ),
-              h(
-                'p',
-                {},
-                item.message,
-              )
-            ]
-          )
-        ))
-      ]
-    );
+    return buildMessageBoxWidget(this.richWidgetContext());
   }
 
   buildChart(props: any, context: any) {
-    const h = this.$h;
-    
-    if (!this.chartLoaded.value) {
-      this.loadChart();
-      return undefined
-    }
-
-    return [
-      h(
-        'div',
-        {
-          class: ['ml-2', 'mb-4'],
-          innerHTML: this.params.value.label
-        }
-      ),
-      h(
-        VueApexCharts as any,
-        {
-          type: this.params.value.chartType,
-          options: this.chartOpts.value || {},
-          series: this.chartValue.value || [],
-          height: this.params.value.height || 300,
-          width: this.maxWidth.value,
-        },
-      )
-    ];
+    return buildChartWidget(this.richWidgetContext());
   }
 
   buildMap(props: any, context: any) {
-    const h = this.$h;
-
-    const center = {lat: 0, lng: 0};
-    const options: any = this.params.value.mapOptions || {
-      draggable: true
-    };
-
-    options.position = this.modelValue.value || center;
-    options.draggable = !this.$readonly;
-
-    return [
-      h(
-        'div',
-        {
-          class: ['ml-2', 'mb-4']
-        },
-        this.params.value.label
-      ),
-      h(
-        'div',
-        {},
-        h(
-          GoogleMap,
-          {
-            apiKey: this.params.value.mapApiKey || Field.defaultParams?.mapApiKey,
-            style: {
-              ...this.params.value.style, 
-              height: this.params.value.height || '300px',
-              width: '100%',
-              'max-width': this.maxWidth.value
-            },
-            center: this.modelValue.value || center,
-            zoom: this.params.value.mapZoom || 5
-          },
-          () => h(
-            Marker,
-            {
-              options: options,
-              title: this.params.value.label,
-              draggable: true,
-              onDragend: (event: any) => {
-                const pos = {lat: event.latLng.lat(), lng: event.latLng.lng()}
-                this.modelValue.value = pos;
-              }
-            }
-          )
-        )
-      )
-    ];
+    return buildMapWidget(this.richWidgetContext());
   }
 
   buildImage(props: any, context: any) {
-    const h = this.$h;
-    if (this.params.value.multiple) {
-      if (!this.modelValue.value) this.modelValue.value = [];
-      if (!Array.isArray(this.modelValue.value)) this.modelValue.value = [this.modelValue.value];
-
-      return h(
-        VRow,
-        {},
-        () => [
-          h(
-            VCol,
-            {
-              cols: 12
-            },
-            () => h(
-              'div',
-              {},
-              this.params.value.label
-            )
-          ),
-          ...(this.modelValue.value || []).map((item: any, index: number) => 
-          h(
-            VCol,
-            {
-              cols: 12,
-              md: 6,
-              lg: 4,
-              align: 'center'
-            },
-            () => [
-              item.indexOf('image') !== -1 ? h(
-                VImg,
-                {
-                  src: item,
-                  height: item ? (this.params.value.height === undefined ? 300 : this.params.value.height) : 10,
-                  onClick: () => {
-                    this.showFullscreen(item);
-                  }
-                }
-              ) : (item ? h(
-                'div',
-                {
-                  class: ['py-auto'],
-                  style: {
-                    height: `${item ? (this.params.value.height === undefined ? 300 : this.params.value.height) : 10}px`,
-                    'max-width': '200px',
-                    border: 'thin solid black',
-                  },
-                  onClick: () => {
-                    this.showFullscreen(item);
-                  }
-                },
-                'No Preview'
-              ) : undefined),
-              ...(this.$readonly ? [] : [
-                h(
-                  VIcon,
-                  {
-                    icon: 'mdi-delete',
-                    color: 'error',
-                    flat: true,
-                    size: 'small',
-                    class: ['mt-1'],
-                    onClick: () => {
-                      const items = this.modelValue.value || [];
-                      items.splice(index, 1);
-                      this.modelValue.value = items;
-                    }
-                  }
-                )
-              ])
-            ]
-          )
-          ),
-          h(
-            VCol,
-            {
-              cols: 12,
-              align: "center"
-            },
-            () => this.$readonly ? [] : [
-              h(
-                VBtn,
-                {
-                  color: 'primary',
-                  onClick: async () => {
-                    try {
-                      const files: FileList = await selectFile(this.params.value.fileAccepts, true);
-                      const data: any[] = [];
-                      for (let i = 0; i < files.length; i++) {
-                        try {
-                          const base64 = await fileToBase64(files[i], this.params.value.fileMaxSize || 500);
-                          data.push(base64);
-                        } catch (error) {
-                          Dialogs.$error((error as any).message)
-                        }
-                      }
-                      if (!this.modelValue.value) {
-                        this.modelValue.value = data;
-                      } else if (!Array.isArray(this.modelValue.value)) {
-                        this.modelValue.value = [this.modelValue.value].concat(data);
-                      } else {
-                        const value = this.modelValue.value || [];
-                        this.modelValue.value = value.concat(data);
-                      }
-                    } catch (error) {
-                      Dialogs.$error((error as any).message);
-                    }
-                  }
-                },
-                () => h(
-                  VIcon,
-                  {},
-                  () => 'mdi-upload'
-                ),
-              ),
-              ...(this.modelValue.value && this.modelValue.value.length > 0 ? [
-                h(
-                  VBtn,
-                  {
-                    color: 'error',
-                    class: ['ml-4'],
-                    onClick: async () => {
-                      this.modelValue.value = [];
-                    }
-                  },
-                  () => h(
-                    VIcon,
-                    {},
-                    () => 'mdi-delete'
-                  )
-                ),
-              ] : [])
-            ]
-          )
-        ]
-      );  
-    }
-    return h(
-      VRow,
-      {},
-      () => [
-        h(
-          VCol,
-          {
-            cols: 12
-          },
-          () => h(
-            'div',
-            {},
-            this.params.value.label
-          )
-        ),
-        h(
-          VCol,
-          {
-            cols: 12,
-            align: 'center'
-          },
-          () => this.modelValue.value && this.modelValue.value.indexOf('image') !== -1 ? h(
-            VImg,
-            {
-              src: this.modelValue.value,
-              height: this.modelValue.value ? (this.params.value.height === undefined ? 300 : this.params.value.height) : 10,
-              style: {
-                cursor: 'pointer'
-              },
-              onClick: () => {
-                this.showFullscreen(this.modelValue.value);
-              }
-            }
-          ) : (this.modelValue.value ? h(
-            'div',
-            {
-              class: ['py-auto'],
-              style: {
-                height: `${this.modelValue.value ? (this.params.value.height === undefined ? 300 : this.params.value.height) : 10}px`,
-                'max-width': '200px',
-                border: 'thin solid black',
-                cursor: 'pointer'
-              },
-              onClick: () => {
-                this.showFullscreen(this.modelValue.value);
-              }
-            },
-            'No Preview'
-          ) : undefined)
-        ),
-        h(
-          VCol,
-          {
-            cols: 12,
-            align: "center"
-          },
-          () => this.$readonly ? [] : [
-            h(
-              VBtn,
-              {
-                color: 'primary',
-                onClick: async () => {
-                  try {
-                    const files: FileList = await selectFile(this.params.value.fileAccepts);
-                    const base64 = await fileToBase64(files[0], this.params.value.fileMaxSize || 500);
-                    this.modelValue.value = base64;
-                  } catch (error) {
-                    Dialogs.$error((error as any).message);
-                  }
-                }
-              },
-              () => h(
-                VIcon,
-                {},
-                () => 'mdi-upload'
-              ),
-            ),
-            ...(this.modelValue.value ? [
-              h(
-                VBtn,
-                {
-                  color: 'error',
-                  class: ['ml-4'],
-                  onClick: async () => {
-                    this.modelValue.value = null;
-                  }
-                },
-                () => h(
-                  VIcon,
-                  {},
-                  () => 'mdi-delete'
-                )
-              ),
-              h(
-                VBtn,
-                {
-                  color: 'success',
-                  class: ['ml-4'],
-                  onClick: () => {
-                    this.showFullscreen(this.modelValue.value);
-                  }
-                },
-                () => h(
-                  VIcon,
-                  {},
-                  () => 'mdi-eye'
-                )
-              )
-            ] : [])
-          ]
-        )
-      ]
-    );
+    return buildImageWidget(this.richWidgetContext());
   }
 
   private showFullscreen (data: string) {
