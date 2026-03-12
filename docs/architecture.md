@@ -214,7 +214,7 @@ Responsibilities:
 - Render title, subtitle, body, and button zones
 - Host one or more `Part` trees
 - Provide validation across child parts
-- Trigger save and cancel flows
+- Trigger save, previous-step, and cancel flows
 - Load user-defined fields (UDFs)
 - Respect access and readonly behavior
 
@@ -231,10 +231,22 @@ Responsibilities:
 - Create forms on demand
 - Load the current object through `Master`
 - Coordinate multi-form navigation
+- Keep previous-step navigation separate from true cancellation
 - Provide print/export actions
 - Emit lifecycle events such as `loaded`, `saved`, and `finished`
 
 Reports are the main screen-level abstraction for CRUD-style work.
+
+### Multi-step action model
+
+In the current report design:
+
+- `Cancel` exits the report
+- `Prev` moves back one step when a previous form exists
+- `Next` advances to the next step
+- `Save` or `Finish` completes the final step
+
+`Report` can also require confirmation before exit by setting `confirmOnCancel: true`.
 
 ## `Menu`
 
@@ -447,6 +459,7 @@ The project ships:
 - Shared facade under `src/api`
 - axios backend under `src/axios-api`
 - Feathers backend under `src/feathers-api`
+- manual playground under `test/`
 - ESM output under `lib/esm`
 - CJS output under `lib/cjs`
 - shared CSS copied into both output trees
@@ -475,7 +488,7 @@ The package root re-exports:
 - Lifecycle and event wiring are more manual than idiomatic Composition API Vue
 - The architecture is opinionated around Feathers + Keycloak-backed business apps
 - Static coordinators (`AppManager`, `Dialogs`) simplify usage but increase global coupling
-- The project currently does not include a real test suite
+- The project currently does not include an automated test suite, but it does include a manual `test/` playground for UI verification
 
 ## Good Fit
 

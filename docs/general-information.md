@@ -28,6 +28,10 @@ src/
 lib/
   cjs/         CommonJS build output
   esm/         ES module build output
+
+test/
+  src/         Manual Vue + Vuetify playground
+  README.md    Playground usage notes
 ```
 
 ## Main Public Modules
@@ -168,6 +172,12 @@ Mode affects:
 - save flow
 - access checks
 - collection/report workflow behavior
+
+For multi-step reports, mode now works alongside separate navigation actions:
+
+- `cancelButton` remains a true cancel/exit action
+- `prevButton` is used for previous-step navigation
+- `confirmOnCancel` can require a confirmation dialog before exit
 
 ## 4. `setup` and `on` are common extension points
 
@@ -327,6 +337,13 @@ This makes the library powerful, but these files deserve extra care when refacto
 ## Testing Status
 
 The repository currently has no implemented automated test suite. The `test` script is still a placeholder.
+
+The repository does now include a manual playground under `test/` for interactive verification of:
+
+- reports and multi-step form flows
+- selectors and triggers
+- collections and dialog forms
+- field rendering and master synchronization
 
 For future maintenance, the highest-value tests would likely cover:
 

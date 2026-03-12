@@ -449,9 +449,9 @@ export class Trigger extends UIBase {
           return [
             ...this.buildSearchBar(),
             ...(this.searchFieldItems.value.length > 0 ? this.buildFilterBar() : []),
-            ...(top.map((instance) => this.$h(instance))),
+            ...(top.map((instance) => this.$h(instance.component))),
             ...this.buildResultTable(),
-            ...(bot.map((instance) => this.$h(instance))),
+            ...(bot.map((instance) => this.$h(instance.component))),
           ]
         }
       )

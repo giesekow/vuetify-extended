@@ -30,6 +30,7 @@ It is less focused on template-heavy, animation-heavy, or design-system-first fr
 - [docs/README.md](./docs/README.md)
 - [docs/architecture.md](./docs/architecture.md)
 - [docs/general-information.md](./docs/general-information.md)
+- [test/README.md](./test/README.md)
 
 ## Installation
 
@@ -277,6 +278,26 @@ const Root = defineComponent({
 
 createApp(Root).use(createVuetify()).mount('#app')
 ```
+
+## Manual Playground
+
+This repository also includes a manual Vue 3 + Vuetify playground under [`test/`](./test/).
+
+It exercises the main UI primitives in a running app, including:
+
+- `AppMain`
+- `Menu`
+- `Report`
+- `Form`
+- `Part`
+- `Field`
+- `Selector`
+- `Trigger`
+- `DialogForm`
+- `Collection`
+- shared `Dialogs`
+
+The playground uses a local in-memory API adapter, so report, selector, trigger, and collection flows can be tested without a live backend.
 
 ## Your First Report
 
@@ -534,6 +555,8 @@ You can nest parts to build more complex layouts.
 - delegating save to `Master`
 - collecting child refs
 
+`Form` also supports a dedicated `prevButton` action. This is primarily used by multi-step reports so previous-step navigation does not replace true cancel behavior.
+
 Useful hooks:
 
 - `validate`
@@ -588,6 +611,23 @@ Useful hooks:
 - `beforeExport`
 - `exportTemplate`
 - `loaded`
+
+In multi-step reports, the default action model is now:
+
+- `Cancel` exits the report
+- `Prev` moves to the previous form when one exists
+- `Next` advances to the next form
+- `Save` or `Finish` completes the last step
+
+If you want a confirmation prompt before exit, set `confirmOnCancel: true`:
+
+```ts
+const report = $RP({
+  title: 'Person',
+  mode: 'edit',
+  confirmOnCancel: true,
+})
+```
 
 ## Menus
 

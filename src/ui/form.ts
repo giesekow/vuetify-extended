@@ -22,6 +22,7 @@ export interface FormParams {
   hideMode?: boolean;
   saveButton?: ButtonParams,
   cancelButton?: ButtonParams,
+  prevButton?: ButtonParams,
   showSaveInReadonly?: boolean;
   elevation?: number;
   maxWidth?: number|string|undefined;
@@ -422,6 +423,15 @@ export class Form extends UIBase {
   }
 
   private buildDefaultButtons(): Button[] {
+    const prevButtons = this.params.value.prevButton ? [
+      new Button(
+        {text: 'Prev', color: 'secondary', ...(this.params.value.prevButton || {})},
+        {
+          onClicked: () => this.onPrevClicked()
+        }
+      )
+    ] : [];
+
     if (!this.hasAccess.value) {
       return [
         new Button(
@@ -429,7 +439,8 @@ export class Form extends UIBase {
           {
             onClicked: () => this.onCancelClicked()
           }
-        ),  
+        ),
+        ...prevButtons,
       ]
     }
 
@@ -440,7 +451,8 @@ export class Form extends UIBase {
           {
             onClicked: () => this.onCancelClicked()
           }
-        )
+        ),
+        ...prevButtons,
       ]
     }
 
@@ -451,6 +463,7 @@ export class Form extends UIBase {
           onClicked: () => this.onCancelClicked()
         }
       ),
+      ...prevButtons,
       new Button(
         {text: 'Save', color: 'success', ...(this.params.value.saveButton || {})},
         {
@@ -466,6 +479,10 @@ export class Form extends UIBase {
 
   async $cancel() {
     await this.onCancelClicked();
+  }
+
+  async $prev() {
+    await this.onPrevClicked();
   }
 
   private async onSaveClicked(){
@@ -563,6 +580,11 @@ export class Form extends UIBase {
     }
 
     this.handleOn('cancel', this);
+  }
+
+  private async onPrevClicked(){
+    this.handleOn('before-prev', this);
+    this.handleOn('prev', this);
   }
 
   private handleOn(event: string, data?: any) {

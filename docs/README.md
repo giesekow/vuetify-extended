@@ -10,11 +10,15 @@ This folder collects project-level documentation for `vuetify-extended`.
 - [General Information](./general-information.md)
   A practical reference covering modules, exported factories, conventions, build outputs, and maintenance notes.
 
+- [Test App](../test/README.md)
+  A manual Vue 3 + Vuetify playground for exercising the library in a running app.
+
 ## Recommended Reading Order
 
 1. Start with the root [`README.md`](../README.md) for setup and everyday usage.
 2. Read [Architecture](./architecture.md) to understand how the library is organized internally.
 3. Use [General Information](./general-information.md) as a quick reference while extending the library.
+4. Use [Test App](../test/README.md) when you want to manually verify UI workflows.
 
 ## Scope
 

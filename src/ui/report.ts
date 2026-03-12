@@ -16,6 +16,7 @@ export interface ReportParams {
   objectId?: any;
   selected?: any;
   title?: string;
+  confirmOnCancel?: boolean;
   hideMode?: boolean;
   cancelButton?: ButtonParams;
   nextButton?: ButtonParams;
@@ -347,6 +348,11 @@ export class Report extends UIBase {
         }
 
         if (this.params.value.setActionButtons || this.params.value.setActionButtons === undefined) {
+          newForm.$params.cancelButton = this.params.value.cancelButton ? {
+            ...this.params.value.cancelButton,
+            ...(newForm.$params.cancelButton || {}),
+          } : newForm.$params.cancelButton;
+
           if (this.hasNext) {
             newForm.$params.saveButton = {
               ...(this.params.value.nextButton || {text: 'Next'}),
@@ -368,10 +374,12 @@ export class Report extends UIBase {
           }
 
           if (this.hasPrev) {
-            newForm.$params.cancelButton = {
+            newForm.$params.prevButton = {
               ...(this.params.value.prevButton || {text: 'Prev'}),
-              ...(newForm.$params.cancelButton || {}),
+              ...(newForm.$params.prevButton || {}),
             }
+          } else {
+            newForm.$params.prevButton = undefined;
           }
         }
 
@@ -384,6 +392,7 @@ export class Report extends UIBase {
         this.currentIndex.value = index;
         this.currentForm.clearListeners(this.$id);
         this.currentForm.on('saved', () => this.save(), this.$id);
+        this.currentForm.on('prev', () => this.onprev(), this.$id);
         this.currentForm.on('cancel', () => this.oncancel(), this.$id);
         this.currentForm.attachEventListeners();
       }
@@ -557,13 +566,23 @@ export class Report extends UIBase {
   }
 
   private async oncancel() {
+    if (this.params.value.confirmOnCancel) {
+      const accepted = await Dialogs.$confirm('Cancel this report?');
+      if (!accepted) {
+        return;
+      }
+    }
+
+    await sleep(50);
+    this.handleOn('cancel', this);
+  }
+
+  private async onprev() {
     const props = this.lastProps;
     const context = this.lastContext;
     await sleep(50);
     if (this.hasPrev) {
       await this.prepareForm(props, context, this.currentIndex.value - 1);
-    } else {
-      this.handleOn('cancel', this);
     }
   }
 
