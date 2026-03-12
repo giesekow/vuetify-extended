@@ -98,7 +98,9 @@ export class Trigger extends UIBase {
   private loading: Ref<boolean> = this.$makeRef(false);
   private hasPrintAccess: Ref<boolean>;
   private hasExportAccess: Ref<boolean>;
-  private static defaultParams: TriggerParams = {};
+  private static defaultParams: TriggerParams = {
+    fluid: true,
+  };
 
   constructor(params?: TriggerParams, options?: TriggerOptions) {
     super();
@@ -348,7 +350,7 @@ export class Trigger extends UIBase {
     return h(
       VContainer,
       {
-        fluid: this.params.value.fluid,
+        fluid: this.params.value.fluid !== false,
         class: ['fill-height'],
       },
       () => h(
@@ -359,8 +361,10 @@ export class Trigger extends UIBase {
         () => h(
           VRow,
           {
+            class: ['fill-height'],
+            align: this.outerAlign(),
             alignContent: this.params.value.verticalAlign,
-            justify: "center"
+            justify: this.outerJustify(),
           },
           () => h(
             VCol,
@@ -374,6 +378,7 @@ export class Trigger extends UIBase {
                 maxWidth: this.params.value.maxWidth,
                 width: this.params.value.width,
                 minWidth: this.params.value.minWidth,
+                style: this.cardStyle(),
                 elevation: this.params.value.elevation,
                 class: (this.params.value.horizontalAlign || "center") === "center" ? ['mx-auto'] : []
               },
@@ -391,6 +396,25 @@ export class Trigger extends UIBase {
         )
       )
     )
+  }
+
+  private outerAlign(): NonNullable<TriggerParams['align']> {
+    if (this.params.value.verticalAlign === 'start') return 'start';
+    if (this.params.value.verticalAlign === 'end') return 'end';
+    if (this.params.value.verticalAlign === 'stretch') return 'stretch';
+    return 'center';
+  }
+
+  private outerJustify(): NonNullable<TriggerParams['justify']> {
+    if (this.params.value.horizontalAlign === 'left') return 'start';
+    if (this.params.value.horizontalAlign === 'right') return 'end';
+    return 'center';
+  }
+
+  private cardStyle() {
+    return {
+      maxWidth: '100%',
+    };
   }
 
   private buildTitle(props: any, context: any) {
@@ -537,31 +561,38 @@ export class Trigger extends UIBase {
     const h = this.$h;
     return [
       h(
-        VDataTableServer,
+        VCol,
         {
-          headers: this.computedHeaders.value,
-          items: this.items.value,
-          modelValue: this.selected.value,
-          showSelect: true,
-          hideNoData: false,
-          noDataText: this.currentSearchText || (this.selectedSearchFields.value || []).length > 0
-            ? 'No matching records found. Try a different search.'
-            : 'Enter a search term and press Enter to load results.',
-          itemValue: this.params.value.idField || "_id",
-          loading: this.loading.value,
-          itemsPerPage: this.tableOptions.value.itemsPerPage,
-          page: this.tableOptions.value.page,
-          returnObject: true,
-          itemsLength: this.tableOptions.value.total || 0,
-          density: 'compact',
-          height: this.params.value.tableHeight || 300,
-          fixedHeader: true,
-          fixedFooter: true,
-          hover: true,
-          "onUpdate:options": (options: any) => this.onTableOptionsChanged(options),
-          "onClick:row": (ev: any, item: any) => this.onTableItemClicked(item),
-          "onUpdate:modelValue": (options: any) => this.onSelectionChanged(options)
-        }
+          cols: 12,
+          class: ['pt-0']
+        },
+        () => h(
+          VDataTableServer,
+          {
+            headers: this.computedHeaders.value,
+            items: this.items.value,
+            modelValue: this.selected.value,
+            showSelect: true,
+            hideNoData: false,
+            noDataText: this.currentSearchText || (this.selectedSearchFields.value || []).length > 0
+              ? 'No matching records found. Try a different search.'
+              : 'Enter a search term and press Enter to load results.',
+            itemValue: this.params.value.idField || "_id",
+            loading: this.loading.value,
+            itemsPerPage: this.tableOptions.value.itemsPerPage,
+            page: this.tableOptions.value.page,
+            returnObject: true,
+            itemsLength: this.tableOptions.value.total || 0,
+            density: 'compact',
+            height: this.params.value.tableHeight || 300,
+            fixedHeader: true,
+            fixedFooter: true,
+            hover: true,
+            "onUpdate:options": (options: any) => this.onTableOptionsChanged(options),
+            "onClick:row": (ev: any, item: any) => this.onTableItemClicked(item),
+            "onUpdate:modelValue": (options: any) => this.onSelectionChanged(options)
+          }
+        )
       )
     ]
   }

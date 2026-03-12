@@ -38,6 +38,8 @@ export class AppMain extends UIBase {
   private selectorCount: Ref<number>;
   private dialogs: Array<DialogForm>;
   private dialogCount: Ref<number>;
+  private selectorFocusTargets: Map<symbol, HTMLElement>;
+  private dialogFocusTargets: Map<symbol, HTMLElement>;
   private static defaultParams: AppParams = {};
 
   constructor(params?: AppParams, options?: AppOptions) {
@@ -51,6 +53,8 @@ export class AppMain extends UIBase {
     this.dialogCount = this.$makeRef(0);
     this.selectors = [];
     this.dialogs = [];
+    this.selectorFocusTargets = new Map();
+    this.dialogFocusTargets = new Map();
   }
 
   static setDefault(value: AppParams, reset?: boolean): void {
@@ -263,6 +267,10 @@ export class AppMain extends UIBase {
   }
 
   async $showSelector(selector: Selector, params?: any) {
+    const target = this.captureActiveElement();
+    if (target) {
+      this.selectorFocusTargets.set(selector.$id, target);
+    }
     this.selectors.push(selector)
     this.selectorCount.value = this.selectors.length;
     await sleep(100);
@@ -272,6 +280,10 @@ export class AppMain extends UIBase {
   }
 
   async $showDialog(dialog: DialogForm, params?: any) {
+    const target = this.captureActiveElement();
+    if (target) {
+      this.dialogFocusTargets.set(dialog.$id, target);
+    }
     this.dialogs.push(dialog)
     this.dialogCount.value = this.dialogs.length;
     await sleep(100);
@@ -326,6 +338,8 @@ export class AppMain extends UIBase {
         this.selectors.splice(index, 1);
         ui.clearListeners(this.$id);
         this.selectorCount.value = this.selectors.length;
+        await this.restoreFocus(this.selectorFocusTargets.get(ui.$id));
+        this.selectorFocusTargets.delete(ui.$id);
       }
     }
   }
@@ -338,7 +352,32 @@ export class AppMain extends UIBase {
         this.dialogs.splice(index, 1);
         ui.clearListeners(this.$id);
         this.dialogCount.value = this.dialogs.length;
+        await this.restoreFocus(this.dialogFocusTargets.get(ui.$id));
+        this.dialogFocusTargets.delete(ui.$id);
       }
+    }
+  }
+
+  private captureActiveElement(): HTMLElement|undefined {
+    if (typeof document === 'undefined' || typeof HTMLElement === 'undefined') {
+      return undefined;
+    }
+
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && active !== document.body) {
+      return active;
+    }
+    return undefined;
+  }
+
+  private async restoreFocus(target?: HTMLElement) {
+    if (!target) {
+      return;
+    }
+
+    await sleep(50);
+    if (target.isConnected && typeof target.focus === 'function') {
+      target.focus();
     }
   }
 

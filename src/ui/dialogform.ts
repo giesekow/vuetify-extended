@@ -120,7 +120,13 @@ export class DialogForm extends UIBase {
         width: "auto",
         fullscreen: this.params.value.fullscreen,
       },
-      () => this.buildBody(props, context)
+      () => h(
+        'div',
+        {
+          onKeydown: (ev: KeyboardEvent) => this.onDialogKeydown(ev)
+        },
+        () => this.buildBody(props, context)
+      )
     );
   }
 
@@ -284,6 +290,13 @@ export class DialogForm extends UIBase {
     }
 
     this.handleOn('cancel', this);
+  }
+
+  private onDialogKeydown(ev: KeyboardEvent) {
+    if (ev.key === 'Escape' && this.dialog.value) {
+      ev.preventDefault();
+      this.onCancelClicked();
+    }
   }
 
   private async onSaved(){

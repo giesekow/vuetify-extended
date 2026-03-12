@@ -293,7 +293,8 @@ export class Selector extends UIBase {
             items: this.items.value,
             itemTitle: this.params.value.textField || "name",
             itemValue: this.params.value.idField || "_id",
-            returnObject: this.params.value.returnObject
+            returnObject: this.params.value.returnObject,
+            onKeyup: (ev: KeyboardEvent) => this.onSelectorKeyup(ev),
           },
         )
       )
@@ -412,6 +413,19 @@ export class Selector extends UIBase {
       this.selected(item, this.params.value.mode);
     }
     this.handleOn('selected', item);
+  }
+
+  private onSelectorKeyup(ev: KeyboardEvent) {
+    if ((ev.key === 'Enter' || ev.key === 'Return') && this.storage.value) {
+      ev.preventDefault();
+      this.onSelectItem();
+      return;
+    }
+
+    if (ev.key === 'Escape' && this.dialog.value) {
+      ev.preventDefault();
+      this.onCancelClicked();
+    }
   }
 
   private async onCancelClicked(){

@@ -334,7 +334,6 @@ function buildFullReport(params?: { objectId?: string; mode?: 'create' | 'edit' 
       title: params?.title || 'Person Workspace',
       objectType: 'people',
       objectId: params?.objectId,
-      confirmOnCancel: true,
       forms: 3,
       mode: params?.mode || 'edit',
       horizontalAlign: 'center',
@@ -366,7 +365,6 @@ function buildCompactReport() {
     {
       title: 'Collection Editor',
       objectType: 'people',
-      confirmOnCancel: true,
       forms: 1,
       mode: 'edit',
       horizontalAlign: 'center',
@@ -514,7 +512,7 @@ function buildCollectionDemo() {
       mode: 'edit',
     },
     {
-      //trigger: async () => buildTriggerDemo(),
+      trigger: async () => buildTriggerDemo(),
       selector: async () => buildSelectorDemo(),
       report: async () => buildCompactReport(),
     },
