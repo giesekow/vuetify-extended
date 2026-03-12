@@ -42,11 +42,20 @@ export class Part extends UIBase {
   private options: PartOptions;
   private childrenInstances: Array<Part|Field> = [];
   private cnt = 0;
+  private static defaultParams: PartParams = {};
   constructor(params?: PartParams, options?: PartOptions) {
     super();
-    this.params = this.$makeRef(params || {});
+    this.params = this.$makeRef({...Part.defaultParams, ...(params || {})});
     this.options = options || {};
     if (options?.master) this.setMaster(options?.master);
+  }
+
+  static setDefault(value: PartParams, reset?: boolean): void {
+    if (reset) {
+      Part.defaultParams = value;
+    } else {
+      Part.defaultParams = {...Part.defaultParams, ...value};
+    }
   }
 
   get $refs(): Refs {

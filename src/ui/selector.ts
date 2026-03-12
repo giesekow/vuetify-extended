@@ -52,16 +52,25 @@ export class Selector extends UIBase {
   private dialog: Ref<boolean>;
   private loading: Ref<boolean>;
   private loaded = false;
+  private static defaultParams: SelectorParams = {};
 
   constructor(params?: SelectorParams, options?: SelectorOptions) {
     super();
-    this.params = this.$makeRef(params || {});
+    this.params = this.$makeRef({...Selector.defaultParams, ...(params || {})});
     this.options = options || {};
     this.hasAccess = this.$makeRef(true);
     this.items = this.$makeRef([]);
     this.storage = this.$makeRef();
     this.dialog = this.$makeRef(false);
     this.loading = this.$makeRef(false);
+  }
+
+  static setDefault(value: SelectorParams, reset?: boolean): void {
+    if (reset) {
+      Selector.defaultParams = value;
+    } else {
+      Selector.defaultParams = {...Selector.defaultParams, ...value};
+    }
   }
 
   get $ref() {

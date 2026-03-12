@@ -37,12 +37,21 @@ export interface ButtonOptions {
 export class Button extends UIBase {
   private params: Ref<ButtonParams>;
   private options: ButtonOptions;
+  private static defaultParams: ButtonParams = {};
 
   constructor(params?: ButtonParams, options?: ButtonOptions) {
     super();
-    this.params = this.$makeRef(params || {});
+    this.params = this.$makeRef({...Button.defaultParams, ...(params || {})});
     this.options = options || {};
     if (options?.master) this.setMaster(options?.master);
+  }
+
+  static setDefault(value: ButtonParams, reset?: boolean): void {
+    if (reset) {
+      Button.defaultParams = value;
+    } else {
+      Button.defaultParams = {...Button.defaultParams, ...value};
+    }
   }
 
   get $ref() {

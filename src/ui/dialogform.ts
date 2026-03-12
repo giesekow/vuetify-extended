@@ -34,10 +34,11 @@ export class DialogForm extends UIBase {
   private loaded = false;
   private loading: Ref<boolean>;
   private currentForm: Form|undefined;
+  private static defaultParams: DialogParams = {};
 
   constructor(params?: DialogParams, options?: DialogFormOptions) {
     super();
-    this.params = this.$makeRef(params || {});
+    this.params = this.$makeRef({...DialogForm.defaultParams, ...(params || {})});
     this.options = options || {};
     this.hasAccess = this.$makeRef(true);
     this.dialog = this.$makeRef(false);
@@ -47,6 +48,14 @@ export class DialogForm extends UIBase {
       this.setMaster(options?.master);
     } else {
       this.setMaster(new Master({type: this.params.value.objectType, id: this.params.value.objectId}));
+    }
+  }
+
+  static setDefault(value: DialogParams, reset?: boolean): void {
+    if (reset) {
+      DialogForm.defaultParams = value;
+    } else {
+      DialogForm.defaultParams = {...DialogForm.defaultParams, ...value};
     }
   }
 

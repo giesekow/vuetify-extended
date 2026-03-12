@@ -38,10 +38,11 @@ export class AppMain extends UIBase {
   private selectorCount: Ref<number>;
   private dialogs: Array<DialogForm>;
   private dialogCount: Ref<number>;
+  private static defaultParams: AppParams = {};
 
   constructor(params?: AppParams, options?: AppOptions) {
     super();
-    this.params = this.$makeRef(params || {});
+    this.params = this.$makeRef({...AppMain.defaultParams, ...(params || {})});
     this.options = options || {};
     this.stack = [];
     this.loaded = this.$makeRef(false);
@@ -50,6 +51,14 @@ export class AppMain extends UIBase {
     this.dialogCount = this.$makeRef(0);
     this.selectors = [];
     this.dialogs = [];
+  }
+
+  static setDefault(value: AppParams, reset?: boolean): void {
+    if (reset) {
+      AppMain.defaultParams = value;
+    } else {
+      AppMain.defaultParams = {...AppMain.defaultParams, ...value};
+    }
   }
 
   get $ref() {

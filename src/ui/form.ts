@@ -1,4 +1,4 @@
-import { VNode, Ref } from "vue";
+import { VNode, Ref, nextTick } from "vue";
 import { ReportMode, UIBase } from "./base";
 import { VDivider, VRow, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VForm, VCardSubtitle } from 'vuetify/components';
 import { Master } from "../master";
@@ -73,15 +73,26 @@ export class Form extends UIBase {
   private udfData: Array<any> = [];
   private formRef?: Ref<InstanceType<typeof VForm> | null>;
   private udfLoaded: Ref<boolean>;
+  private validationSummary: Ref<string[]>;
   private listenersAttached = false;
+  private static defaultParams: FormParams = {};
 
   constructor(params?: FormParams, options?: FormOptions) {
     super();
-    this.params = this.$makeRef(params || {});
+    this.params = this.$makeRef({...Form.defaultParams, ...(params || {})});
     this.options = options || {};
     if (options?.master) this.setMaster(options?.master);
     this.hasAccess = this.$makeRef(true);
     this.udfLoaded = this.$makeRef(false);
+    this.validationSummary = this.$makeRef([]);
+  }
+
+  static setDefault(value: FormParams, reset?: boolean): void {
+    if (reset) {
+      Form.defaultParams = value;
+    } else {
+      Form.defaultParams = {...Form.defaultParams, ...value};
+    }
   }
 
   get $prefs(): PRefs {
@@ -287,36 +298,76 @@ export class Form extends UIBase {
         {
           ref: this.formRef
         },
-        () => h(
-          VRow,
-          {
-            justify: this.params.value.justify,
-            align: this.params.value.align,
-            dense: this.params.value.dense,
-            alignContent: this.params.value.alignContent,
-          },
-          () => {
-            const top = this.options.topChildren ? this.options.topChildren(props, context) : this.topChildren(props, context);
-            const ch = this.options.children ? this.options.children(props, context) : this.children(props, context);
-            const bot = this.options.bottomChildren ? this.options.bottomChildren(props, context) : this.bottomChildren(props, context);
-  
-            if (this.udfLoaded.value) {
-              const pr = this.prepareBeforeUDFs();
-              const pt = this.prepareAfterUDFs();
-              this.childrenInstances = top.concat(pr).concat(ch).concat(pt).concat(bot);
-            } else {
-              this.childrenInstances = top.concat(ch).concat(bot);
-            }
+        () => [
+          this.buildValidationSummary(),
+          h(
+            VRow,
+            {
+              justify: this.params.value.justify,
+              align: this.params.value.align,
+              dense: this.params.value.dense,
+              alignContent: this.params.value.alignContent,
+            },
+            () => {
+              const top = this.options.topChildren ? this.options.topChildren(props, context) : this.topChildren(props, context);
+              const ch = this.options.children ? this.options.children(props, context) : this.children(props, context);
+              const bot = this.options.bottomChildren ? this.options.bottomChildren(props, context) : this.bottomChildren(props, context);
+    
+              if (this.udfLoaded.value) {
+                const pr = this.prepareBeforeUDFs();
+                const pt = this.prepareAfterUDFs();
+                this.childrenInstances = top.concat(pr).concat(ch).concat(pt).concat(bot);
+              } else {
+                this.childrenInstances = top.concat(ch).concat(bot);
+              }
 
-            this.childrenInstances.forEach((instance) => {
-              instance.setParent(this);
-            });
-  
-            return this.childrenInstances.map((instanace) => this.$h(instanace.component));
-          }
-        )
+              this.childrenInstances.forEach((instance) => {
+                instance.setParent(this);
+              });
+    
+              return this.childrenInstances.map((instanace) => this.$h(instanace.component));
+            }
+          )
+        ]
       )
     )
+  }
+
+  private buildValidationSummary() {
+    const h = this.$h;
+    if ((this.validationSummary.value || []).length === 0) {
+      return undefined;
+    }
+
+    return h(
+      'div',
+      {
+        class: ['mb-4', 'pa-4', 'rounded'],
+        style: {
+          border: '1px solid rgb(var(--v-theme-error))',
+          background: 'rgba(var(--v-theme-error), 0.08)'
+        }
+      },
+      [
+        h(
+          'div',
+          {
+            class: ['text-subtitle-2', 'mb-2'],
+            style: {
+              color: 'rgb(var(--v-theme-error))'
+            }
+          },
+          'Please review the following before saving:'
+        ),
+        h(
+          'ul',
+          {
+            class: ['pl-5', 'my-0']
+          },
+          this.validationSummary.value.map((message) => h('li', { class: ['mb-1'] }, message))
+        )
+      ]
+    );
   }
 
   private async loadUDFData() {
@@ -488,13 +539,16 @@ export class Form extends UIBase {
   private async onSaveClicked(){
 
     if (this.$readonly) {
+      this.clearValidationSummary();
       this.handleOn('saved', this);
       return;
     }
 
     const res = await this.formRef?.value?.validate();
     if (!res?.valid) {
-      Dialogs.$error('Validation failed check entered data!');
+      this.setValidationSummary();
+      await nextTick();
+      await this.formRef?.value?.validate();
       return;
     }
     let canProceed = true;
@@ -502,18 +556,14 @@ export class Form extends UIBase {
 
     const vres = await this.validate();
     
-    if (typeof vres === 'string') {
-      Dialogs.$error(vres);
-    }
-
     canProceed = typeof vres !== 'string';
+    this.setValidationSummary(typeof vres === 'string' ? [vres] : []);
 
     this.handleOn('validate', this);
 
     if (canProceed) {
+      this.clearValidationSummary();
       await this.save();
-    } else {
-      Dialogs.$error( typeof vres === 'string' ? vres : 'Validation failed check entered data!');
     }
   }
 
@@ -585,6 +635,58 @@ export class Form extends UIBase {
   private async onPrevClicked(){
     this.handleOn('before-prev', this);
     this.handleOn('prev', this);
+  }
+
+  private setValidationSummary(messages: string[] = []) {
+    const combined = messages.concat(this.collectRequiredFieldSummary());
+    const unique = combined.filter((message, index) => message && combined.indexOf(message) === index);
+    this.validationSummary.value = unique;
+  }
+
+  private clearValidationSummary() {
+    this.validationSummary.value = [];
+  }
+
+  private collectRequiredFieldSummary(): string[] {
+    const fields = this.collectFields(this.childrenInstances);
+    const messages: string[] = [];
+
+    for (const field of fields) {
+      if (field.$params.invisible || !field.$params.required || !field.$params.storage) {
+        continue;
+      }
+
+      const value = field.$master?.$get(field.$params.storage);
+      if (this.isEmptyValue(value)) {
+        messages.push(`${field.$params.label || field.$params.storage} is required.`);
+      }
+    }
+
+    return messages;
+  }
+
+  private collectFields(items: Array<Part|Field>): Field[] {
+    const fields: Field[] = [];
+
+    for (const item of items) {
+      if (item instanceof Field) {
+        fields.push(item);
+        continue;
+      }
+
+      const children = ((item as any).childrenInstances || []) as Array<Part|Field>;
+      fields.push(...this.collectFields(children));
+    }
+
+    return fields;
+  }
+
+  private isEmptyValue(value: any): boolean {
+    if (value === undefined || value === null) return true;
+    if (typeof value === 'string') return value.trim() === '';
+    if (Array.isArray(value)) return value.length === 0;
+    if (typeof value === 'object') return Object.keys(value).length === 0;
+    return false;
   }
 
   private handleOn(event: string, data?: any) {

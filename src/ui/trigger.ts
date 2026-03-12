@@ -98,10 +98,11 @@ export class Trigger extends UIBase {
   private loading: Ref<boolean> = this.$makeRef(false);
   private hasPrintAccess: Ref<boolean>;
   private hasExportAccess: Ref<boolean>;
+  private static defaultParams: TriggerParams = {};
 
   constructor(params?: TriggerParams, options?: TriggerOptions) {
     super();
-    this.params = this.$makeRef(params || {});
+    this.params = this.$makeRef({...Trigger.defaultParams, ...(params || {})});
     this.options = options || {};
     this.hasAccess = this.$makeRef(true);
     this.items = this.$makeRef([]);
@@ -117,6 +118,14 @@ export class Trigger extends UIBase {
 
     this.hasPrintAccess = this.$makeRef(true);
     this.hasExportAccess = this.$makeRef(true);
+  }
+
+  static setDefault(value: TriggerParams, reset?: boolean): void {
+    if (reset) {
+      Trigger.defaultParams = value;
+    } else {
+      Trigger.defaultParams = {...Trigger.defaultParams, ...value};
+    }
   }
 
   get $refs(): Refs {

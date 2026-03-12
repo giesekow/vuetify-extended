@@ -11,6 +11,8 @@ import { OnHandler } from "./lib";
 import { PRefs } from "./part";
 import { Refs } from "./field";
 
+export type ReportButtonStyle = 'text'|'outlined'|'elevated';
+
 export interface ReportParams {
   objectType?: any;
   objectId?: any;
@@ -19,9 +21,13 @@ export interface ReportParams {
   confirmOnCancel?: boolean;
   hideMode?: boolean;
   cancelButton?: ButtonParams;
+  cancelButtonStyle?: ReportButtonStyle;
   nextButton?: ButtonParams;
+  nextButtonStyle?: ReportButtonStyle;
   prevButton?: ButtonParams;
+  prevButtonStyle?: ReportButtonStyle;
   finishButton?: ButtonParams;
+  finishButtonStyle?: ReportButtonStyle;
   multiple?: boolean;
   setActionButtons?: boolean;
   forms?: number;
@@ -84,10 +90,11 @@ export class Report extends UIBase {
   private lastProps: any;
   private lastContext: any;
   private cleanSnapshot: string;
+  private static defaultParams: ReportParams = {};
 
   constructor(params?: ReportParams, options?: ReportOptions) {
     super();
-    this.params = this.$makeRef(params || {});
+    this.params = this.$makeRef({...Report.defaultParams, ...(params || {})});
     this.options = options || {};
 
     if (options?.master) {
@@ -104,6 +111,14 @@ export class Report extends UIBase {
     this.lastProps = null;
     this.lastContext = null;
     this.cleanSnapshot = this.snapshotMasterData();
+  }
+
+  static setDefault(value: ReportParams, reset?: boolean): void {
+    if (reset) {
+      Report.defaultParams = value;
+    } else {
+      Report.defaultParams = {...Report.defaultParams, ...value};
+    }
   }
 
   get $parentReport(): Report|undefined {
@@ -352,26 +367,47 @@ export class Report extends UIBase {
         this.applyStepSubtitle(newForm, index);
 
         if (this.params.value.setActionButtons || this.params.value.setActionButtons === undefined) {
-          newForm.$params.cancelButton = this.params.value.cancelButton ? {
-            ...this.params.value.cancelButton,
+          newForm.$params.cancelButton = {
+            text: 'Cancel',
+            color: 'warning',
+            variant: this.params.value.cancelButtonStyle || 'text',
+            ...(this.params.value.cancelButton || {}),
             ...(newForm.$params.cancelButton || {}),
-          } : newForm.$params.cancelButton;
+          };
 
           if (this.hasNext) {
             newForm.$params.saveButton = {
-              ...(this.params.value.nextButton || {text: 'Next'}),
+              text: 'Next',
+              color: 'primary',
+              variant: this.params.value.nextButtonStyle || 'elevated',
+              ...(this.params.value.nextButton || {}),
               ...(newForm.$params.saveButton || {}),
             }
-          } else if (index > 0) {
+          } else {
             newForm.$params.showSaveInReadonly = true;
+
+            const finalAction: ButtonParams = this.params.value.mode === 'display'
+              ? {
+                  text: 'Finish',
+                  color: 'primary',
+                  variant: this.params.value.finishButtonStyle || 'elevated',
+                }
+              : {
+                  text: 'Save',
+                  color: 'primary',
+                  variant: this.params.value.finishButtonStyle || 'elevated',
+                };
+
             if (this.params.value.mode === 'display') {
               newForm.$params.saveButton = {
-                ...(this.params.value.finishButton || {text: 'Finish'}),
+                ...finalAction,
+                ...(this.params.value.finishButton || {}),
                 ...(newForm.$params.saveButton || {}),
               }
-            } else if (this.params.value.finishButton) {
+            } else {
               newForm.$params.saveButton = {
-                ...(this.params.value.finishButton || {text: 'Save'}),
+                ...finalAction,
+                ...(this.params.value.finishButton || {}),
                 ...(newForm.$params.saveButton || {}),
               }
             }
@@ -379,7 +415,10 @@ export class Report extends UIBase {
 
           if (this.hasPrev) {
             newForm.$params.prevButton = {
-              ...(this.params.value.prevButton || {text: 'Prev'}),
+              text: 'Prev',
+              color: 'secondary',
+              variant: this.params.value.prevButtonStyle || 'outlined',
+              ...(this.params.value.prevButton || {}),
               ...(newForm.$params.prevButton || {}),
             }
           } else {
@@ -501,7 +540,7 @@ export class Report extends UIBase {
   private buildDefaultButtons(): Button[] {
     return [
       new Button(
-        {text: 'Cancel', color: 'secondary', ...(this.params.value.cancelButton || {})},
+        {text: 'Cancel', color: 'warning', variant: this.params.value.cancelButtonStyle || 'text', ...(this.params.value.cancelButton || {})},
         {
           onClicked: () => this.oncancel()
         }

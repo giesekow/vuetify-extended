@@ -45,12 +45,21 @@ export class Menu extends UIBase {
   private options: MenuOptions;
   private childrenInstances: Array<MenuItem> = [];
   private loaded: Ref<boolean>;
+  private static defaultParams: MenuParams = {};
 
   constructor(params?: MenuParams, options?: MenuOptions) {
     super();
-    this.params = this.$makeRef(params || {});
+    this.params = this.$makeRef({...Menu.defaultParams, ...(params || {})});
     this.options = options || {};
     this.loaded = this.$makeRef(false);
+  }
+
+  static setDefault(value: MenuParams, reset?: boolean): void {
+    if (reset) {
+      Menu.defaultParams = value;
+    } else {
+      Menu.defaultParams = {...Menu.defaultParams, ...value};
+    }
   }
 
   get $ref() {
@@ -404,12 +413,21 @@ export class MenuItem extends EventEmitter {
   private options: MenuItemOptions;
   private $id: symbol;
   private parent?: Menu;
+  private static defaultParams: MenuItemParams = {};
 
   constructor(params?: MenuItemParams, options?: MenuItemOptions) {
     super();
-    this.params = params || {};
+    this.params = {...MenuItem.defaultParams, ...(params || {})};
     this.$id = Symbol('id');
     this.options = options || {};
+  }
+
+  static setDefault(value: MenuItemParams, reset?: boolean): void {
+    if (reset) {
+      MenuItem.defaultParams = value;
+    } else {
+      MenuItem.defaultParams = {...MenuItem.defaultParams, ...value};
+    }
   }
 
   get $params(): MenuItemParams {

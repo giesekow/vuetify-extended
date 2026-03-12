@@ -204,7 +204,7 @@ export class Field extends UIBase {
 
   constructor(params?: FieldParams, options?: FieldOptions) {
     super();
-    this.params = this.$makeRef(params || {});
+    this.params = this.$makeRef({...Field.defaultParams, ...(params || {})});
 
     this.changing = false;
     if (options?.master) this.setMaster(options.master); 

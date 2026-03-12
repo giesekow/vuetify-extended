@@ -35,13 +35,22 @@ export class Collection extends UIBase {
   private prevState: 'report'|'selector'|'trigger'|undefined;
   private selectedItems: any[] = [];
   private currentIndex: number = 0;
+  private static defaultParams: CollectionParams = {};
 
   constructor(params?: CollectionParams, options?: CollectionOptions) {
     super();
-    this.params = this.$makeRef(params || {});
+    this.params = this.$makeRef({...Collection.defaultParams, ...(params || {})});
     this.options = options || {};
     this.currentObject = this.$makeRef();
     this.prevState = undefined;
+  }
+
+  static setDefault(value: CollectionParams, reset?: boolean): void {
+    if (reset) {
+      Collection.defaultParams = value;
+    } else {
+      Collection.defaultParams = {...Collection.defaultParams, ...value};
+    }
   }
 
   async access(mode: any): Promise<boolean|undefined>{
