@@ -7,6 +7,7 @@ import { OnHandler } from "./lib";
 export interface SelectorParams {
   ref?: string;
   invisible?: boolean;
+  persistent?: boolean;
   multiple?: boolean;
   title?: string;
   subtitle?: string;
@@ -49,6 +50,7 @@ export class Selector extends UIBase {
   private items: Ref<any[]|undefined>;
   private storage: Ref<any|undefined>;
   private dialog: Ref<boolean>;
+  private loading: Ref<boolean>;
   private loaded = false;
 
   constructor(params?: SelectorParams, options?: SelectorOptions) {
@@ -59,6 +61,7 @@ export class Selector extends UIBase {
     this.items = this.$makeRef([]);
     this.storage = this.$makeRef();
     this.dialog = this.$makeRef(false);
+    this.loading = this.$makeRef(false);
   }
 
   get $ref() {
@@ -128,23 +131,28 @@ export class Selector extends UIBase {
   }
 
   private async loadItems() {
+    this.loading.value = true;
 
-    let data: any = null;
+    try {
+      let data: any = null;
 
-    if (this.options.load) {
-      data = await this.options.load(this, this.params.value.mode);
-    } else {
-      data = await this.load(this.params.value.mode);
+      if (this.options.load) {
+        data = await this.options.load(this, this.params.value.mode);
+      } else {
+        data = await this.load(this.params.value.mode);
+      }
+      
+      const items = Array.isArray(data) ? data : data.data || [];
+      const formatted = [];
+      for (let i = 0; i < items.length; i++) {
+        const d = this.options.format ? await this.options.format(items[i], items, this): await this.format(items[i], items);
+        if (d) formatted.push(d);
+      }
+
+      this.items.value = formatted;
+    } finally {
+      this.loading.value = false;
     }
-    
-    const items = Array.isArray(data) ? data : data.data || [];
-    const formatted = [];
-    for (let i = 0; i < items.length; i++) {
-      const d = this.options.format ? await this.options.format(items[i], items, this): await this.format(items[i], items);
-      if (d) formatted.push(d);
-    }
-
-    this.items.value = formatted;
 
   }
 
@@ -164,7 +172,7 @@ export class Selector extends UIBase {
       VDialog,
       {
         modelValue: this.dialog.value,
-        persistent: true,
+        persistent: this.params.value.persistent !== false,
         maxWidth: this.params.value.maxWidth,
         width: this.params.value.width,
         minWidth: this.params.value.minWidth
@@ -248,6 +256,7 @@ export class Selector extends UIBase {
         },
         () => [
           ...this.buildSearchBar(),
+          ...this.buildStatusMessage(),
         ]
       )
     )
@@ -280,6 +289,38 @@ export class Selector extends UIBase {
         )
       )
     ]
+  }
+
+  private buildStatusMessage() {
+    const h = this.$h;
+
+    let message: string | undefined;
+
+    if (this.loading.value) {
+      message = 'Loading options...';
+    } else if ((this.items.value || []).length === 0) {
+      message = 'No records available to select.';
+    }
+
+    if (!message) {
+      return [];
+    }
+
+    return [
+      h(
+        VCol,
+        {
+          cols: 12,
+        },
+        () => h(
+          'div',
+          {
+            class: ['text-medium-emphasis', 'text-body-2', 'px-2']
+          },
+          message
+        )
+      )
+    ];
   }
 
   async show() {

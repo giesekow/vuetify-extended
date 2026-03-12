@@ -10,6 +10,7 @@ export interface DialogParams {
   objectType?: any;
   objectId?: any;
   invisible?: boolean;
+  persistent?: boolean;
   mode?: 'create'|'edit'|'display';
   closeOnSave?: boolean;
   fullscreen?: boolean|undefined;
@@ -106,7 +107,7 @@ export class DialogForm extends UIBase {
       VDialog,
       {
         modelValue: this.dialog.value,
-        persistent: true,
+        persistent: this.params.value.persistent !== false,
         width: "auto",
         fullscreen: this.params.value.fullscreen,
       },

@@ -83,6 +83,7 @@ export class Report extends UIBase {
   private listenersAttached = false;
   private lastProps: any;
   private lastContext: any;
+  private cleanSnapshot: string;
 
   constructor(params?: ReportParams, options?: ReportOptions) {
     super();
@@ -102,6 +103,7 @@ export class Report extends UIBase {
     this.currentForm = undefined;
     this.lastProps = null;
     this.lastContext = null;
+    this.cleanSnapshot = this.snapshotMasterData();
   }
 
   get $parentReport(): Report|undefined {
@@ -191,6 +193,7 @@ export class Report extends UIBase {
       this.$master.$type = this.params.value.objectType;
       await this.$master.$load();
     }
+    this.captureCleanState();
     if (this.options.loaded) {
       this.options.loaded(this)
     }
@@ -346,6 +349,7 @@ export class Report extends UIBase {
           newForm.$params.subtitle = newForm.$params.title;
           newForm.$params.title = this.options.title ? this.options.title(this, index) : this.params.value.title;
         }
+        this.applyStepSubtitle(newForm, index);
 
         if (this.params.value.setActionButtons || this.params.value.setActionButtons === undefined) {
           newForm.$params.cancelButton = this.params.value.cancelButton ? {
@@ -549,15 +553,20 @@ export class Report extends UIBase {
         await this.prepareForm(props, context, 0);
         this.handleOn('before-reset', this);
         await this.$master?.$reset();
+        this.captureCleanState();
         this.handleOn('reset', this);
       } else if (this.params.value.mode === 'edit' && this.params.value.editAfterSave) {
+        this.captureCleanState();
         this.handleOn('saved', this);
         await this.prepareForm(props, context, 0);
       } else {
         if (this.params.value.mode === 'create') {
           this.handleOn('before-reset', this);
           await this.$master?.$reset();
+          this.captureCleanState();
           this.handleOn('reset', this);
+        } else {
+          this.captureCleanState();
         }
         this.handleOn('saved', this);
         this.handleOn('finished', this);
@@ -567,7 +576,7 @@ export class Report extends UIBase {
 
   private async oncancel() {
     if (this.params.value.confirmOnCancel) {
-      const accepted = await Dialogs.$confirm('Cancel this report?');
+      const accepted = await Dialogs.$confirm(this.hasUnsavedChanges() ? 'Discard unsaved changes?' : 'Cancel this report?');
       if (!accepted) {
         return;
       }
@@ -584,6 +593,42 @@ export class Report extends UIBase {
     if (this.hasPrev) {
       await this.prepareForm(props, context, this.currentIndex.value - 1);
     }
+  }
+
+  private applyStepSubtitle(form: Form, index: number) {
+    const label = this.progressLabel(index);
+    if (!label) {
+      return;
+    }
+
+    const subtitle = form.$params.subtitle;
+    form.$params.subtitle = subtitle && subtitle !== ''
+      ? `${subtitle} • ${label}`
+      : label;
+  }
+
+  private progressLabel(index: number): string | undefined {
+    const total = Math.max(this.params.value.forms || 0, index + 1);
+    if (total <= 1) {
+      return undefined;
+    }
+    return `Step ${index + 1} of ${total}`;
+  }
+
+  private snapshotMasterData(): string {
+    try {
+      return JSON.stringify(this.$master?.$data || {});
+    } catch (error) {
+      return '';
+    }
+  }
+
+  private captureCleanState() {
+    this.cleanSnapshot = this.snapshotMasterData();
+  }
+
+  private hasUnsavedChanges(): boolean {
+    return this.snapshotMasterData() !== this.cleanSnapshot;
   }
 
   async forceCancel() {

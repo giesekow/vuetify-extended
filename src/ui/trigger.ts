@@ -293,29 +293,34 @@ export class Trigger extends UIBase {
   }
 
   private async loadItems(options: ServerTableOptions) {
+    this.loading.value = true;
 
-    let data: any = null;
+    try {
+      let data: any = null;
 
-    if (this.options.load) {
-      const fulloptions = {
-        ...options,
-        selectedFilterFields: this.selectedSearchFields.value || []
+      if (this.options.load) {
+        const fulloptions = {
+          ...options,
+          selectedFilterFields: this.selectedSearchFields.value || []
+        }
+        data = await this.options.load(this.currentSearchText, this, fulloptions);
+      } else {
+        data = await this.load(this.currentSearchText, options);
       }
-      data = await this.options.load(this.currentSearchText, this, fulloptions);
-    } else {
-      data = await this.load(this.currentSearchText, options);
-    }
-    
-    if(Array.isArray(data)) {
-      this.items.value = this.options.format ? await this.options.format(this, data) || [] : data;
-      this.tableOptions.value.itemsPerPage = -1;
-      this.tableOptions.value.total = data.length;
-      this.tableOptions.value.page = 1;
-    } else {
-      this.tableOptions.value.total = data.total;
-      this.items.value = this.options.format ? await this.options.format(this, data.data || []) || [] : data.data || [];
-      this.tableOptions.value.itemsPerPage = data.limit;
-      this.tableOptions.value.page = options.page;
+      
+      if(Array.isArray(data)) {
+        this.items.value = this.options.format ? await this.options.format(this, data) || [] : data;
+        this.tableOptions.value.itemsPerPage = -1;
+        this.tableOptions.value.total = data.length;
+        this.tableOptions.value.page = 1;
+      } else {
+        this.tableOptions.value.total = data.total;
+        this.items.value = this.options.format ? await this.options.format(this, data.data || []) || [] : data.data || [];
+        this.tableOptions.value.itemsPerPage = data.limit;
+        this.tableOptions.value.page = options.page;
+      }
+    } finally {
+      this.loading.value = false;
     }
 
   }
@@ -450,6 +455,7 @@ export class Trigger extends UIBase {
             ...this.buildSearchBar(),
             ...(this.searchFieldItems.value.length > 0 ? this.buildFilterBar() : []),
             ...(top.map((instance) => this.$h(instance.component))),
+            ...this.buildResultStatus(),
             ...this.buildResultTable(),
             ...(bot.map((instance) => this.$h(instance.component))),
           ]
@@ -528,7 +534,10 @@ export class Trigger extends UIBase {
           items: this.items.value,
           modelValue: this.selected.value,
           showSelect: true,
-          hideNoData: true,
+          hideNoData: false,
+          noDataText: this.currentSearchText || (this.selectedSearchFields.value || []).length > 0
+            ? 'No matching records found. Try a different search.'
+            : 'Enter a search term and press Enter to load results.',
           itemValue: this.params.value.idField || "_id",
           loading: this.loading.value,
           itemsPerPage: this.tableOptions.value.itemsPerPage,
@@ -546,6 +555,38 @@ export class Trigger extends UIBase {
         }
       )
     ]
+  }
+
+  private buildResultStatus() {
+    const h = this.$h;
+
+    let message = '';
+    if (this.loading.value) {
+      message = 'Loading results...';
+    } else if ((this.selected.value || []).length > 0) {
+      message = `${this.selected.value!.length} item(s) selected.`;
+    } else if (this.currentSearchText || (this.selectedSearchFields.value || []).length > 0) {
+      message = `${this.tableOptions.value.total || 0} result(s) found.`;
+    } else {
+      message = 'Search by text or add filters to start browsing records.';
+    }
+
+    return [
+      h(
+        VCol,
+        {
+          cols: 12,
+          class: ['pb-0']
+        },
+        () => h(
+          'div',
+          {
+            class: ['text-medium-emphasis', 'text-body-2']
+          },
+          message
+        )
+      )
+    ];
   }
 
   async headers(): Promise<any[]> {
