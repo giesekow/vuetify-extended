@@ -1,26 +1,85 @@
 // For more information about this file see https://dove.feathersjs.com/guides/cli/typescript.html
-import type { Application as FeathersApplication, Service as FeathersService, ServiceAddons as FeathersServiceAddons } from '@feathersjs/feathers'
+import type {
+  Application as BaseFeathersApplication,
+  Service as BaseFeathersService,
+  ServiceAddons as FeathersServiceAddons
+} from '@feathersjs/feathers'
+import type Keycloak from 'keycloak-js'
+import type { KeycloakClient as FeathersKeycloakClient } from 'feathers-keycloak-connect-client'
+
+export interface Service<T = any> {
+  on(event: string, listener: (...args: any[]) => void): any;
+  once(event: string, listener: (...args: any[]) => void): any;
+  emit(event: string, ...args: any[]): any;
+  find(params?: any): Promise<any>;
+  findOne(params?: any): Promise<T | undefined>;
+  findAll(params?: any): Promise<T[]>;
+  count(params?: any): Promise<number>;
+  get(id: any, params?: any): Promise<T>;
+  create(data: any, params?: any): Promise<T>;
+  update(id: any, data: any, params?: any): Promise<T>;
+  patch(id: any, data: any, params?: any): Promise<T>;
+  remove(id: any, params?: any): Promise<T>;
+}
+
+export interface Application {
+  on(event: string, listener: (...args: any[]) => void): any;
+  once(event: string, listener: (...args: any[]) => void): any;
+  emit(event: string, ...args: any[]): any;
+  service<T = any>(path: string): Service<T>;
+  authentication?: any;
+  keycloak?: Keycloak;
+  authenticated?: (...args: any[]) => any;
+  authenticate?: (...args: any[]) => any;
+  login?: (...args: any[]) => any;
+  logout?: (...args: any[]) => any;
+  reAuthenticate?: (...args: any[]) => any;
+  accountManagement?: (...args: any[]) => any;
+  register?: (...args: any[]) => any;
+  hasRealmRole?: (...args: any[]) => any;
+  hasResourceRole?: (...args: any[]) => any;
+  loadUserInfo?: (...args: any[]) => any;
+  loadUserProfile?: (...args: any[]) => any;
+  hasPermission?: (...args: any[]) => any;
+}
 
 /**
- * Extend the Service interface to include EventEmitter methods
+ * Extend the Feathers service shape with the helper methods used by the library.
  */
-export interface Service<T = any> extends FeathersService<T> {
-  on(event: string, listener: (...args: any[]) => void): this;
-  once(event: string, listener: (...args: any[]) => void): this;
-  emit(event: string, ...args: any[]): boolean;
+export interface FeathersService<T = any> extends BaseFeathersService<T> {
+  on(event: string, listener: (...args: any[]) => void): any;
+  once(event: string, listener: (...args: any[]) => void): any;
+  emit(event: string, ...args: any[]): any;
+  findOne(params?: any): Promise<T | undefined>;
+  findAll(params?: any): Promise<T[]>;
+  count(params?: any): Promise<number>;
 }
 
-// Extend Application to include EventEmitter methods
-export interface PatchedApplication extends FeathersApplication {
-  on(event: string, listener: (...args: any[]) => void): this;
-  once(event: string, listener: (...args: any[]) => void): this;
-  emit(event: string, ...args: any[]): boolean;
-
-  // Override service() to return extended Service type
-  service<T = any>(path: string): Service<T> & FeathersServiceAddons;
+/**
+ * Extend the Feathers application shape to include auth helpers used by the library.
+ */
+export interface FeathersApplication extends BaseFeathersApplication {
+  on(event: string, listener: (...args: any[]) => void): any;
+  once(event: string, listener: (...args: any[]) => void): any;
+  emit(event: string, ...args: any[]): any;
+  service<T = any>(path: string): FeathersService<T> & FeathersServiceAddons;
+  authentication: FeathersKeycloakClient;
+  keycloak: Keycloak;
+  authenticated: FeathersKeycloakClient['authenticated'];
+  authenticate: FeathersKeycloakClient['login'];
+  login: FeathersKeycloakClient['login'];
+  logout: FeathersKeycloakClient['logout'];
+  reAuthenticate: FeathersKeycloakClient['reAuthenticate'];
+  accountManagement: Keycloak['accountManagement'];
+  register: Keycloak['register'];
+  hasRealmRole: Keycloak['hasRealmRole'];
+  hasResourceRole: Keycloak['hasResourceRole'];
+  loadUserInfo: Keycloak['loadUserInfo'];
+  loadUserProfile: Keycloak['loadUserProfile'];
+  hasPermission: FeathersKeycloakClient['hasPermission'];
 }
 
-export type Application = PatchedApplication
+export type PatchedApplication = FeathersApplication
 
 // The context for hook functions - can be typed with a service class
 declare module '@feathersjs/feathers' {
