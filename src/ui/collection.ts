@@ -4,6 +4,7 @@ import { Trigger } from "./trigger";
 import { Report } from "./report";
 import { Selector } from "./selector";
 import { OnHandler } from "./lib";
+import { VAlert } from "vuetify/components";
 
 export interface CollectionParams {
   ref?: string;
@@ -79,25 +80,79 @@ export class Collection extends UIBase {
     return []
   }
 
-  render(props: any, context: any): VNode|undefined {
+  render(props: any, context: any): VNode|VNode[]|undefined {
+    const h = this.$h;
     
     if (this.params.value.invisible) {
       return;
     }
 
     if (this.currentObject?.value === 'trigger') {
-      return this.buildTrigger(props, context);
+      return [
+        this.buildSelectionContext(),
+        this.buildTrigger(props, context)
+      ].filter((item) => item !== undefined) as VNode[];
     }
 
     if (this.currentObject?.value === 'report') {
-      return this.buildReport(props, context);
+      return [
+        this.buildSelectionContext(),
+        this.buildReport(props, context)
+      ].filter((item) => item !== undefined) as VNode[];
     }
 
     if (this.currentObject?.value === 'selector') {
-      return this.buildSelector(props, context);
+      return [
+        this.buildSelectionContext(),
+        this.buildSelector(props, context)
+      ].filter((item) => item !== undefined) as VNode[];
     }
 
     return undefined;
+  }
+
+  private buildSelectionContext(): VNode|undefined {
+    const h = this.$h;
+    const text = this.selectionContextText();
+    if (!text) {
+      return undefined;
+    }
+
+    return h(
+      VAlert,
+      {
+        color: 'info',
+        variant: 'tonal',
+        density: 'comfortable',
+        border: 'start',
+        closable: false,
+        style: {
+          position: 'fixed',
+          top: '16px',
+          right: '16px',
+          zIndex: 3000,
+          maxWidth: '360px',
+        }
+      },
+      () => text
+    );
+  }
+
+  private selectionContextText(): string | undefined {
+    const total = this.selectedItems.length;
+    if (total <= 0) {
+      return undefined;
+    }
+
+    if (this.currentObject?.value === 'report' && this.params.value.multiple) {
+      return `Editing item ${this.currentIndex + 1} of ${total}`;
+    }
+
+    if (this.currentObject?.value === 'trigger' || this.currentObject?.value === 'selector') {
+      return total === 1 ? '1 item selected for this workflow' : `${total} items selected for this workflow`;
+    }
+
+    return total === 1 ? '1 item selected' : `${total} items selected`;
   }
 
   private buildReport(props: any, context: any): VNode|undefined {
@@ -212,6 +267,7 @@ export class Collection extends UIBase {
 
     if (rep) {
       this.currentReport = rep;
+      this.applySelectionContextToReport(this.currentReport);
       if (!this.currentReport.$params.mode && this.params.value.mode) this.currentReport.$params.mode = this.params.value.mode;
 
       this.currentReport.$params.selected = item;
@@ -237,6 +293,15 @@ export class Collection extends UIBase {
       await this.currentReport.loadObject();
       this.currentObject.value = 'report';
       this.currentReport.show();
+    }
+  }
+
+  private applySelectionContextToReport(report: Report) {
+    const total = this.selectedItems.length;
+    const baseTitle = report.$params.title || 'Collection Editor';
+
+    if (this.params.value.multiple && total > 1) {
+      report.$params.title = `${baseTitle} (${this.currentIndex + 1} of ${total})`;
     }
   }
 
@@ -309,15 +374,21 @@ export class Collection extends UIBase {
 
   private async reportFinished() {
     if (this.params.value.mode === 'create') {
+      this.selectedItems = [];
+      this.currentIndex = 0;
       this.handleOn('cancel', this);
     }
   }
 
   private async onSelectorCancelled() {
+    this.selectedItems = [];
+    this.currentIndex = 0;
     this.handleOn('cancel', this);
   }
 
   private async onTriggerCancelled() {
+    this.selectedItems = [];
+    this.currentIndex = 0;
     this.handleOn('cancel', this);
   }
 
