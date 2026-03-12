@@ -266,7 +266,10 @@ export class Selector extends UIBase {
             variant: 'outlined',
             placeholder: 'Search Object',
             density: 'compact',
-            modelValue: this.storage,
+            modelValue: this.storage.value,
+            "onUpdate:modelValue": (value: any) => {
+              this.storage.value = value;
+            },
             autofocus: true,
             multiple: this.params.value.multiple,
             items: this.items.value,

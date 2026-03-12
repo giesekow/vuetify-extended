@@ -312,7 +312,7 @@ export class Field extends UIBase {
       this.$master.$set(this.params.value.storage, value);
     }
     if (this.options.modifies) {
-      this.options.modifies = value;
+      this.options.modifies.value = value;
     }
     if (this.options.changed) this.options.changed(this);
     this.handleOn('changed', value);

@@ -83,10 +83,7 @@ export class AppMain extends UIBase {
     }
 
     if (this.index.value >= 0 && this.index.value < this.stack.length) {
-      this.attachEvents(this.index.value);
       const item = this.stack[this.index.value].item;
-      item.attachEventListeners()
-      item.show();
       if (this.selectorCount.value > 0 || this.dialogCount.value > 0) {
         return [
           h(item.component),
@@ -105,13 +102,19 @@ export class AppMain extends UIBase {
     return undefined;
   }
 
-  private attachEvents(index: number) {
+  private async activateCurrentItem(index: number = this.index.value) {
+    if (index < 0 || index >= this.stack.length) {
+      return;
+    }
+
     if (index > 0 && this.stack.length > 0) {
       this.stack[index-1].item.clearListeners(this.$id);
     }
+
     if (index < this.stack.length) {
       this.stack[index].item.clearListeners(this.$id);
       this.stack[index].item.on('cancel', (item: any) => this.onCancel(item), this.$id);
+      await this.stack[index].item.show();
     }
   }
 
@@ -193,6 +196,7 @@ export class AppMain extends UIBase {
     })
 
     this.index.value = this.stack.length - 1;
+    await this.activateCurrentItem();
   }
 
   async $showReport(report: Report, params?: any, replace?: boolean) {
@@ -201,7 +205,7 @@ export class AppMain extends UIBase {
       this.stack[this.index.value].item.removeEventListeners();
     }
 
-    if (replace) this.$pop()
+    if (replace) await this.$pop()
 
     this.stack.push({
       type: "report",
@@ -210,6 +214,7 @@ export class AppMain extends UIBase {
     })
 
     this.index.value = this.stack.length - 1;
+    await this.activateCurrentItem();
   }
 
   async $showCollection(collection: Collection, params?: any, replace?: boolean) {
@@ -218,7 +223,7 @@ export class AppMain extends UIBase {
       this.stack[this.index.value].item.removeEventListeners();
     }
 
-    if (replace) this.$pop()
+    if (replace) await this.$pop()
 
     this.stack.push({
       type: "collection",
@@ -227,6 +232,7 @@ export class AppMain extends UIBase {
     })
 
     this.index.value = this.stack.length - 1;
+    await this.activateCurrentItem();
   }
 
   async $showUI(ui: UIBase, params?: any, replace?: boolean) {
@@ -235,7 +241,7 @@ export class AppMain extends UIBase {
       this.stack[this.index.value].item.removeEventListeners();
     }
 
-    if (replace) this.$pop()
+    if (replace) await this.$pop()
 
     this.stack.push({
       type: "ui",
@@ -244,6 +250,7 @@ export class AppMain extends UIBase {
     })
 
     this.index.value = this.stack.length - 1;
+    await this.activateCurrentItem();
   }
 
   async $showSelector(selector: Selector, params?: any) {
@@ -283,6 +290,7 @@ export class AppMain extends UIBase {
         const info = this.stack.pop();
         if (info) info.item.removeEventListeners();
       }
+      await this.activateCurrentItem();
     } else if (rem >= this.stack.length) {
       this.loadApp();
     }
@@ -296,6 +304,7 @@ export class AppMain extends UIBase {
         this.stack.splice(index, 1);
         ui.item.clearListeners(this.$id);
         this.index.value = this.stack.length - 1;
+        await this.activateCurrentItem();
       }
     }
   }

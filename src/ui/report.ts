@@ -80,6 +80,8 @@ export class Report extends UIBase {
   private hasNext = false;
   private hasPrev = false;
   private listenersAttached = false;
+  private lastProps: any;
+  private lastContext: any;
 
   constructor(params?: ReportParams, options?: ReportOptions) {
     super();
@@ -97,6 +99,8 @@ export class Report extends UIBase {
     this.hasExportAccess = this.$makeRef(true);
     this.currentIndex = this.$makeRef(-1);
     this.currentForm = undefined;
+    this.lastProps = null;
+    this.lastContext = null;
   }
 
   get $parentReport(): Report|undefined {
@@ -225,6 +229,8 @@ export class Report extends UIBase {
 
   render(props: any, context: any): VNode|undefined {
     const h = this.$h;
+    this.lastProps = props;
+    this.lastContext = context;
 
     if (!this.loaded) {
       this.initialize(props, context);
@@ -275,9 +281,6 @@ export class Report extends UIBase {
     }
 
     if (this.currentForm) {
-      this.currentForm.on('saved', () => this.save(props, context));
-      this.currentForm.on('cancel', () => this.oncancel(props, context));
-
       return h(
         VContainer,
         {
@@ -373,11 +376,15 @@ export class Report extends UIBase {
         }
 
         if (this.currentForm) {
+          this.currentForm.clearListeners(this.$id);
           this.currentForm.removeEventListeners()
         }
 
         this.currentForm = newForm
         this.currentIndex.value = index;
+        this.currentForm.clearListeners(this.$id);
+        this.currentForm.on('saved', () => this.save(), this.$id);
+        this.currentForm.on('cancel', () => this.oncancel(), this.$id);
         this.currentForm.attachEventListeners();
       }
 
@@ -483,7 +490,7 @@ export class Report extends UIBase {
       new Button(
         {text: 'Cancel', color: 'secondary', ...(this.params.value.cancelButton || {})},
         {
-          onClicked: () => this.oncancel(null, null)
+          onClicked: () => this.oncancel()
         }
       ),
     ]
@@ -516,7 +523,9 @@ export class Report extends UIBase {
     return btns
   }
 
-  private async save(props: any, context: any) {
+  private async save() {
+    const props = this.lastProps;
+    const context = this.lastContext;
     await sleep(50);
     if (this.hasNext) {
       await this.prepareForm(props, context, this.currentIndex.value + 1);
@@ -547,7 +556,9 @@ export class Report extends UIBase {
     }
   }
 
-  private async oncancel(props: any, context: any) {
+  private async oncancel() {
+    const props = this.lastProps;
+    const context = this.lastContext;
     await sleep(50);
     if (this.hasPrev) {
       await this.prepareForm(props, context, this.currentIndex.value - 1);
@@ -558,11 +569,11 @@ export class Report extends UIBase {
 
   async forceCancel() {
     await this.hide();
-    this.oncancel(null, null);
+    this.oncancel();
   }
 
   async forceSave() {
-    this.save(null, null)
+    this.save()
   }
 
   setup(props: any, context: any) {

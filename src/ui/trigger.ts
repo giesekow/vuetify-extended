@@ -472,7 +472,10 @@ export class Trigger extends UIBase {
             placeholder: 'Search Object',
             density: 'compact',
             appendIcon: 'mdi-magnify',
-            modelValue: this.searchText,
+            modelValue: this.searchText.value,
+            "onUpdate:modelValue": (value: string) => {
+              this.searchText.value = value;
+            },
             autofocus: true,
             "onClick:append": () => this.onSearchClicked(),
             onKeyup: (ev: KeyboardEvent) => {
@@ -499,7 +502,10 @@ export class Trigger extends UIBase {
             variant: 'outlined',
             placeholder: 'Select Additional Search Fields',
             density: 'compact',
-            modelValue: this.selectedSearchFields,
+            modelValue: this.selectedSearchFields.value,
+            "onUpdate:modelValue": (value: any[]) => {
+              this.selectedSearchFields.value = value;
+            },
             multiple: true,
             itemTitle: "name",
             itemValue: "_id",
