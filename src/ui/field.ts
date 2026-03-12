@@ -300,6 +300,15 @@ export class Field extends UIBase {
     this.handleOn('setup', this);
   }
 
+  private modelBinding() {
+    return {
+      modelValue: this.modelValue.value,
+      "onUpdate:modelValue": (value: any) => {
+        this.modelValue.value = value;
+      }
+    }
+  }
+
   valueChanged(newValue?: any) {
     if (this.changing) {
       return;
@@ -764,7 +773,7 @@ export class Field extends UIBase {
       return h(
         VCombobox,
         {
-          modelValue: this.modelValue,
+          ...this.modelBinding(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -788,7 +797,7 @@ export class Field extends UIBase {
       return h(
         VTextField,
         {
-          modelValue: this.modelValue,
+          ...this.modelBinding(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -837,7 +846,7 @@ export class Field extends UIBase {
     return h(
       VSelect,
       {
-        modelValue: this.modelValue,
+        ...this.modelBinding(),
         autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         hint: this.params.value.hint || "",
@@ -872,7 +881,7 @@ export class Field extends UIBase {
       h(
         VRadioGroup,
         {
-          modelValue: this.modelValue,
+          ...this.modelBinding(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -934,7 +943,7 @@ export class Field extends UIBase {
           VCheckboxBtn,
           {
             value: item[this.params.value.itemValue || '_id'],
-            modelValue: this.modelValue,
+            ...this.modelBinding(),
             readonly: this.$readonly,
             class: ['vef-check-select'].concat(this.params.value.class || []),
             style: this.params.value.style || {},
@@ -963,7 +972,7 @@ export class Field extends UIBase {
     return h(
       VAutocomplete,
       {
-        modelValue: this.modelValue,
+        ...this.modelBinding(),
         autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         hint: this.params.value.hint || "",
@@ -1273,7 +1282,7 @@ export class Field extends UIBase {
       return h(
         VCombobox,
         {
-          modelValue: this.modelValue,
+          ...this.modelBinding(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -1297,7 +1306,7 @@ export class Field extends UIBase {
       return h(
         VTextField,
         {
-          modelValue: this.modelValue,
+          ...this.modelBinding(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -1414,7 +1423,7 @@ export class Field extends UIBase {
     return h(
       VTextField,
       {
-        modelValue: this.modelValue,
+        ...this.modelBinding(),
         autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         hint: this.params.value.hint || "",
@@ -1438,7 +1447,7 @@ export class Field extends UIBase {
     return h(
       VTextField,
       {
-        modelValue: this.modelValue,
+        ...this.modelBinding(),
         autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         hint: this.params.value.hint || "",
@@ -1462,7 +1471,7 @@ export class Field extends UIBase {
     return h(
       VTextField,
       {
-        modelValue: this.modelValue,
+        ...this.modelBinding(),
         autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         hint: this.params.value.hint || "",
@@ -2199,7 +2208,7 @@ export class Field extends UIBase {
     return h(
       VTextarea,
       {
-        modelValue: this.modelValue,
+        ...this.modelBinding(),
         autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         hint: this.params.value.hint || "",
@@ -2221,7 +2230,7 @@ export class Field extends UIBase {
     return h(
       this.params.value.checkbox ? VCheckboxBtn : VSwitch,
       {
-        modelValue: this.modelValue,
+        ...this.modelBinding(),
         autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         hint: this.params.value.hint || "",
