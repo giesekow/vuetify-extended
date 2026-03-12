@@ -1,4 +1,4 @@
-import { VNode, Ref } from "vue";
+import { VNode, Ref, nextTick } from "vue";
 import { UIBase } from "./base";
 import { VDivider, VRow, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VCardSubtitle, VCol, VDialog, VAutocomplete } from 'vuetify/components';
 import { Button, ButtonParams } from "./button";
@@ -51,6 +51,7 @@ export class Selector extends UIBase {
   private storage: Ref<any|undefined>;
   private dialog: Ref<boolean>;
   private loading: Ref<boolean>;
+  private dialogRoot: Ref<HTMLElement|undefined>;
   private loaded = false;
   private static defaultParams: SelectorParams = {};
 
@@ -63,6 +64,7 @@ export class Selector extends UIBase {
     this.storage = this.$makeRef();
     this.dialog = this.$makeRef(false);
     this.loading = this.$makeRef(false);
+    this.dialogRoot = this.$makeRef();
   }
 
   static setDefault(value: SelectorParams, reset?: boolean): void {
@@ -184,24 +186,33 @@ export class Selector extends UIBase {
         persistent: this.params.value.persistent !== false,
         maxWidth: this.params.value.maxWidth,
         width: this.params.value.width,
-        minWidth: this.params.value.minWidth
+        minWidth: this.params.value.minWidth,
+        onAfterEnter: () => this.focusPrimaryInput(),
       },
       () => h(
-        VCard,
+        'div',
         {
-          maxWidth: this.params.value.maxWidth,
-          width: this.params.value.width,
-          minWidth: this.params.value.minWidth,
-          elevation: this.params.value.elevation
+          ref: (el: Element | any) => this.setDialogRoot(el)
         },
-        () => [
-          this.buildTitle(props, context),
-          ...(this.params.value.subtitle ? [this.buildSubTitle(props, context)] : []),
-          this.buildTopActions(props, context),
-          h(VDivider),
-          this.buildBody(props, context),
-          h(VDivider),
-          this.buildBottomActions(props, context),
+        [
+          h(
+          VCard,
+          {
+            maxWidth: this.params.value.maxWidth,
+            width: this.params.value.width,
+            minWidth: this.params.value.minWidth,
+            elevation: this.params.value.elevation
+          },
+          () => [
+            this.buildTitle(props, context),
+            ...(this.params.value.subtitle ? [this.buildSubTitle(props, context)] : []),
+            this.buildTopActions(props, context),
+            h(VDivider),
+            this.buildBody(props, context),
+            h(VDivider),
+            this.buildBottomActions(props, context),
+          ]
+          )
         ]
       )
     );
@@ -337,6 +348,7 @@ export class Selector extends UIBase {
     await this.loadItems();
     this.storage.value = null;
     this.dialog.value = true;
+    await this.focusPrimaryInput();
   }
 
   async hide() {
@@ -426,6 +438,72 @@ export class Selector extends UIBase {
       ev.preventDefault();
       this.onCancelClicked();
     }
+  }
+
+  private setDialogRoot(el: Element | any) {
+    if (el instanceof HTMLElement) {
+      this.dialogRoot.value = el;
+      return;
+    }
+
+    const root = el?.$el;
+    this.dialogRoot.value = root instanceof HTMLElement ? root : undefined;
+  }
+
+  private async focusPrimaryInput() {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    await nextTick();
+    await this.waitForFocusFrame();
+
+    const target = this.findFocusTarget();
+    if (target && typeof target.focus === 'function') {
+      target.focus();
+    }
+  }
+
+  private findFocusTarget(): HTMLElement | undefined {
+    const root = this.dialogRoot.value;
+    if (!root) {
+      return undefined;
+    }
+
+    const selectors = [
+      'input[autofocus]:not([type="hidden"]):not([disabled]):not([readonly])',
+      'textarea[autofocus]:not([disabled]):not([readonly])',
+      '.v-autocomplete input:not([type="hidden"]):not([disabled]):not([readonly])',
+      '.v-field input:not([type="hidden"]):not([disabled]):not([readonly])',
+      'textarea:not([disabled]):not([readonly])',
+    ];
+
+    for (const selector of selectors) {
+      const items = Array.from(root.querySelectorAll<HTMLElement>(selector));
+      const target = items.find((item) => this.isVisibleFocusable(item));
+      if (target) {
+        return target;
+      }
+    }
+
+    return undefined;
+  }
+
+  private async waitForFocusFrame() {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  private isVisibleFocusable(target: HTMLElement) {
+    if (target.hasAttribute('readonly') || target.getAttribute('aria-readonly') === 'true') {
+      return false;
+    }
+
+    const readonlyWrapper = target.closest('[readonly], [aria-readonly="true"], .v-input--readonly, .v-field--readonly');
+    if (readonlyWrapper) {
+      return false;
+    }
+
+    return target.offsetParent !== null || target === document.activeElement;
   }
 
   private async onCancelClicked(){

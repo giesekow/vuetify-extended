@@ -34,6 +34,7 @@ export class Dialogs {
 
   private static confirmYes: any = null;
   private static confirmNo: any = null;
+  private static confirmKeydownHandler?: (ev: KeyboardEvent) => void;
 
   private static options: Ref<DialogOptions> = ref({});
 
@@ -274,17 +275,51 @@ export class Dialogs {
   static async $confirm(text: string, title?: string): Promise<boolean> {
     return new Promise((resolve: any) => {
       Dialogs.confirmYes = () => {
+        Dialogs.removeConfirmKeydownHandler();
         Dialogs.confirmDialog.value = false;
         resolve(true);
       }
       Dialogs.confirmNo = () => {
+        Dialogs.removeConfirmKeydownHandler();
         Dialogs.confirmDialog.value = false;
         resolve(false);
       }
+      Dialogs.installConfirmKeydownHandler();
       Dialogs.confirmText.value = text;
       Dialogs.confirmTitle.value = title || 'Confirm';
       Dialogs.confirmDialog.value = true;
     })
+  }
+
+  static hasBlockingDialog(): boolean {
+    return Dialogs.confirmDialog.value || Dialogs.progressDialog.value;
+  }
+
+  private static installConfirmKeydownHandler() {
+    if (typeof window === 'undefined' || Dialogs.confirmKeydownHandler) {
+      return;
+    }
+
+    Dialogs.confirmKeydownHandler = (ev: KeyboardEvent) => {
+      if (!Dialogs.confirmDialog.value || ev.key !== 'Escape') {
+        return;
+      }
+
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (Dialogs.confirmNo) {
+        Dialogs.confirmNo();
+      }
+    };
+
+    window.addEventListener('keydown', Dialogs.confirmKeydownHandler, true);
+  }
+
+  private static removeConfirmKeydownHandler() {
+    if (typeof window !== 'undefined' && Dialogs.confirmKeydownHandler) {
+      window.removeEventListener('keydown', Dialogs.confirmKeydownHandler, true);
+      Dialogs.confirmKeydownHandler = undefined;
+    }
   }
 
   static $error(text: string) {

@@ -88,10 +88,7 @@ export class Collection extends UIBase {
     }
 
     if (this.currentObject?.value === 'trigger') {
-      return [
-        this.buildSelectionContext(),
-        this.buildTrigger(props, context)
-      ].filter((item) => item !== undefined) as VNode[];
+      return this.buildTrigger(props, context);
     }
 
     if (this.currentObject?.value === 'report') {
@@ -102,10 +99,7 @@ export class Collection extends UIBase {
     }
 
     if (this.currentObject?.value === 'selector') {
-      return [
-        this.buildSelectionContext(),
-        this.buildSelector(props, context)
-      ].filter((item) => item !== undefined) as VNode[];
+      return this.buildSelector(props, context);
     }
 
     return undefined;
@@ -148,11 +142,7 @@ export class Collection extends UIBase {
       return `Editing item ${this.currentIndex + 1} of ${total}`;
     }
 
-    if (this.currentObject?.value === 'trigger' || this.currentObject?.value === 'selector') {
-      return total === 1 ? '1 item selected for this workflow' : `${total} items selected for this workflow`;
-    }
-
-    return total === 1 ? '1 item selected' : `${total} items selected`;
+    return undefined;
   }
 
   private buildReport(props: any, context: any): VNode|undefined {

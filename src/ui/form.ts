@@ -72,9 +72,11 @@ export class Form extends UIBase {
   private bottomButtonInstances: Array<Button> = [];
   private udfData: Array<any> = [];
   private formRef?: Ref<InstanceType<typeof VForm> | null>;
+  private cardRoot: Ref<HTMLElement|undefined>;
   private udfLoaded: Ref<boolean>;
   private validationSummary: Ref<string[]>;
   private listenersAttached = false;
+  private shortcutHandler?: (ev: KeyboardEvent) => void;
   private static defaultParams: FormParams = {};
 
   constructor(params?: FormParams, options?: FormOptions) {
@@ -83,6 +85,7 @@ export class Form extends UIBase {
     this.options = options || {};
     if (options?.master) this.setMaster(options?.master);
     this.hasAccess = this.$makeRef(true);
+    this.cardRoot = this.$makeRef();
     this.udfLoaded = this.$makeRef(false);
     this.validationSummary = this.$makeRef([]);
   }
@@ -217,6 +220,8 @@ export class Form extends UIBase {
     return h(
       VCard,
       {
+        ref: (el: Element | any) => this.setCardRoot(el),
+        onKeydown: (ev: KeyboardEvent) => this.onFormKeydown(ev),
         maxWidth: this.params.value.maxWidth,
         width: this.params.value.width,
         minWidth: this.params.value.minWidth,
@@ -235,6 +240,120 @@ export class Form extends UIBase {
         this.buildBottomActions(props, context),
       ]
     );
+  }
+
+  async focusPrimaryInput() {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    await nextTick();
+
+    for (let i = 0; i < 5; i++) {
+      if (await this.focusSpecialFieldTarget()) {
+        return;
+      }
+
+      const target = this.findFocusTarget();
+      if (target && typeof target.focus === 'function') {
+        target.focus();
+        return;
+      }
+
+      await this.waitForFocusFrame();
+    }
+  }
+
+  private setCardRoot(el: Element | any) {
+    if (el instanceof HTMLElement) {
+      this.cardRoot.value = el;
+      return;
+    }
+
+    const root = el?.$el;
+    this.cardRoot.value = root instanceof HTMLElement ? root : undefined;
+  }
+
+  private async focusSpecialFieldTarget(): Promise<boolean> {
+    const fields = this.collectFields(this.childrenInstances);
+
+    for (const field of fields) {
+      const behavior = this.fieldFocusBehavior(field);
+
+      if (behavior === 'skip') {
+        continue;
+      }
+
+      if (behavior === 'special') {
+        return await field.focusPrimaryInput();
+      }
+
+      return false;
+    }
+
+    return false;
+  }
+
+  private fieldFocusBehavior(field: Field): 'skip'|'special'|'standard' {
+    if (field.$params.invisible || field.$readonly) {
+      return 'skip';
+    }
+
+    const type = field.$params.type || 'text';
+
+    if (['label', 'htmlview', 'button', 'chart', 'map', 'table', 'viewtable', 'servertable', 'reporttable', 'collection', 'messagingbox', 'image', 'document'].includes(type)) {
+      return 'skip';
+    }
+
+    if (type === 'html') {
+      return 'special';
+    }
+
+    return 'standard';
+  }
+
+  private findFocusTarget(): HTMLElement | undefined {
+    const root = this.cardRoot.value;
+    if (!root) {
+      return undefined;
+    }
+
+    const selectors = [
+      'input[autofocus]:not([type="hidden"]):not([disabled]):not([readonly])',
+      'textarea[autofocus]:not([disabled]):not([readonly])',
+      '.v-field input:not([type="hidden"]):not([disabled]):not([readonly])',
+      '.v-autocomplete input:not([type="hidden"]):not([disabled]):not([readonly])',
+      'iframe.tox-edit-area__iframe',
+      'textarea:not([disabled]):not([readonly])',
+    ];
+
+    for (const selector of selectors) {
+      const items = Array.from(root.querySelectorAll<HTMLElement>(selector));
+      const target = items.find((item) => this.isVisibleFocusable(item));
+      if (target) {
+        return target;
+      }
+    }
+
+    const fallbackButtons = Array.from(root.querySelectorAll<HTMLElement>('button:not([disabled])'));
+    return fallbackButtons.find((item) => this.isVisibleFocusable(item)) || undefined;
+  }
+
+  private isVisibleFocusable(target: HTMLElement) {
+    if (target.hasAttribute('readonly') || target.getAttribute('aria-readonly') === 'true') {
+      return false;
+    }
+
+    const readonlyWrapper = target.closest('[readonly], [aria-readonly="true"], .v-input--readonly, .v-field--readonly');
+    if (readonlyWrapper) {
+      return false;
+    }
+
+    return target.offsetParent !== null || target === document.activeElement;
+  }
+
+  private async waitForFocusFrame() {
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
 
   private buildTitle(props: any, context: any) {
@@ -536,6 +655,94 @@ export class Form extends UIBase {
     await this.onPrevClicked();
   }
 
+  async $handleEscapeShortcut() {
+    if (this.params.value.prevButton) {
+      await this.onPrevClicked();
+      return;
+    }
+
+    await this.onCancelClicked();
+  }
+
+  async $handleSaveShortcut() {
+    if (!this.canTriggerSaveShortcut()) {
+      return;
+    }
+
+    await this.onSaveClicked();
+  }
+
+  private onFormKeydown(ev: KeyboardEvent) {
+    if (ev.defaultPrevented || Dialogs.hasBlockingDialog()) {
+      return;
+    }
+
+    if (this.isSaveShortcut(ev)) {
+      if (this.shouldIgnoreSaveShortcut(ev.target) || !this.canTriggerSaveShortcut()) {
+        return;
+      }
+
+      ev.preventDefault();
+      this.onSaveClicked();
+      return;
+    }
+
+    if (ev.key !== 'Escape' || ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey) {
+      return;
+    }
+
+    if (this.shouldIgnoreEscapeCancel(ev.target)) {
+      return;
+    }
+
+    ev.preventDefault();
+    this.$handleEscapeShortcut();
+  }
+
+  private isSaveShortcut(ev: KeyboardEvent) {
+    return !ev.altKey && !ev.shiftKey && (ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's';
+  }
+
+  private canTriggerSaveShortcut() {
+    if (!this.hasAccess.value) {
+      return false;
+    }
+
+    if (this.params.value.saveButton?.disabled) {
+      return false;
+    }
+
+    if (this.$readonly && !this.params.value.sub && !this.params.value.showSaveInReadonly) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private shouldIgnoreSaveShortcut(target: EventTarget | null) {
+    if (!(target instanceof HTMLElement)) {
+      return false;
+    }
+
+    if (target.closest('[contenteditable="true"], .monaco-editor, .ace_editor, .tox, .ProseMirror')) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private shouldIgnoreEscapeCancel(target: EventTarget | null) {
+    if (!(target instanceof HTMLElement)) {
+      return false;
+    }
+
+    if (target.closest('[contenteditable="true"], .monaco-editor, .ace_editor, .tox, .ProseMirror')) {
+      return true;
+    }
+
+    return false;
+  }
+
   private async onSaveClicked(){
 
     if (this.$readonly) {
@@ -702,12 +909,20 @@ export class Form extends UIBase {
 
   attachEventListeners() {
     if (this.options.attachEventListeners && !this.listenersAttached) this.options.attachEventListeners(this)
+    if (typeof window !== 'undefined' && !this.shortcutHandler) {
+      this.shortcutHandler = (ev: KeyboardEvent) => this.onFormKeydown(ev);
+      window.addEventListener('keydown', this.shortcutHandler);
+    }
     super.attachEventListeners()
     this.listenersAttached = true;
   }
 
   removeEventListeners() {
     if (this.options.removeEventListeners && this.listenersAttached) this.options.removeEventListeners(this);
+    if (typeof window !== 'undefined' && this.shortcutHandler) {
+      window.removeEventListener('keydown', this.shortcutHandler);
+      this.shortcutHandler = undefined;
+    }
     super.removeEventListeners()
     this.listenersAttached = false;
   }

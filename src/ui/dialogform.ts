@@ -1,4 +1,4 @@
-import { VNode, Ref } from "vue";
+import { VNode, Ref, nextTick } from "vue";
 import { UIBase } from "./base";
 import { VBtn, VCard, VCardActions, VCardText, VDialog, VSpacer } from 'vuetify/components';
 import { Form } from "./form";
@@ -34,6 +34,7 @@ export class DialogForm extends UIBase {
   private loaded = false;
   private loading: Ref<boolean>;
   private currentForm: Form|undefined;
+  private dialogRoot: Ref<HTMLElement|undefined>;
   private static defaultParams: DialogParams = {};
 
   constructor(params?: DialogParams, options?: DialogFormOptions) {
@@ -44,6 +45,7 @@ export class DialogForm extends UIBase {
     this.dialog = this.$makeRef(false);
     this.currentForm = undefined;
     this.loading = this.$makeRef(false);
+    this.dialogRoot = this.$makeRef();
     if (options?.master) {
       this.setMaster(options?.master);
     } else {
@@ -119,13 +121,17 @@ export class DialogForm extends UIBase {
         persistent: this.params.value.persistent !== false,
         width: "auto",
         fullscreen: this.params.value.fullscreen,
+        onAfterEnter: () => this.focusPrimaryInput(),
       },
       () => h(
         'div',
         {
+          ref: (el: Element | any) => this.setDialogRoot(el),
           onKeydown: (ev: KeyboardEvent) => this.onDialogKeydown(ev)
         },
-        () => this.buildBody(props, context)
+        [
+          this.buildBody(props, context)
+        ]
       )
     );
   }
@@ -278,6 +284,10 @@ export class DialogForm extends UIBase {
     }
 
     this.loading.value = false;
+
+    if (this.dialog.value) {
+      await this.focusPrimaryInput();
+    }
   }
 
   private async onCancelClicked(){
@@ -297,6 +307,73 @@ export class DialogForm extends UIBase {
       ev.preventDefault();
       this.onCancelClicked();
     }
+  }
+
+  private setDialogRoot(el: Element | any) {
+    if (el instanceof HTMLElement) {
+      this.dialogRoot.value = el;
+      return;
+    }
+
+    const root = el?.$el;
+    this.dialogRoot.value = root instanceof HTMLElement ? root : undefined;
+  }
+
+  private async focusPrimaryInput() {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    await nextTick();
+    await this.waitForFocusFrame();
+
+    const target = this.findFocusTarget();
+    if (target && typeof target.focus === 'function') {
+      target.focus();
+    }
+  }
+
+  private findFocusTarget(): HTMLElement | undefined {
+    const root = this.dialogRoot.value;
+    if (!root) {
+      return undefined;
+    }
+
+    const selectors = [
+      'input[autofocus]:not([type="hidden"]):not([disabled]):not([readonly])',
+      'textarea[autofocus]:not([disabled]):not([readonly])',
+      '.v-autocomplete input:not([type="hidden"]):not([disabled]):not([readonly])',
+      '.v-field input:not([type="hidden"]):not([disabled]):not([readonly])',
+      'textarea:not([disabled]):not([readonly])',
+    ];
+
+    for (const selector of selectors) {
+      const items = Array.from(root.querySelectorAll<HTMLElement>(selector));
+      const target = items.find((item) => this.isVisibleFocusable(item));
+      if (target) {
+        return target;
+      }
+    }
+
+    const fallbackButtons = Array.from(root.querySelectorAll<HTMLElement>('button:not([disabled])'));
+    return fallbackButtons.find((item) => this.isVisibleFocusable(item)) || undefined;
+  }
+
+  private async waitForFocusFrame() {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  private isVisibleFocusable(target: HTMLElement) {
+    if (target.hasAttribute('readonly') || target.getAttribute('aria-readonly') === 'true') {
+      return false;
+    }
+
+    const readonlyWrapper = target.closest('[readonly], [aria-readonly="true"], .v-input--readonly, .v-field--readonly');
+    if (readonlyWrapper) {
+      return false;
+    }
+
+    return target.offsetParent !== null || target === document.activeElement;
   }
 
   private async onSaved(){

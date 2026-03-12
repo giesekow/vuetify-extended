@@ -201,6 +201,7 @@ export class Field extends UIBase {
   private maxWidth: Ref;
 
   private codePreview: Ref<any>;
+  private htmlEditor: any;
 
   constructor(params?: FieldParams, options?: FieldOptions) {
     super();
@@ -230,6 +231,7 @@ export class Field extends UIBase {
     this.maxWidth = this.$makeRef(null);
     this.isEditting = false;
     this.codePreview = this.$makeRef("");
+    this.htmlEditor = undefined;
   }
 
   static setDefault(value: FieldParams, reset?: boolean): void {
@@ -1007,12 +1009,21 @@ export class Field extends UIBase {
         readonly: this.$readonly,
         disabled: this.$readonly,
         init: {
-          plugins: 'lists link table image emoticons autoresize'
+          plugins: 'lists link table image emoticons autoresize',
+          setup: (editor: any) => {
+            this.registerHtmlEditor(editor);
+          }
         },
         placeholder: this.params.value.placeholder,
         height: this.params.value.height || 300,
         class: this.params.value.class || [],
         style: this.params.value.style || {},
+        onInit: (_evt: any, editor: any) => {
+          this.htmlEditor = editor;
+          if (this.params.value.autofocus) {
+            this.focusHtmlEditor();
+          }
+        },
         "onUpdate:modelValue": (v: any) => {
           this.modelValue.value = v;
         }
@@ -1075,6 +1086,79 @@ export class Field extends UIBase {
         ),
       ]
     )
+  }
+
+  private registerHtmlEditor(editor: any) {
+    this.htmlEditor = editor;
+
+    editor.on('init', () => {
+      if (this.params.value.autofocus) {
+        this.focusHtmlEditor();
+      }
+    });
+
+    editor.on('keydown', (ev: KeyboardEvent) => {
+      this.onHtmlEditorKeydown(ev);
+    });
+  }
+
+  private async onHtmlEditorKeydown(ev: KeyboardEvent) {
+    const form = this.parentForm();
+    if (!form || Dialogs.hasBlockingDialog()) {
+      return;
+    }
+
+    if (!ev.altKey && !ev.shiftKey && (ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') {
+      ev.preventDefault();
+      await form.$handleSaveShortcut();
+      return;
+    }
+
+    if (ev.key === 'Escape' && !ev.altKey && !ev.ctrlKey && !ev.metaKey && !ev.shiftKey) {
+      ev.preventDefault();
+      await form.$handleEscapeShortcut();
+    }
+  }
+
+  private focusHtmlEditor() {
+    const editor = this.htmlEditor;
+    if (!editor || typeof window === 'undefined') {
+      return;
+    }
+
+    setTimeout(() => {
+      editor.focus?.();
+      const body = editor.getBody?.();
+      body?.focus?.();
+      if (body && typeof editor.selection?.select === 'function' && typeof editor.selection?.collapse === 'function') {
+        editor.selection.select(body, true);
+        editor.selection.collapse(true);
+      }
+    }, 50);
+  }
+
+  private parentForm(): Form|undefined {
+    let parent: any = this.$parent;
+    while (parent) {
+      if (parent instanceof Form) {
+        return parent;
+      }
+      parent = parent.$parent;
+    }
+    return undefined;
+  }
+
+  async focusPrimaryInput(): Promise<boolean> {
+    if (this.$readonly || this.params.value.invisible) {
+      return false;
+    }
+
+    if (this.params.value.type === 'html') {
+      this.focusHtmlEditor();
+      return true;
+    }
+
+    return false;
   }
 
   buildButton(props: any, context: any) {

@@ -375,6 +375,7 @@ export class Trigger extends UIBase {
             () => h(
               VCard,
               {
+                onKeydown: (ev: KeyboardEvent) => this.onTriggerKeydown(ev),
                 maxWidth: this.params.value.maxWidth,
                 width: this.params.value.width,
                 minWidth: this.params.value.minWidth,
@@ -798,6 +799,31 @@ export class Trigger extends UIBase {
     }
 
     this.handleOn('cancel', this);
+  }
+
+  private onTriggerKeydown(ev: KeyboardEvent) {
+    if (Dialogs.hasBlockingDialog() || ev.key !== 'Escape' || ev.defaultPrevented || ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey) {
+      return;
+    }
+
+    if (this.shouldIgnoreEscapeCancel(ev.target)) {
+      return;
+    }
+
+    ev.preventDefault();
+    this.onCancelClicked();
+  }
+
+  private shouldIgnoreEscapeCancel(target: EventTarget | null) {
+    if (!(target instanceof HTMLElement)) {
+      return false;
+    }
+
+    if (target.closest('[contenteditable="true"], .monaco-editor, .ace_editor, .tox, .ProseMirror')) {
+      return true;
+    }
+
+    return false;
   }
 
   private async onRemoveClicked() {

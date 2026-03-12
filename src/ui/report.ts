@@ -178,6 +178,7 @@ export class Report extends UIBase {
     if (this.hasAccess.value) {
       await this.prepareForm(props, context, 0);
       await this.loadObject();
+      await this.focusCurrentForm();
     }
   }
 
@@ -438,6 +439,7 @@ export class Report extends UIBase {
         this.currentForm.on('prev', () => this.onprev(), this.$id);
         this.currentForm.on('cancel', () => this.oncancel(), this.$id);
         this.currentForm.attachEventListeners();
+        this.focusCurrentForm();
       }
 
     } else {
@@ -632,6 +634,15 @@ export class Report extends UIBase {
     if (this.hasPrev) {
       await this.prepareForm(props, context, this.currentIndex.value - 1);
     }
+  }
+
+  private async focusCurrentForm() {
+    if (!this.currentForm) {
+      return;
+    }
+
+    await sleep(50);
+    await this.currentForm.focusPrimaryInput();
   }
 
   private applyStepSubtitle(form: Form, index: number) {

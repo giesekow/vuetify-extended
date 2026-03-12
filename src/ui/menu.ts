@@ -45,6 +45,7 @@ export class Menu extends UIBase {
   private options: MenuOptions;
   private childrenInstances: Array<MenuItem> = [];
   private loaded: Ref<boolean>;
+  private shortcutHandler?: (ev: KeyboardEvent) => void;
   private static defaultParams: MenuParams = {};
 
   constructor(params?: MenuParams, options?: MenuOptions) {
@@ -273,7 +274,14 @@ export class Menu extends UIBase {
                     subtitle: () => h(
                       'span',
                       item.$params.subText,
-                    )
+                    ),
+                    append: () => item.$params.shortcut ? h(
+                      'span',
+                      {
+                        class: ['text-caption', 'text-medium-emphasis']
+                      },
+                      item.$params.shortcut
+                    ) : undefined,
                   }
                 )
               )
@@ -374,6 +382,148 @@ export class Menu extends UIBase {
     this.handleOn('setup', this);
   }
 
+  attachEventListeners() {
+    super.attachEventListeners();
+
+    if (typeof window === 'undefined' || this.shortcutHandler) {
+      return;
+    }
+
+    this.shortcutHandler = (ev: KeyboardEvent) => this.onShortcutKeydown(ev);
+    window.addEventListener('keydown', this.shortcutHandler);
+  }
+
+  removeEventListeners() {
+    if (typeof window !== 'undefined' && this.shortcutHandler) {
+      window.removeEventListener('keydown', this.shortcutHandler);
+      this.shortcutHandler = undefined;
+    }
+
+    super.removeEventListeners();
+  }
+
+  private onShortcutKeydown(ev: KeyboardEvent) {
+    if (Dialogs.hasBlockingDialog() || ev.defaultPrevented || ev.repeat || this.shouldIgnoreShortcut(ev)) {
+      return;
+    }
+
+    const eventShortcut = this.normalizeShortcutFromEvent(ev);
+    if (!eventShortcut) {
+      return;
+    }
+
+    for (const item of this.childrenInstances) {
+      const itemShortcut = this.normalizeShortcut(item.$params.shortcut);
+      if (!itemShortcut || itemShortcut !== eventShortcut) {
+        continue;
+      }
+
+      ev.preventDefault();
+      this.itemClicked(item);
+      return;
+    }
+
+    if (eventShortcut === 'escape' && this.hasParent()) {
+      ev.preventDefault();
+      this.backClicked();
+    }
+  }
+
+  private shouldIgnoreShortcut(ev: KeyboardEvent) {
+    const target = ev.target;
+
+    if (!(target instanceof HTMLElement)) {
+      return false;
+    }
+
+    if (target.closest('input, textarea, select, [contenteditable="true"], .monaco-editor, .ace_editor, .tox, .ProseMirror')) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private normalizeShortcut(shortcut?: string) {
+    if (!shortcut) {
+      return undefined;
+    }
+
+    const tokens = shortcut
+      .split('+')
+      .map((token) => token.trim().toLowerCase())
+      .filter((token) => token !== '');
+
+    if (tokens.length === 0) {
+      return undefined;
+    }
+
+    let ctrl = false;
+    let alt = false;
+    let shift = false;
+    let meta = false;
+    let key: string | undefined;
+
+    for (const token of tokens) {
+      if (['ctrl', 'control'].includes(token)) {
+        ctrl = true;
+        continue;
+      }
+
+      if (['alt', 'option'].includes(token)) {
+        alt = true;
+        continue;
+      }
+
+      if (token === 'shift') {
+        shift = true;
+        continue;
+      }
+
+      if (['cmd', 'command', 'meta'].includes(token)) {
+        meta = true;
+        continue;
+      }
+
+      key = this.normalizeShortcutKey(token);
+    }
+
+    if (!key) {
+      return undefined;
+    }
+
+    return `${ctrl ? 'ctrl+' : ''}${alt ? 'alt+' : ''}${shift ? 'shift+' : ''}${meta ? 'meta+' : ''}${key}`;
+  }
+
+  private normalizeShortcutFromEvent(ev: KeyboardEvent) {
+    const key = this.normalizeShortcutKey(ev.key);
+    if (!key) {
+      return undefined;
+    }
+
+    return `${ev.ctrlKey ? 'ctrl+' : ''}${ev.altKey ? 'alt+' : ''}${ev.shiftKey ? 'shift+' : ''}${ev.metaKey ? 'meta+' : ''}${key}`;
+  }
+
+  private normalizeShortcutKey(key?: string) {
+    if (!key) {
+      return undefined;
+    }
+
+    const normalized = key.trim().toLowerCase();
+    const aliases: Record<string, string> = {
+      esc: 'escape',
+      return: 'enter',
+      ' ': 'space',
+      spacebar: 'space',
+      left: 'arrowleft',
+      right: 'arrowright',
+      up: 'arrowup',
+      down: 'arrowdown',
+      del: 'delete',
+    };
+
+    return aliases[normalized] || normalized;
+  }
+
   private handleOn(event: string, data?: any) {
     if (this.options.on) {
       const events = this.options.on(this);
@@ -393,6 +543,7 @@ export interface MenuItemParams {
   mode?: ReportMode;
   text?: string;
   subText?: string;
+  shortcut?: string;
   icon?: string;
   color?: string;
   textColor?: string;
