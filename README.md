@@ -11,6 +11,8 @@ This repository contains both the source code under `src/` and the published bui
 - High-level screen primitives such as `Form`, `Report`, `Collection`, and `Selector`
 - A stack-based application shell with `AppMain` and `AppManager`
 - A shared `Api` facade that can target Feathers or axios-backed clients
+- Global runtime helpers for dialogs, notifications, and mailbox-style inbox flows
+- Reusable shell widgets for title blocks, status badges, environment tags, user areas, and mailbox entry points
 - Helpers for printing, export, validation, file handling, charts, maps, HTML editing, and code editing
 
 ## Who This Library Fits Best
@@ -68,8 +70,8 @@ This gives you one place to:
 - initialize `AppManager`
 - register the active `AppMain`
 - apply project-wide UI defaults
-- configure dialog/snackbar behavior
-- expose a single dialog root component
+- configure dialog and notification behavior
+- expose single root components for dialogs and notifications
 - scaffold an optional app shell around `AppMain`
 
 ## Importing CSS
@@ -104,18 +106,26 @@ The fastest way to understand the library is this:
 
 `AppMain` can now act as a lightweight application shell in addition to being the workflow host.
 
-Available params:
+Available params include:
 
 - `title`
 - `showHeader`
 - `showFooter`
+- `showFab`, `fabIcon`, `fabColor`, `fabLabel`, `fabShortcut`, `fabPosition`
+- `headerLayout`, `footerLayout`
+- `headerStartWidth`, `headerCenterWidth`, `headerEndWidth`
+- `footerStartWidth`, `footerCenterWidth`, `footerEndWidth`
+- `backgroundColor`, `backgroundGradient`, `backgroundImage`, `backgroundOverlay`, and related background sizing/position params
 
-Available options:
+Available options include:
 
 - `header?: (app) => VNode | UIBase | Array<VNode | UIBase>`
 - `footer?: (app) => VNode | UIBase | Array<VNode | UIBase>`
+- `headerStart`, `headerCenter`, `headerEnd`
+- `footerStart`, `footerCenter`, `footerEnd`
+- `fabButtons?: (app, item, stackItem) => Button[]`
 
-If neither header nor footer is enabled, `AppMain` renders the same way it did before. When enabled, it wraps the stack content in a Vuetify `VApp` / `VAppBar` / `VMain` / `VFooter` scaffold.
+If neither header nor footer is enabled, `AppMain` renders the same way it did before. When enabled, it wraps the stack content in a Vuetify `VApp` / `VAppBar` / `VMain` / `VFooter` scaffold. The structured header/footer regions make it easier to place shell widgets such as a mailbox bell, user area, environment tag, or status badges without building a custom header row in every app.
 
 ## Main Exports
 
@@ -140,6 +150,10 @@ The most commonly used exports are:
 - `AppMain`
 - `AppManager`
 - `Dialogs`
+- `Notifications`
+- `Mailbox`
+- `MailboxView`
+- `MailboxBell`
 - `Field`
 - `Part`
 - `Form`
@@ -167,6 +181,8 @@ These short aliases are useful when defining UI entirely in TypeScript:
 - `$MN`: `Menu`
 - `$MI`: `MenuItem`
 - `$APP`: `AppMain`
+- `$MAILBOX`: `MailboxView`
+- `$MAILBOX_BELL`: `MailboxBell`
 
 ## Getting Started
 
@@ -219,6 +235,8 @@ If you want the general-purpose axios implementation with the same `Api.instance
 import { Api } from 'vuetify-extended'
 
 Api.useAxios('https://api.example.com', {
+  useSocket: true,
+  socketEvent: 'service-event',
   keycloakConfig: {
     url: 'https://sso.example.com',
     realm: 'example',
@@ -345,6 +363,12 @@ const bootstrap = createVuetifyExtendedApp({
         pkceMethod: 'S256',
       },
     },
+    options: {
+      useSocket: true,
+      socketURL: 'https://api.example.com',
+      socketEvent: 'service-event',
+      socketAuthMode: 'auth',
+    },
   },
   defaults: {
     field: { variant: 'outlined', clearable: true },
@@ -364,6 +388,7 @@ const Root = defineComponent({
     return () => [
       h(bootstrap.component),
       h(bootstrap.dialogs),
+      h(bootstrap.notifications),
     ]
   },
 })
@@ -376,7 +401,7 @@ createApp(Root)
 validateVuetifyExtendedSetup({ warn: true })
 ```
 
-`Dialogs.rootComponent()` is also available directly if you prefer the lower-level bootstrap path.
+`Dialogs.rootComponent()` and `Notifications.rootComponent()` are also available directly if you prefer the lower-level bootstrap path.
 `bootstrap.component` is a convenience alias for `bootstrap.appMain.component`.
 
 ## Manual Playground
@@ -396,6 +421,8 @@ It exercises the main UI primitives in a running app, including:
 - `DialogForm`
 - `Collection`
 - shared `Dialogs`
+- shared `Notifications`
+- shell mailbox entry via `MailboxBell`
 
 The playground uses a local in-memory API adapter, so report, selector, trigger, and collection flows can be tested without a live backend.
 
@@ -921,6 +948,8 @@ The library now includes several built-in keyboard affordances:
 - selectors support `Enter` to confirm and `Escape` to cancel
 - dialog forms support `Escape` to cancel
 - reports/forms support `Escape`, `Ctrl+S`, and `Meta+S`
+- the app-level FAB can now expose a function-key-style toggle shortcut, while report/trigger button shortcuts still take precedence
+- mailbox screens support `Escape` to close
 
 When multiple menu items register the same shortcut, the first visible matching item wins.
 
@@ -941,11 +970,15 @@ AppManager.back()
 AppManager.reload()
 ```
 
-## Global Dialogs and Notifications
+## Global Dialogs, Notifications, and Mailbox
 
-The `Dialogs` class gives you reusable global UI for confirmation, success, warning, error, and progress.
+The library now exposes three related app-level feedback/inbox tools:
 
-Example:
+- `Dialogs` for blocking confirmation, progress, and dialog-style feedback
+- `Notifications` for non-blocking toast-style messages
+- `Mailbox` for delegated, persistent inbox-style message lists that can open real `Report` screens
+
+Dialogs example:
 
 ```ts
 const confirmed = await Dialogs.$confirm('Delete this record?', 'Confirm delete')
@@ -963,11 +996,33 @@ if (confirmed) {
 }
 ```
 
-Remember that the `Dialogs` component set must be rendered at the app root for these methods to show UI.
+Notifications example:
+
+```ts
+Notifications.$success('Saved successfully', { title: 'Profile Updated' })
+Notifications.$warning('Background sync is delayed', { title: 'Heads up' })
+```
+
+Mailbox example:
+
+```ts
+Mailbox.configure({
+  title: 'Team Mailbox',
+  pageSize: 10,
+  load: async ({ page, pageSize }) => ({ items: await loadMailbox(page, pageSize), hasMore: true }),
+  viewItem: async (item) => buildMailboxReport(item),
+})
+
+AppManager.showUI(new MailboxView())
+```
+
+Remember that the dialog and notification root components must be rendered at the app root for these methods to show UI.
 
 ## Shared Service Helpers
 
 Both supported backends expose the same service-oriented surface through `Api.instance.service(path)`.
+
+The axios backend now also supports optional Socket.IO realtime routing, so backend messages can be forwarded into `service(path).on(...)` listeners while keeping axios for REST calls.
 
 Common helper methods include:
 

@@ -55,6 +55,14 @@ Key exports:
 - `Collection`
 - `Trigger`
 - `Dialogs`
+- `Notifications`
+- `Mailbox`
+- `MailboxView`
+- `MailboxBell`
+- `AppTitleBlock`
+- `EnvironmentTag`
+- `StatusBadge`
+- `UserArea`
 - `AppMain`
 - `AppManager`
 
@@ -114,6 +122,7 @@ It contains the axios-specific implementation with:
 - a Feathers-like `service(path)` API
 - Keycloak token management through `keycloak-js`
 - request/refresh handling through axios interceptors
+- optional Socket.IO realtime routing into `service(path).on(...)`
 
 ## `misc`
 
@@ -249,6 +258,8 @@ Common usage patterns include:
 - UDF-backed dynamic fields
 - keyboard-driven menu and workflow navigation
 - optional app-shell header/footer framing around `AppMain`
+- structured shell regions, background layers, reusable shell widgets, and an optional FAB launcher
+- global notifications and delegated mailbox flows
 - long-form message history display through `messagingbox`
 
 ## Notable Integrations
@@ -323,6 +334,8 @@ Some functionality relies on global/static state:
 - `Api.instance`
 - `AppManager`
 - `Dialogs`
+- `Notifications`
+- `Mailbox`
 
 This is convenient, but it means bootstrap order matters.
 
@@ -332,11 +345,11 @@ Recommended order:
 2. `AppManager.init()`
 3. Create the `AppMain` instance
 4. `AppManager.setApp(appMain)`
-5. Mount Vue and render the app shell plus `Dialogs` components
+5. Mount Vue and render the app shell plus `Dialogs` and `Notifications` root components
 
 The recommended shortcut for new apps is to use `createVuetifyExtendedApp(...)`, which performs the initialization and registration steps for you.
 
-When using the new optional `AppMain` shell, the same bootstrap path can also supply a header/footer frame around the workflow area. The host app still mounts `bootstrap.component` and `bootstrap.dialogs`; the shell lives inside `AppMain` itself.
+When using the new optional `AppMain` shell, the same bootstrap path can also supply a header/footer frame around the workflow area. The host app now mounts `bootstrap.component`, `bootstrap.dialogs`, and `bootstrap.notifications`; the shell lives inside `AppMain` itself.
 
 ## Backend Selection
 
@@ -366,14 +379,16 @@ This makes the library powerful, but these files deserve extra care when refacto
 One refactoring step already in place is the extraction of heavier field widget renderers into:
 
 - `src/ui/widgets/field-rich-widgets.ts`
+- `src/ui/widgets/field-table-widgets.ts`
 
-That module currently hosts widget implementations such as:
+These modules currently host widget implementations such as:
 
 - `html`
 - `code`
 - `messagingbox`
 - `chart`
 - `map`
+- table variants such as `table`, `viewtable`, `servertable`, and `reporttable`
 - image/document rendering helpers
 
 ## Keyboard and Focus Notes

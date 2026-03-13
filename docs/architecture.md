@@ -8,10 +8,10 @@ The library is not a thin wrapper around Vuetify components. It adds:
 
 - A class-based component model
 - A shared data model called `Master`
-- Screen orchestration primitives such as `Report`, `Form`, `Collection`, and `Selector`
+- Screen orchestration primitives such as `Report`, `Form`, `Collection`, `Selector`, and `MailboxView`
 - An application shell and navigation stack via `AppMain` and `AppManager`
-- Optional header/footer framing around `AppMain` for full-app layouts
-- Integrated utility support for printing, export, document/image upload, code editing, maps, charts, and rich HTML
+- Optional header/footer framing around `AppMain` for full-app layouts, background layers, and FAB quick actions
+- Integrated utility support for printing, export, document/image upload, code editing, maps, charts, rich HTML, notifications, and mailbox-style inbox flows
 
 ## Architectural Style
 
@@ -63,6 +63,7 @@ The axios implementation supports:
 - a Feathers-like `service(path)` interface
 - Keycloak token acquisition and refresh through `keycloak-js`
 - bearer-token injection through axios interceptors
+- optional Socket.IO realtime routing into `service(path).on(...)` listeners
 
 ### 4. Utility Layer
 
@@ -104,12 +105,16 @@ Supporting globals:
 
 - `AppManager`: singleton-style runtime coordinator
 - `Dialogs`: singleton-style global confirm/snackbar/progress state
+- `Notifications`: singleton-style non-blocking toast state
+- `Mailbox`: delegated mailbox store/loader/view coordinator
 - `EventEmitter`: shared event abstraction used by most classes
 
 Shell additions:
 
 - `AppMain` can optionally render a `VApp` / `VAppBar` / `VMain` / `VFooter` frame
 - host apps can inject header/footer content through `header(app)` and `footer(app)` callbacks
+- structured shell regions (`headerStart`, `headerCenter`, `headerEnd`, and footer equivalents) make it easier to compose shell widgets
+- the shell supports configurable background layers and an optional FAB action launcher
 
 Supporting bootstrap helpers:
 
@@ -117,6 +122,8 @@ Supporting bootstrap helpers:
 - `createVuetifyExtendedPlugin(...)`
 - `configureVuetifyExtendedDefaults(...)`
 - `validateVuetifyExtendedSetup(...)`
+
+The bootstrap layer now expects both the dialogs root and the notifications root to be rendered when using the convenience bootstrap path.
 
 ## Core Building Blocks
 
@@ -362,7 +369,7 @@ Responsibilities:
 - Expose a shared event channel
 - Offer convenience methods like `showReport`, `showMenu`, `showDialog`, `back`, and `reload`
 
-This split gives the library a singleton-like application API while keeping the actual shell instance in `AppMain`.
+This split gives the library a singleton-like application API while keeping the actual shell instance in `AppMain`. `AppMain` now also owns optional shell framing, global FAB presentation, and the entry point used by shell widgets such as `MailboxBell`.
 
 ## Setup Responsibilities
 
@@ -520,6 +527,15 @@ Common extension points:
 - `menu`
 
 This produces a fairly composable API, even though the codebase is class-based.
+
+## `Notifications` and `Mailbox`
+
+The runtime now includes two non-form feedback/inbox systems alongside `Dialogs`:
+
+- `Notifications` is a non-blocking toast manager with a mounted root component, queued cards, optional action buttons, and configurable opaque/translucent surface styling.
+- `Mailbox` is a delegated inbox abstraction. The library owns the mailbox UI and interaction model, while the host app supplies `load`, `viewItem`, unread counting, and optional mutation handlers.
+
+`MailboxView` extends `UIBase`, so it can be opened through `AppManager.showUI(...)` and behaves like other stack-based screens. `MailboxBell` is a shell widget that simply opens `MailboxView` and shows the unread badge in the shell.
 
 ## API Backend Strategy
 
