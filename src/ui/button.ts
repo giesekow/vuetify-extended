@@ -16,6 +16,7 @@ export interface ButtonParams {
   color?: string;
   class?: string;
   text?: string;
+  shortcut?: string;
   flat?: boolean;
   loading?: boolean;
   rounded?: string | number | boolean;
@@ -78,6 +79,14 @@ export class Button extends UIBase {
 
   onClicked (props: any, context: any): void {
     //
+  }
+
+  triggerShortcut() {
+    if (this.params.value.disabled || this.params.value.invisible || this.$readonly) {
+      return;
+    }
+
+    this.clicked({}, {});
   }
 
   render(props: any, context: any): VNode|undefined {

@@ -9,6 +9,7 @@ import { Report } from "./report";
 import { AppManager } from "./appmanager";
 import { Field, Refs } from "./field";
 import { OnHandler } from "./lib";
+import { normalizeShortcut, normalizeShortcutFromEvent, shouldIgnoreShortcutTarget } from "./shortcut";
 
 export interface FormParams {
   ref?: string;
@@ -687,16 +688,17 @@ export class Form extends UIBase {
       return;
     }
 
-    if (ev.key !== 'Escape' || ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey) {
+    if (ev.key === 'Escape' && !ev.altKey && !ev.ctrlKey && !ev.metaKey && !ev.shiftKey) {
+      if (this.shouldIgnoreEscapeCancel(ev.target)) {
+        return;
+      }
+
+      ev.preventDefault();
+      this.$handleEscapeShortcut();
       return;
     }
 
-    if (this.shouldIgnoreEscapeCancel(ev.target)) {
-      return;
-    }
-
-    ev.preventDefault();
-    this.$handleEscapeShortcut();
+    this.triggerButtonShortcut(ev);
   }
 
   private isSaveShortcut(ev: KeyboardEvent) {
@@ -717,6 +719,45 @@ export class Form extends UIBase {
     }
 
     return true;
+  }
+
+
+  private getShortcutButtons() {
+    return this.topButtonInstances.concat(this.bottomButtonInstances);
+  }
+
+  private triggerButtonShortcut(ev: KeyboardEvent) {
+    if (ev.repeat || shouldIgnoreShortcutTarget(ev.target)) {
+      return false;
+    }
+
+    const eventShortcut = normalizeShortcutFromEvent(ev);
+    if (!eventShortcut) {
+      return false;
+    }
+
+    const seen = new Set<Button>();
+    for (const button of this.getShortcutButtons()) {
+      if (seen.has(button)) {
+        continue;
+      }
+      seen.add(button);
+
+      if (button.$params.disabled || button.$params.invisible || button.$readonly) {
+        continue;
+      }
+
+      const shortcut = normalizeShortcut(button.$params.shortcut);
+      if (!shortcut || shortcut !== eventShortcut) {
+        continue;
+      }
+
+      ev.preventDefault();
+      button.triggerShortcut();
+      return true;
+    }
+
+    return false;
   }
 
   private shouldIgnoreSaveShortcut(target: EventTarget | null) {

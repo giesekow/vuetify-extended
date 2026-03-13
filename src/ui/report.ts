@@ -10,6 +10,7 @@ import { Dialogs } from "./dialogs";
 import { OnHandler } from "./lib";
 import { PRefs } from "./part";
 import { Refs } from "./field";
+import { normalizeShortcut, normalizeShortcutFromEvent, shouldIgnoreShortcutTarget } from "./shortcut";
 
 export type ReportButtonStyle = 'text'|'outlined'|'elevated';
 
@@ -93,6 +94,7 @@ export class Report extends UIBase {
   private lastProps: any;
   private lastContext: any;
   private cleanSnapshot: string;
+  private shortcutHandler?: (ev: KeyboardEvent) => void;
   private static defaultParams: ReportParams = {
     sideButtonPosition: 'right',
   };
@@ -789,6 +791,42 @@ export class Report extends UIBase {
     this.save()
   }
 
+  private triggerButtonShortcut(ev: KeyboardEvent) {
+    if (ev.repeat || shouldIgnoreShortcutTarget(ev.target)) {
+      return false;
+    }
+
+    const eventShortcut = normalizeShortcutFromEvent(ev);
+    if (!eventShortcut) {
+      return false;
+    }
+
+    for (const button of this.sideButtonInstances) {
+      if (button.$params.disabled || button.$params.invisible || button.$readonly) {
+        continue;
+      }
+
+      const shortcut = normalizeShortcut(button.$params.shortcut);
+      if (!shortcut || shortcut !== eventShortcut) {
+        continue;
+      }
+
+      ev.preventDefault();
+      button.triggerShortcut();
+      return true;
+    }
+
+    return false;
+  }
+
+  private onReportKeydown(ev: KeyboardEvent) {
+    if (ev.defaultPrevented || Dialogs.hasBlockingDialog()) {
+      return;
+    }
+
+    this.triggerButtonShortcut(ev);
+  }
+
   setup(props: any, context: any) {
     if (this.options.setup) this.options.setup(this);
     this.handleOn('setup', this);
@@ -873,6 +911,10 @@ export class Report extends UIBase {
 
   attachEventListeners() {
     if (this.options.attachEventListeners && !this.listenersAttached) this.options.attachEventListeners(this)
+    if (typeof window !== 'undefined' && !this.shortcutHandler) {
+      this.shortcutHandler = (ev: KeyboardEvent) => this.onReportKeydown(ev);
+      window.addEventListener('keydown', this.shortcutHandler);
+    }
     super.attachEventListeners()
     this.listenersAttached = true;
   }
@@ -881,6 +923,10 @@ export class Report extends UIBase {
     if (this.options.removeEventListeners && this.listenersAttached) {
       this.options.removeEventListeners(this);
       if (this.currentForm) this.currentForm.removeEventListeners()
+    }
+    if (typeof window !== 'undefined' && this.shortcutHandler) {
+      window.removeEventListener('keydown', this.shortcutHandler);
+      this.shortcutHandler = undefined;
     }
     super.removeEventListeners()
     this.listenersAttached = false;

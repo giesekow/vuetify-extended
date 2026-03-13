@@ -367,7 +367,7 @@ function buildFullReport(params?: { objectId?: string; mode?: 'create' | 'edit' 
           },
         ),
         new Button(
-          { text: 'Help', variant: 'text', color: 'secondary' },
+          { text: 'Help', variant: 'text', color: 'secondary', shortcut: 'Alt+2' },
           {
             onClicked: () => {
               Dialogs.$success('Desktop side actions are enabled for this report.');
@@ -481,7 +481,7 @@ function buildTriggerDemo() {
       }),
       sideButtons: () => [
         new Button(
-          { text: 'Help', variant: 'outlined', color: 'primary' },
+          { text: 'Help', variant: 'outlined', color: 'primary', shortcut: 'Alt+H' },
           {
             onClicked: () => {
               Dialogs.$success('Desktop side actions are enabled for this trigger.');
@@ -489,7 +489,7 @@ function buildTriggerDemo() {
           },
         ),
         new Button(
-          { text: 'Tips', variant: 'text', color: 'secondary' },
+          { text: 'Tips', variant: 'text', color: 'secondary', shortcut: 'Alt+T' },
           {
             onClicked: () => {
               Dialogs.$success('Use search, filters, and row selection before choosing Edit.');

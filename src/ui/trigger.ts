@@ -10,6 +10,7 @@ import { Field, Refs } from "./field";
 import { ExportTemplateInfo } from "./report";
 import { AppManager } from "./appmanager";
 import { $excel, computeFunctionalCodeAsync } from "../misc";
+import { normalizeShortcut, normalizeShortcutFromEvent, shouldIgnoreShortcutTarget } from "./shortcut";
 
 export interface TriggerParams {
   ref?: string;
@@ -101,6 +102,8 @@ export class Trigger extends UIBase {
   private loading: Ref<boolean> = this.$makeRef(false);
   private hasPrintAccess: Ref<boolean>;
   private hasExportAccess: Ref<boolean>;
+  private listenersAttached = false;
+  private shortcutHandler?: (ev: KeyboardEvent) => void;
   private static defaultParams: TriggerParams = {
     fluid: true,
     sideButtonPosition: 'right',
@@ -901,16 +904,59 @@ export class Trigger extends UIBase {
   }
 
   private onTriggerKeydown(ev: KeyboardEvent) {
-    if (Dialogs.hasBlockingDialog() || ev.key !== 'Escape' || ev.defaultPrevented || ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey) {
+    if (Dialogs.hasBlockingDialog() || ev.defaultPrevented) {
       return;
     }
 
-    if (this.shouldIgnoreEscapeCancel(ev.target)) {
+    if (ev.key === 'Escape' && !ev.altKey && !ev.ctrlKey && !ev.metaKey && !ev.shiftKey) {
+      if (this.shouldIgnoreEscapeCancel(ev.target)) {
+        return;
+      }
+
+      ev.preventDefault();
+      this.onCancelClicked();
       return;
     }
 
-    ev.preventDefault();
-    this.onCancelClicked();
+    this.triggerButtonShortcut(ev);
+  }
+
+  private getShortcutButtons() {
+    return this.topButtonInstances.concat(this.bottomButtonInstances).concat(this.sideButtonInstances);
+  }
+
+  private triggerButtonShortcut(ev: KeyboardEvent) {
+    if (ev.repeat || shouldIgnoreShortcutTarget(ev.target)) {
+      return false;
+    }
+
+    const eventShortcut = normalizeShortcutFromEvent(ev);
+    if (!eventShortcut) {
+      return false;
+    }
+
+    const seen = new Set<Button>();
+    for (const button of this.getShortcutButtons()) {
+      if (seen.has(button)) {
+        continue;
+      }
+      seen.add(button);
+
+      if (button.$params.disabled || button.$params.invisible || button.$readonly) {
+        continue;
+      }
+
+      const shortcut = normalizeShortcut(button.$params.shortcut);
+      if (!shortcut || shortcut !== eventShortcut) {
+        continue;
+      }
+
+      ev.preventDefault();
+      button.triggerShortcut();
+      return true;
+    }
+
+    return false;
   }
 
   private shouldIgnoreEscapeCancel(target: EventTarget | null) {
@@ -1044,6 +1090,24 @@ export class Trigger extends UIBase {
       this.handleOn('after-export', data);
     }
     Dialogs.$hideProgress()
+  }
+
+  attachEventListeners() {
+    if (typeof window !== 'undefined' && !this.shortcutHandler) {
+      this.shortcutHandler = (ev: KeyboardEvent) => this.onTriggerKeydown(ev);
+      window.addEventListener('keydown', this.shortcutHandler);
+    }
+    super.attachEventListeners();
+    this.listenersAttached = true;
+  }
+
+  removeEventListeners() {
+    if (typeof window !== 'undefined' && this.shortcutHandler) {
+      window.removeEventListener('keydown', this.shortcutHandler);
+      this.shortcutHandler = undefined;
+    }
+    super.removeEventListeners();
+    this.listenersAttached = false;
   }
 
   private handleOn(event: string, data?: any) {
