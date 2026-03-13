@@ -339,6 +339,7 @@ function buildFullReport(params?: { objectId?: string; mode?: 'create' | 'edit' 
       horizontalAlign: 'center',
       verticalAlign: 'center',
       fluid: true,
+      sideButtonPosition: 'right',
     },
     {
       form: async (_props, _context, index) => {
@@ -356,6 +357,24 @@ function buildFullReport(params?: { objectId?: string; mode?: 'create' | 'edit' 
       saved: async () => {
         Dialogs.$success('Report save flow completed against the in-memory API.');
       },
+      sideButtons: (_props, _context, report) => [
+        new Button(
+          { text: 'Summary', variant: 'outlined', color: 'primary', icon: 'mdi-account' },
+          {
+            onClicked: () => {
+              Dialogs.$success(`Active report step: ${report.$currentForm?.$params.title || report.$params.title || 'Unknown'}`);
+            },
+          },
+        ),
+        new Button(
+          { text: 'Help', variant: 'text', color: 'secondary' },
+          {
+            onClicked: () => {
+              Dialogs.$success('Desktop side actions are enabled for this report.');
+            },
+          },
+        ),
+      ],
     },
   );
 }
@@ -440,6 +459,7 @@ function buildTriggerDemo() {
       queryFields: ['name', 'email', 'role'],
       canExport: false,
       canPrint: false,
+      sideButtonPosition: 'left',
     },
     {
       headers: async () => PEOPLE_HEADERS,
@@ -459,6 +479,24 @@ function buildTriggerDemo() {
           Dialogs.$success(`Trigger selected ${items.length} row(s).`);
         },
       }),
+      sideButtons: () => [
+        new Button(
+          { text: 'Help', variant: 'outlined', color: 'primary' },
+          {
+            onClicked: () => {
+              Dialogs.$success('Desktop side actions are enabled for this trigger.');
+            },
+          },
+        ),
+        new Button(
+          { text: 'Tips', variant: 'text', color: 'secondary' },
+          {
+            onClicked: () => {
+              Dialogs.$success('Use search, filters, and row selection before choosing Edit.');
+            },
+          },
+        ),
+      ],
     },
   );
 }

@@ -33,6 +33,7 @@ export interface TriggerParams {
   idField?: any;
   multiple?: boolean;
   defaultButtonPosition?: "top"|"bottom"|"both";
+  sideButtonPosition?: 'left'|'right';
   verticalAlign?: "center" | "end" | "start" | "space-around" | "space-between" | "space-evenly" | "stretch" | undefined;
   horizontalAlign?: "left"|"center"|"right";
   fluid?: boolean;
@@ -68,6 +69,7 @@ export interface TriggerOptions {
   printTemplate?: (trigger: Trigger, mode?: ReportMode) => Promise<any|undefined>|any|undefined;
   beforeExport?: (trigger: Trigger, mode?: ReportMode) => Promise<any|undefined>|any|undefined;
   exportTemplate?: (trigger: Trigger, mode?: ReportMode) => Promise<ExportTemplateInfo|undefined>|ExportTemplateInfo|undefined;
+  sideButtons?: (props: any, context: any, trigger: Trigger) => Array<Button>|undefined;
 }
 
 export interface ServerTableOptions {
@@ -84,6 +86,7 @@ export class Trigger extends UIBase {
   private options: TriggerOptions;
   private topButtonInstances: Array<Button> = [];
   private bottomButtonInstances: Array<Button> = [];
+  private sideButtonInstances: Array<Button> = [];
   private items: Ref<any[]|undefined>;
   private selected: Ref<any[]|undefined>;
   private searchText: Ref<string>;
@@ -100,6 +103,7 @@ export class Trigger extends UIBase {
   private hasExportAccess: Ref<boolean>;
   private static defaultParams: TriggerParams = {
     fluid: true,
+    sideButtonPosition: 'right',
   };
 
   constructor(params?: TriggerParams, options?: TriggerOptions) {
@@ -372,26 +376,30 @@ export class Trigger extends UIBase {
               cols: 12,
               align: this.params.value.horizontalAlign !== "center" ? this.params.value.horizontalAlign : undefined
             },
-            () => h(
-              VCard,
-              {
-                onKeydown: (ev: KeyboardEvent) => this.onTriggerKeydown(ev),
-                maxWidth: this.params.value.maxWidth,
-                width: this.params.value.width,
-                minWidth: this.params.value.minWidth,
-                style: this.cardStyle(),
-                elevation: this.params.value.elevation,
-                class: (this.params.value.horizontalAlign || "center") === "center" ? ['mx-auto'] : []
-              },
-              () => [
-                this.buildTitle(props, context),
-                ...(this.params.value.subtitle ? [this.buildSubTitle(props, context)] : []),
-                this.buildTopActions(props, context),
-                h(VDivider),
-                this.buildBody(props, context),
-                h(VDivider),
-                this.buildBottomActions(props, context),
-              ]
+            () => this.wrapWithDesktopSideButtons(
+              props,
+              context,
+              h(
+                VCard,
+                {
+                  onKeydown: (ev: KeyboardEvent) => this.onTriggerKeydown(ev),
+                  maxWidth: this.params.value.maxWidth,
+                  width: this.params.value.width,
+                  minWidth: this.params.value.minWidth,
+                  style: this.cardStyle(),
+                  elevation: this.params.value.elevation,
+                  class: (this.params.value.horizontalAlign || "center") === "center" ? ['mx-auto'] : []
+                },
+                () => [
+                  this.buildTitle(props, context),
+                  ...(this.params.value.subtitle ? [this.buildSubTitle(props, context)] : []),
+                  this.buildTopActions(props, context),
+                  h(VDivider),
+                  this.buildBody(props, context),
+                  h(VDivider),
+                  this.buildBottomActions(props, context),
+                ]
+              )
             )
           )
         )
@@ -702,6 +710,97 @@ export class Trigger extends UIBase {
         ...this.bottomButtonInstances.map((b) => h(b.component))
       ]
     )
+  }
+
+
+  private buildSideButtons(props: any, context: any) {
+    this.sideButtonInstances.forEach((instance) => {
+      instance.removeEventListeners();
+    });
+
+    this.sideButtonInstances = (this.options.sideButtons ? this.options.sideButtons(props, context, this) : []) || [];
+    this.sideButtonInstances.forEach((instance) => {
+      instance.setParent(this);
+    });
+    return this.sideButtonInstances;
+  }
+
+  private buildDesktopSideActions(props: any, context: any) {
+    const h = this.$h;
+    const buttons = this.buildSideButtons(props, context);
+
+    if (buttons.length === 0) {
+      return undefined;
+    }
+
+    return h(
+      VCard,
+      {
+        class: ['d-none', 'd-md-flex'],
+        elevation: 2,
+        style: {
+          width: '180px',
+          minWidth: '180px',
+          alignSelf: 'flex-start',
+        },
+      },
+      () => h(
+        VCardText,
+        {
+          style: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            padding: '12px',
+          },
+        },
+        () => buttons.map((button) => h('div', { style: { display: 'flex', width: '100%' } }, [h(button.component, { style: { width: '100%' } })]))
+      )
+    );
+  }
+
+  private wrapWithDesktopSideButtons(props: any, context: any, content: VNode) {
+    const h = this.$h;
+    const sideActions = this.buildDesktopSideActions(props, context);
+
+    if (!sideActions) {
+      return h(
+        'div',
+        {
+          style: {
+            width: '100%',
+            display: 'flex',
+            justifyContent: (this.params.value.horizontalAlign || 'center') === 'center' ? 'center' : this.params.value.horizontalAlign === 'right' ? 'flex-end' : 'flex-start',
+          },
+        },
+        [content]
+      );
+    }
+
+    const children = this.params.value.sideButtonPosition === 'left' ? [sideActions, content] : [content, sideActions];
+
+    return h(
+      'div',
+      {
+        style: {
+          width: '100%',
+          display: 'flex',
+          justifyContent: (this.params.value.horizontalAlign || 'center') === 'center' ? 'center' : this.params.value.horizontalAlign === 'right' ? 'flex-end' : 'flex-start',
+        },
+      },
+      [h(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+            maxWidth: '100%',
+          },
+        },
+        children
+      )]
+    );
   }
 
   private buildDefaultButtons(): Button[] {

@@ -28,6 +28,7 @@ export interface ReportParams {
   prevButtonStyle?: ReportButtonStyle;
   finishButton?: ButtonParams;
   finishButtonStyle?: ReportButtonStyle;
+  sideButtonPosition?: 'left'|'right';
   multiple?: boolean;
   setActionButtons?: boolean;
   forms?: number;
@@ -66,6 +67,7 @@ export interface ReportOptions {
   removeEventListeners?: (report: Report) => Promise<void>|void
   attachEventListeners?: (report: Report) => Promise<void>|void
   title?: (report: Report, index?: number) => string
+  sideButtons?: (props: any, context: any, report: Report) => Array<Button>|undefined
 }
 
 export interface ExportTemplateInfo {
@@ -82,6 +84,7 @@ export class Report extends UIBase {
   private loaded = false;
   private topButtonInstances: Array<Button> = [];
   private bottomButtonInstances: Array<Button> = [];
+  private sideButtonInstances: Array<Button> = [];
   private currentForm: Form|undefined;
   private currentIndex: Ref<number>;
   private hasNext = false;
@@ -90,7 +93,9 @@ export class Report extends UIBase {
   private lastProps: any;
   private lastContext: any;
   private cleanSnapshot: string;
-  private static defaultParams: ReportParams = {};
+  private static defaultParams: ReportParams = {
+    sideButtonPosition: 'right',
+  };
 
   constructor(params?: ReportParams, options?: ReportOptions) {
     super();
@@ -279,20 +284,24 @@ export class Report extends UIBase {
                 cols: 12,
                 align: this.params.value.horizontalAlign !== "center" ? this.params.value.horizontalAlign : undefined
               },
-              () => h(
-                VCard,
-                {
-                  minWidth: 400,
-                  class: (this.params.value.horizontalAlign || "center") === "center" ? ['mx-auto']: []
-                },
-                () => [
-                  this.buildTitle(props, context),
-                  this.buildTopActions(props, context),
-                  h(VDivider),
-                  this.buildBody(props, context),
-                  h(VDivider),
-                  this.buildBottomActions(props, context),
-                ]
+              () => this.wrapWithDesktopSideButtons(
+                props,
+                context,
+                h(
+                  VCard,
+                  {
+                    minWidth: 400,
+                    class: (this.params.value.horizontalAlign || "center") === "center" ? ['mx-auto']: []
+                  },
+                  () => [
+                    this.buildTitle(props, context),
+                    this.buildTopActions(props, context),
+                    h(VDivider),
+                    this.buildBody(props, context),
+                    h(VDivider),
+                    this.buildBottomActions(props, context),
+                  ]
+                )
               )
             )
           )
@@ -323,12 +332,11 @@ export class Report extends UIBase {
                 cols: 12,
                 align: this.params.value.horizontalAlign !== "center" ? this.params.value.horizontalAlign : undefined
               },
-              () => {
-                if ((this.params.value.horizontalAlign || "center") === "center") this.currentForm!.$params.cardClass = ['mx-auto'];
-                return h(
-                  this.currentForm!.component
-                )
-              }
+              () => this.wrapWithDesktopSideButtons(
+                props,
+                context,
+                h(this.currentForm!.component)
+              )
             )
           )
         )
@@ -537,6 +545,97 @@ export class Report extends UIBase {
         ...this.bottomButtonInstances.map((b) => h(b.component))
       ]
     )
+  }
+
+
+  private buildSideButtons(props: any, context: any) {
+    this.sideButtonInstances.forEach((instance) => {
+      instance.removeEventListeners();
+    });
+
+    this.sideButtonInstances = (this.options.sideButtons ? this.options.sideButtons(props, context, this) : []) || [];
+    this.sideButtonInstances.forEach((instance) => {
+      instance.setParent(this);
+    });
+    return this.sideButtonInstances;
+  }
+
+  private buildDesktopSideActions(props: any, context: any) {
+    const h = this.$h;
+    const buttons = this.buildSideButtons(props, context);
+
+    if (buttons.length === 0) {
+      return undefined;
+    }
+
+    return h(
+      VCard,
+      {
+        class: ['d-none', 'd-md-flex'],
+        elevation: 2,
+        style: {
+          width: '180px',
+          minWidth: '180px',
+          alignSelf: 'flex-start',
+        },
+      },
+      () => h(
+        VCardText,
+        {
+          style: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            padding: '12px',
+          },
+        },
+        () => buttons.map((button) => h('div', { style: { display: 'flex', width: '100%' } }, [h(button.component, { style: { width: '100%' } })]))
+      )
+    );
+  }
+
+  private wrapWithDesktopSideButtons(props: any, context: any, content: VNode) {
+    const h = this.$h;
+    const sideActions = this.buildDesktopSideActions(props, context);
+
+    if (!sideActions) {
+      return h(
+        'div',
+        {
+          style: {
+            width: '100%',
+            display: 'flex',
+            justifyContent: (this.params.value.horizontalAlign || 'center') === 'center' ? 'center' : this.params.value.horizontalAlign === 'right' ? 'flex-end' : 'flex-start',
+          },
+        },
+        [content]
+      );
+    }
+
+    const children = this.params.value.sideButtonPosition === 'left' ? [sideActions, content] : [content, sideActions];
+
+    return h(
+      'div',
+      {
+        style: {
+          width: '100%',
+          display: 'flex',
+          justifyContent: (this.params.value.horizontalAlign || 'center') === 'center' ? 'center' : this.params.value.horizontalAlign === 'right' ? 'flex-end' : 'flex-start',
+        },
+      },
+      [h(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+            maxWidth: '100%',
+          },
+        },
+        children
+      )]
+    );
   }
 
   private buildDefaultButtons(): Button[] {
