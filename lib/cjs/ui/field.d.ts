@@ -242,6 +242,7 @@ export declare class Field extends UIBase {
         [key: string]: any;
     }>;
     private richWidgetContext;
+    private tableWidgetContext;
     private getMessageWindow;
     private messageInitialRenderCount;
     private messagePageSize;
@@ -329,12 +330,6 @@ export declare class Field extends UIBase {
     buildReportTable(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;
-    private getColspan;
-    private calculateHeaderRows;
-    private getItemHeaders;
-    private makeReportTableHeader;
-    private makeReportTableBody;
-    private makeReportTableFooter;
     private loadTableInformation;
     private handleOn;
     onFocusChanged(focused: any): void;

@@ -22,6 +22,8 @@ export interface ReportParams {
     prevButtonStyle?: ReportButtonStyle;
     finishButton?: ButtonParams;
     finishButtonStyle?: ReportButtonStyle;
+    sideButtonPosition?: 'left' | 'right';
+    sideButtonWidth?: string | number;
     multiple?: boolean;
     setActionButtons?: boolean;
     forms?: number;
@@ -59,6 +61,7 @@ export interface ReportOptions {
     removeEventListeners?: (report: Report) => Promise<void> | void;
     attachEventListeners?: (report: Report) => Promise<void> | void;
     title?: (report: Report, index?: number) => string;
+    sideButtons?: (props: any, context: any, report: Report) => Array<Button> | undefined;
 }
 export interface ExportTemplateInfo {
     template?: any;
@@ -73,6 +76,7 @@ export declare class Report extends UIBase {
     private loaded;
     private topButtonInstances;
     private bottomButtonInstances;
+    private sideButtonInstances;
     private currentForm;
     private currentIndex;
     private hasNext;
@@ -81,6 +85,11 @@ export declare class Report extends UIBase {
     private lastProps;
     private lastContext;
     private cleanSnapshot;
+    private resolvedFormCount;
+    private shortcutHandler?;
+    private compactSideActions;
+    private sideActionMediaQuery?;
+    private sideActionMediaHandler?;
     private static defaultParams;
     constructor(params?: ReportParams, options?: ReportOptions);
     static setDefault(value: ReportParams, reset?: boolean): void;
@@ -105,6 +114,7 @@ export declare class Report extends UIBase {
     hasForm(props: any, context: any, index: number): Promise<boolean>;
     hasPrevForm(props: any, context: any, index: number): Promise<boolean | undefined>;
     hasNextForm(props: any, context: any, index: number): Promise<boolean | undefined>;
+    private resolveFormCount;
     props(): never[];
     render(props: any, context: any): VNode | undefined;
     private prepareForm;
@@ -112,6 +122,11 @@ export declare class Report extends UIBase {
     private buildBody;
     private buildTopActions;
     private buildBottomActions;
+    private buildSideButtons;
+    private buildDesktopSideActions;
+    private buildMobileSideActions;
+    private wrapWithSideButtons;
+    private buildProgressHeader;
     private buildDefaultButtons;
     getAdditionalButtons(): Button[];
     private save;
@@ -125,6 +140,8 @@ export declare class Report extends UIBase {
     private hasUnsavedChanges;
     forceCancel(): Promise<void>;
     forceSave(): Promise<void>;
+    private triggerButtonShortcut;
+    private onReportKeydown;
     setup(props: any, context: any): void;
     print(): Promise<void>;
     beforePrint(): Promise<any | undefined>;
@@ -134,6 +151,9 @@ export declare class Report extends UIBase {
     beforeExport(): Promise<any | undefined>;
     exportTemplate(): Promise<ExportTemplateInfo | undefined>;
     private exportAction;
+    private syncSideActionBreakpoint;
+    private attachSideActionBreakpoint;
+    private detachSideActionBreakpoint;
     private handleOn;
     attachEventListeners(): void;
     removeEventListeners(): void;

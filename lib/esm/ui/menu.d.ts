@@ -27,6 +27,7 @@ export interface MenuParams {
     dense?: boolean | undefined;
     justify?: "center" | "end" | "start" | "space-around" | "space-between" | "space-evenly" | "stretch" | undefined;
     align?: "center" | "end" | "start" | "stretch" | "baseline" | undefined;
+    keyboardNavigation?: boolean;
 }
 export interface MenuOptions {
     access?: (menu: Menu) => Promise<boolean | undefined> | boolean | undefined;
@@ -40,6 +41,8 @@ export declare class Menu extends UIBase {
     private childrenInstances;
     private loaded;
     private shortcutHandler?;
+    private activeIndex;
+    private cardElements;
     private static defaultParams;
     constructor(params?: MenuParams, options?: MenuOptions);
     static setDefault(value: MenuParams, reset?: boolean): void;
@@ -55,7 +58,14 @@ export declare class Menu extends UIBase {
     build(props: any, context: any): VNode<import("vue").RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;
+    private renderMenuItemShortcut;
     private prepareChildren;
+    private menuCardStyle;
+    private setCardElement;
+    private setActiveIndex;
+    private ensureActiveCardVisible;
+    private activateCurrentItem;
+    private moveActiveIndex;
     private itemClicked;
     private backClicked;
     $reload(): Promise<void>;
@@ -65,9 +75,6 @@ export declare class Menu extends UIBase {
     removeEventListeners(): void;
     private onShortcutKeydown;
     private shouldIgnoreShortcut;
-    private normalizeShortcut;
-    private normalizeShortcutFromEvent;
-    private normalizeShortcutKey;
     private handleOn;
 }
 export interface MenuItemParams {
@@ -76,6 +83,10 @@ export interface MenuItemParams {
     text?: string;
     subText?: string;
     shortcut?: string;
+    shortcutDisplay?: 'text' | 'compact';
+    shortcutFontSize?: string | number;
+    shortcutShiftIcon?: string;
+    cmdForCtrlOnMac?: boolean;
     icon?: string;
     color?: string;
     textColor?: string;

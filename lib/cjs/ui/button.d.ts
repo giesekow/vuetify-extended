@@ -14,6 +14,11 @@ export interface ButtonParams {
     color?: string;
     class?: string;
     text?: string;
+    shortcut?: string;
+    shortcutDisplay?: 'text' | 'compact';
+    shortcutFontSize?: string | number;
+    shortcutShiftIcon?: string;
+    cmdForCtrlOnMac?: boolean;
     flat?: boolean;
     loading?: boolean;
     rounded?: string | number | boolean;
@@ -42,7 +47,9 @@ export declare class Button extends UIBase {
     get $params(): ButtonParams;
     props(): never[];
     onClicked(props: any, context: any): void;
+    triggerShortcut(): void;
     render(props: any, context: any): VNode | undefined;
+    private renderCompactShortcut;
     private clicked;
     setup(props: any, context: any): void;
     private handleOn;

@@ -9,11 +9,39 @@ import { DialogForm } from "./dialogform";
 export interface AppParams {
     ref?: string;
     udfQuery?: any;
+    title?: string;
+    showHeader?: boolean;
+    showFooter?: boolean;
+    headerLayout?: 'balanced' | 'auto' | 'stacked';
+    footerLayout?: 'balanced' | 'auto' | 'stacked';
+    headerStartWidth?: string | number;
+    headerCenterWidth?: string | number;
+    headerEndWidth?: string | number;
+    footerStartWidth?: string | number;
+    footerCenterWidth?: string | number;
+    footerEndWidth?: string | number;
+    backgroundColor?: string;
+    backgroundGradient?: string;
+    backgroundImage?: string;
+    backgroundSize?: string;
+    backgroundPosition?: string;
+    backgroundRepeat?: string;
+    backgroundAttachment?: string;
+    backgroundOverlay?: string;
 }
+export type AppShellContent = UIBase | VNode | string | number | boolean | null | undefined;
 export interface AppOptions {
     menu?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
     udfs?: (app: AppMain, objectType: string | string[], query: any) => Promise<any[]>;
     makeUDF?: (app: AppMain, options: any) => Field | undefined;
+    header?: (app: AppMain) => AppShellContent | AppShellContent[];
+    footer?: (app: AppMain) => AppShellContent | AppShellContent[];
+    headerStart?: (app: AppMain) => AppShellContent | AppShellContent[];
+    headerCenter?: (app: AppMain) => AppShellContent | AppShellContent[];
+    headerEnd?: (app: AppMain) => AppShellContent | AppShellContent[];
+    footerStart?: (app: AppMain) => AppShellContent | AppShellContent[];
+    footerCenter?: (app: AppMain) => AppShellContent | AppShellContent[];
+    footerEnd?: (app: AppMain) => AppShellContent | AppShellContent[];
 }
 export interface AppStackItem {
     type: "menu" | "report" | "collection" | "selector" | "ui";
@@ -41,6 +69,20 @@ export declare class AppMain extends UIBase {
     props(): never[];
     menu(): Promise<Menu | undefined>;
     render(props: any, context: any): VNode | VNode[] | undefined;
+    private renderStackContent;
+    private renderShellRegion;
+    private renderShellBar;
+    private renderShellBarSection;
+    private getShellLayout;
+    private getShellWidthValue;
+    private normalizeCssSize;
+    private getShellBarContainerStyle;
+    private getShellBarSectionStyle;
+    private mainShellStyle;
+    private mainShellContentStyle;
+    private mainShellOverlayStyle;
+    private normalizeShellContent;
+    private normalizeShellItem;
     private activateCurrentItem;
     $reload(): Promise<void>;
     private loadApp;

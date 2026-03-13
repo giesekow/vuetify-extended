@@ -123,6 +123,8 @@ export declare class Form extends UIBase {
     private onFormKeydown;
     private isSaveShortcut;
     private canTriggerSaveShortcut;
+    private getShortcutButtons;
+    private triggerButtonShortcut;
     private shouldIgnoreSaveShortcut;
     private shouldIgnoreEscapeCancel;
     private onSaveClicked;

@@ -27,6 +27,8 @@ export interface TriggerParams {
     idField?: any;
     multiple?: boolean;
     defaultButtonPosition?: "top" | "bottom" | "both";
+    sideButtonPosition?: 'left' | 'right';
+    sideButtonWidth?: string | number;
     verticalAlign?: "center" | "end" | "start" | "space-around" | "space-between" | "space-evenly" | "stretch" | undefined;
     horizontalAlign?: "left" | "center" | "right";
     fluid?: boolean;
@@ -61,6 +63,7 @@ export interface TriggerOptions {
     printTemplate?: (trigger: Trigger, mode?: ReportMode) => Promise<any | undefined> | any | undefined;
     beforeExport?: (trigger: Trigger, mode?: ReportMode) => Promise<any | undefined> | any | undefined;
     exportTemplate?: (trigger: Trigger, mode?: ReportMode) => Promise<ExportTemplateInfo | undefined> | ExportTemplateInfo | undefined;
+    sideButtons?: (props: any, context: any, trigger: Trigger) => Array<Button> | undefined;
 }
 export interface ServerTableOptions {
     page: number;
@@ -75,6 +78,7 @@ export declare class Trigger extends UIBase {
     private options;
     private topButtonInstances;
     private bottomButtonInstances;
+    private sideButtonInstances;
     private items;
     private selected;
     private searchText;
@@ -89,6 +93,11 @@ export declare class Trigger extends UIBase {
     private loading;
     private hasPrintAccess;
     private hasExportAccess;
+    private listenersAttached;
+    private shortcutHandler?;
+    private compactSideActions;
+    private sideActionMediaQuery?;
+    private sideActionMediaHandler?;
     private static defaultParams;
     constructor(params?: TriggerParams, options?: TriggerOptions);
     static setDefault(value: TriggerParams, reset?: boolean): void;
@@ -127,6 +136,10 @@ export declare class Trigger extends UIBase {
     private initialize;
     private buildTopActions;
     private buildBottomActions;
+    private buildSideButtons;
+    private buildDesktopSideActions;
+    private buildMobileSideActions;
+    private wrapWithSideButtons;
     private buildDefaultButtons;
     getAdditionalButtons(): Button[];
     topChildren(props: any, context: any): Array<Part | Field>;
@@ -134,6 +147,8 @@ export declare class Trigger extends UIBase {
     private onProcessMultiple;
     private onCancelClicked;
     private onTriggerKeydown;
+    private getShortcutButtons;
+    private triggerButtonShortcut;
     private shouldIgnoreEscapeCancel;
     private onRemoveClicked;
     private onSearchClicked;
@@ -148,6 +163,11 @@ export declare class Trigger extends UIBase {
     beforeExport(): Promise<any | undefined>;
     exportTemplate(): Promise<ExportTemplateInfo | undefined>;
     private exportAction;
+    attachEventListeners(): void;
+    removeEventListeners(): void;
+    private syncSideActionBreakpoint;
+    private attachSideActionBreakpoint;
+    private detachSideActionBreakpoint;
     private handleOn;
 }
 export declare const $TG: (params?: TriggerParams, options?: TriggerOptions) => Trigger;
