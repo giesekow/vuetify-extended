@@ -131,6 +131,7 @@ export class Menu extends UIBase {
               xl: this.params.value.containerXl,
               xxl: this.params.value.containerXxl,
               sm: this.params.value.containerSm,
+              style: { paddingTop: '16px', paddingBottom: '16px', paddingLeft: '24px', paddingRight: '24px', overflow: 'visible' },
             },
             () => this.build(props, context)
           )
@@ -234,6 +235,7 @@ export class Menu extends UIBase {
               xl: this.params.value.xl,
               xxl: this.params.value.xxl,
               sm: this.params.value.sm,
+              style: { overflow: 'visible' },
             },
             () => h(
               VCard,
@@ -248,7 +250,7 @@ export class Menu extends UIBase {
                 role: 'button',
                 tabindex: this.params.value.keyboardNavigation ? -1 : undefined,
                 'aria-selected': this.params.value.keyboardNavigation ? index === this.activeIndex.value : undefined,
-                style: this.menuCardStyle(index),
+                style: this.menuCardStyle(index) as any,
                 onMouseenter: () => this.setActiveIndex(index),
                 onClick: () => {
                   this.setActiveIndex(index);
@@ -446,12 +448,13 @@ export class Menu extends UIBase {
     }
 
     return {
-      outline: '4px solid rgba(255,255,255,0.98)',
-      outlineOffset: '4px',
-      boxShadow: '0 0 0 8px rgba(0,0,0,0.28), 0 14px 32px rgba(0,0,0,0.28)',
-      transform: 'translateY(-2px) scale(1.01)',
-      filter: 'saturate(1.08) brightness(1.04)',
-      transition: 'outline-offset 120ms ease, box-shadow 120ms ease, transform 120ms ease, filter 120ms ease',
+      border: '5px solid rgba(255,255,255,0.99)',
+      borderRadius: '12px',
+      boxSizing: 'border-box',
+      boxShadow: '0 0 0 3px rgba(13, 17, 23, 0.94), 0 0 0 10px rgba(255,255,255,0.16), 0 18px 36px rgba(0,0,0,0.34)',
+      transform: 'translateY(-3px) scale(1.015)',
+      filter: 'saturate(1.12) brightness(1.08) contrast(1.04)',
+      transition: 'border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease, filter 120ms ease',
     };
   }
 
