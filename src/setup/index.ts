@@ -15,6 +15,7 @@ import { Button, type ButtonParams } from '../ui/button';
 import { Collection, type CollectionParams } from '../ui/collection';
 import { DialogForm, type DialogParams } from '../ui/dialogform';
 import { DialogOptions, Dialogs } from '../ui/dialogs';
+import { NotificationOptions, Notifications } from '../ui/notifications';
 import { Field, type FieldParams } from '../ui/field';
 import { Form, type FormParams } from '../ui/form';
 import { Menu, MenuItem, type MenuItemParams, type MenuParams } from '../ui/menu';
@@ -60,6 +61,7 @@ export interface VuetifyExtendedAppFactoryOptions {
   api?: VuetifyExtendedApiConfig;
   defaults?: VuetifyExtendedDefaults;
   dialogs?: DialogOptions;
+  notifications?: NotificationOptions;
   app?: AppMain | { params?: AppParams; options?: AppOptions };
   menu?: AppOptions['menu'];
   udfs?: AppOptions['udfs'];
@@ -75,12 +77,14 @@ export interface VuetifyExtendedSetupStatus {
   appManagerInitialized: boolean;
   appConfigured: boolean;
   dialogsMounted: boolean;
+  notificationsMounted: boolean;
 }
 
 export interface VuetifyExtendedBootstrap {
   appMain: AppMain;
   component: Component;
   dialogs: Component;
+  notifications: Component;
   install: (app: VueApp) => VueApp;
   plugin: Plugin;
   validate: (options?: { requireApi?: boolean; warn?: boolean }) => VuetifyExtendedSetupStatus;
@@ -137,6 +141,7 @@ export function validateVuetifyExtendedSetup(options?: { requireApi?: boolean; w
   const appManagerInitialized = AppManager.initialized;
   const appConfigured = !!AppManager.$app;
   const dialogsMounted = Dialogs.rootIsMounted;
+  const notificationsMounted = Notifications.rootIsMounted;
 
   if (requireApi && !apiConfigured) {
     issues.push('Api.instance is not configured. Call Api.useFeathers(...), Api.useAxios(...), Api.setup(...), or createVuetifyExtendedApp({ api: ... }).');
@@ -154,6 +159,10 @@ export function validateVuetifyExtendedSetup(options?: { requireApi?: boolean; w
     issues.push('Dialogs.rootComponent() is not mounted. Render the dialog root once at the application root.');
   }
 
+  if (!notificationsMounted) {
+    issues.push('Notifications.rootComponent() is not mounted. Render the notification root once at the application root.');
+  }
+
   const status: VuetifyExtendedSetupStatus = {
     valid: issues.length === 0,
     issues,
@@ -161,6 +170,7 @@ export function validateVuetifyExtendedSetup(options?: { requireApi?: boolean; w
     appManagerInitialized,
     appConfigured,
     dialogsMounted,
+    notificationsMounted,
   };
 
   if (options?.warn !== false && issues.length > 0 && typeof console !== 'undefined') {
@@ -179,6 +189,10 @@ export function createVuetifyExtendedApp(options: VuetifyExtendedAppFactoryOptio
     Dialogs.setOptions(options.dialogs);
   }
 
+  if (options.notifications) {
+    Notifications.setOptions(options.notifications);
+  }
+
   configureApi(options.api);
   AppManager.init();
 
@@ -191,6 +205,7 @@ export function createVuetifyExtendedApp(options: VuetifyExtendedAppFactoryOptio
   AppManager.setApp(appMain);
 
   const DialogRoot = Dialogs.rootComponent();
+  const NotificationRoot = Notifications.rootComponent();
   const validate = (settings?: { requireApi?: boolean; warn?: boolean }) =>
     validateVuetifyExtendedSetup({
       requireApi: settings?.requireApi ?? options.requireApi ?? true,
@@ -201,13 +216,16 @@ export function createVuetifyExtendedApp(options: VuetifyExtendedAppFactoryOptio
     appMain,
     component: appMain.component,
     dialogs: DialogRoot,
+    notifications: NotificationRoot,
     install(app: VueApp) {
       app.component('VuetifyExtendedAppMain', appMain.component);
       app.component('VuetifyExtendedDialogs', DialogRoot);
+      app.component('VuetifyExtendedNotifications', NotificationRoot);
       app.provide('vuetify-extended', bootstrap);
       (app.config.globalProperties as any).$vuetifyExtended = bootstrap;
       (app.config.globalProperties as any).$appManager = AppManager;
       (app.config.globalProperties as any).$dialogs = Dialogs;
+      (app.config.globalProperties as any).$notifications = Notifications;
       return app;
     },
     plugin: {

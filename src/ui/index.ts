@@ -8,6 +8,7 @@ export * from './selector';
 export * from './dialogform';
 export * from './collection';
 export * from './dialogs';
+export * from './notifications';
 export * from './menu';
 export * from './appmain';
 export * from './appmanager';export * from './shell';

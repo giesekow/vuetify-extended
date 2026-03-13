@@ -22,6 +22,11 @@ const bootstrap = createVuetifyExtendedApp({
     warningTimeout: 3200,
     errorTimeout: 4200,
   },
+  notifications: {
+    location: 'top-right',
+    maxVisible: 4,
+    defaultTimeout: 3600,
+  },
 });
 
 const vuetify = createVuetify({
@@ -35,6 +40,7 @@ const Root = defineComponent({
     return () => [
       h(bootstrap.component),
       h(bootstrap.dialogs),
+      h(bootstrap.notifications),
     ];
   },
 });

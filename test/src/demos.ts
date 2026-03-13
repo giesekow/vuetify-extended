@@ -7,6 +7,7 @@ import {
   Collection,
   DialogForm,
   Dialogs,
+  Notifications,
   Field,
   Form,
   Menu,
@@ -576,13 +577,13 @@ function buildNestedMenu() {
           {
             action: 'function',
             text: 'Show Success',
-            subText: 'Exercises the shared success snackbar.',
+            subText: 'Exercises the shared notification stack.',
             icon: 'mdi-check-circle',
             color: 'success',
           },
           {
             callback: async () => {
-              Dialogs.$success('Shared dialog success notification works.');
+              Notifications.$success('Shared notification success works.', { title: 'Success' });
             },
           },
         ),
@@ -590,13 +591,40 @@ function buildNestedMenu() {
           {
             action: 'function',
             text: 'Show Warning',
-            subText: 'Exercises the shared warning snackbar.',
+            subText: 'Exercises the shared warning notification.',
             icon: 'mdi-alert',
             color: 'warning',
           },
           {
             callback: async () => {
-              Dialogs.$warning('This is a warning message from the nested menu.');
+              Notifications.$warning('This is a warning notification from the nested menu.', { title: 'Heads up' });
+            },
+          },
+        ),
+        new MenuItem(
+          {
+            action: 'function',
+            text: 'Show Action Notification',
+            subText: 'Notification with action buttons and no modal.',
+            icon: 'mdi-bell-badge-outline',
+            color: 'info',
+          },
+          {
+            callback: async () => {
+              Notifications.$info('Use the action buttons below to respond inline.', {
+                title: 'Action Notification',
+                persistent: true,
+                actions: [
+                  new Button(
+                    { text: 'Acknowledge', color: 'primary', variant: 'outlined' },
+                    { onClicked: () => Notifications.$success('Notification acknowledged.') },
+                  ),
+                  new Button(
+                    { text: 'Dismiss All', color: 'secondary', variant: 'text' },
+                    { onClicked: () => Notifications.clear() },
+                  ),
+                ],
+              });
             },
           },
         ),
@@ -822,11 +850,11 @@ export function createDemoApp() {
       fabButtons: () => [
         new Button(
           { text: 'Quick Success', color: 'success', variant: 'elevated', icon: 'mdi-check-circle-outline', shortcut: 'F11', shortcutDisplay: 'compact' },
-          { onClicked: () => Dialogs.$success('Quick action executed successfully.') },
+          { onClicked: () => Notifications.$success('Quick action executed successfully.', { title: 'FAB Action' }) },
         ),
         new Button(
           { text: 'Quick Warning', color: 'warning', variant: 'elevated', icon: 'mdi-alert-outline', shortcut: 'SHIFT+F11', shortcutDisplay: 'compact' },
-          { onClicked: () => Dialogs.$warning('Quick action warning example.') },
+          { onClicked: () => Notifications.$warning('Quick action warning example.', { title: 'FAB Action' }) },
         ),
         new Button(
           { text: 'Quick Confirm', color: 'primary', variant: 'outlined', icon: 'mdi-help-circle-outline', shortcut: 'ALT+F11', shortcutDisplay: 'compact' },
