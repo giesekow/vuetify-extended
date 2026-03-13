@@ -55,6 +55,8 @@ export interface FieldParams {
     mapZoom?: number;
     fileAccepts?: any;
     fileMaxSize?: number;
+    messageInitialCount?: number;
+    messagePageSize?: number;
     bordered?: boolean;
     default?: any;
     required?: boolean;
@@ -169,6 +171,10 @@ export declare class Field extends UIBase {
     private static defaultParams;
     private maxWidth;
     private codePreview;
+    private htmlEditor;
+    private messageVisibleCount;
+    private messageContainer;
+    private pendingMessageScrollRestore?;
     constructor(params?: FieldParams, options?: FieldOptions);
     static setDefault(value: FieldParams, reset?: boolean): void;
     get $refs(): Refs;
@@ -183,6 +189,7 @@ export declare class Field extends UIBase {
     get $collectionForm(): Form | undefined;
     props(): never[];
     setup(props: any, context: any): void;
+    private modelBinding;
     valueChanged(newValue?: any): void;
     attachEventListeners(): void;
     removeEventListeners(): void;
@@ -208,9 +215,11 @@ export declare class Field extends UIBase {
     render(props: any, context: any): VNode | undefined;
     validate(): Promise<string | undefined>;
     private rules;
-    build(props: any, context: any): any[] | VNode<RendererNode, import("vue").RendererElement, {
+    build(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
-    }> | undefined;
+    }> | VNode<RendererNode, import("vue").RendererElement, {
+        [key: string]: any;
+    }>[] | undefined;
     buildText(props: any, context: any, type: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;
@@ -232,13 +241,27 @@ export declare class Field extends UIBase {
     buildAutocomplete(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;
+    private richWidgetContext;
+    private getMessageWindow;
+    private messageInitialRenderCount;
+    private messagePageSize;
+    private loadEarlierMessages;
+    private setMessageScrollContainer;
+    private restoreMessageScrollPosition;
     buildHTML(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;
+    private registerHtmlEditor;
+    private onHtmlEditorKeydown;
+    private focusHtmlEditor;
+    private parentForm;
+    focusPrimaryInput(): Promise<boolean>;
     buildButton(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }> | undefined;
-    buildCode(props: any, context: any): any[];
+    buildCode(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
+        [key: string]: any;
+    }>[];
     buildColor(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;

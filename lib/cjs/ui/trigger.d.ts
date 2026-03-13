@@ -89,7 +89,9 @@ export declare class Trigger extends UIBase {
     private loading;
     private hasPrintAccess;
     private hasExportAccess;
+    private static defaultParams;
     constructor(params?: TriggerParams, options?: TriggerOptions);
+    static setDefault(value: TriggerParams, reset?: boolean): void;
     get $refs(): Refs;
     get $prefs(): PRefs;
     get $ref(): string | undefined;
@@ -110,12 +112,16 @@ export declare class Trigger extends UIBase {
     onTableOptionsChanged(options: any): Promise<void>;
     private loadItems;
     render(props: any, context: any): VNode | undefined;
+    private outerAlign;
+    private outerJustify;
+    private cardStyle;
     private buildTitle;
     private buildSubTitle;
     private buildBody;
     private buildSearchBar;
     private buildFilterBar;
     private buildResultTable;
+    private buildResultStatus;
     headers(): Promise<any[]>;
     searchFields(): Promise<any>;
     private initialize;
@@ -127,6 +133,8 @@ export declare class Trigger extends UIBase {
     bottomChildren(props: any, context: any): Array<Part | Field>;
     private onProcessMultiple;
     private onCancelClicked;
+    private onTriggerKeydown;
+    private shouldIgnoreEscapeCancel;
     private onRemoveClicked;
     private onSearchClicked;
     private onTableItemClicked;

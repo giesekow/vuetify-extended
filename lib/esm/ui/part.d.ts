@@ -37,7 +37,9 @@ export declare class Part extends UIBase {
     private options;
     private childrenInstances;
     private cnt;
+    private static defaultParams;
     constructor(params?: PartParams, options?: PartOptions);
+    static setDefault(value: PartParams, reset?: boolean): void;
     get $refs(): Refs;
     get $prefs(): PRefs;
     get $ref(): string | undefined;

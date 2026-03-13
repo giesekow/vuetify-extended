@@ -32,14 +32,18 @@ export declare class Collection extends UIBase {
     private prevState;
     private selectedItems;
     private currentIndex;
+    private static defaultParams;
     constructor(params?: CollectionParams, options?: CollectionOptions);
+    static setDefault(value: CollectionParams, reset?: boolean): void;
     access(mode: any): Promise<boolean | undefined>;
     get $ref(): string | undefined;
     get $readonly(): any;
     setParams(params: CollectionParams): void;
     get $params(): CollectionParams;
     props(): never[];
-    render(props: any, context: any): VNode | undefined;
+    render(props: any, context: any): VNode | VNode[] | undefined;
+    private buildSelectionContext;
+    private selectionContextText;
     private buildReport;
     private buildTrigger;
     private buildSelector;
@@ -50,6 +54,7 @@ export declare class Collection extends UIBase {
     showSelector(): Promise<void>;
     showTrigger(): Promise<true | undefined>;
     showReport(item?: any): Promise<void>;
+    private applySelectionContextToReport;
     private triggerSelected;
     private showReportWithIndex;
     private itemSelected;

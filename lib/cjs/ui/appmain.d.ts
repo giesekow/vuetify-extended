@@ -30,14 +30,18 @@ export declare class AppMain extends UIBase {
     private selectorCount;
     private dialogs;
     private dialogCount;
+    private selectorFocusTargets;
+    private dialogFocusTargets;
+    private static defaultParams;
     constructor(params?: AppParams, options?: AppOptions);
+    static setDefault(value: AppParams, reset?: boolean): void;
     get $ref(): string | undefined;
     setParams(params: AppParams): void;
     get $params(): AppParams;
     props(): never[];
     menu(): Promise<Menu | undefined>;
     render(props: any, context: any): VNode | VNode[] | undefined;
-    private attachEvents;
+    private activateCurrentItem;
     $reload(): Promise<void>;
     private loadApp;
     $getUDFs(objectType: string | string[]): Promise<any[]>;
@@ -53,5 +57,7 @@ export declare class AppMain extends UIBase {
     private onCancel;
     private onSelectorCancel;
     private onDialogCancel;
+    private captureActiveElement;
+    private restoreFocus;
 }
 export declare const $APP: (params?: AppParams, options?: AppOptions) => AppMain;

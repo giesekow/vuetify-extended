@@ -39,7 +39,10 @@ export declare class Menu extends UIBase {
     private options;
     private childrenInstances;
     private loaded;
+    private shortcutHandler?;
+    private static defaultParams;
     constructor(params?: MenuParams, options?: MenuOptions);
+    static setDefault(value: MenuParams, reset?: boolean): void;
     get $ref(): string | undefined;
     access(): Promise<boolean | undefined>;
     hasParent(): boolean;
@@ -58,6 +61,13 @@ export declare class Menu extends UIBase {
     $reload(): Promise<void>;
     forceCancel(): Promise<void>;
     setup(props: any, context: any): void;
+    attachEventListeners(): void;
+    removeEventListeners(): void;
+    private onShortcutKeydown;
+    private shouldIgnoreShortcut;
+    private normalizeShortcut;
+    private normalizeShortcutFromEvent;
+    private normalizeShortcutKey;
     private handleOn;
 }
 export interface MenuItemParams {
@@ -65,6 +75,7 @@ export interface MenuItemParams {
     mode?: ReportMode;
     text?: string;
     subText?: string;
+    shortcut?: string;
     icon?: string;
     color?: string;
     textColor?: string;
@@ -83,7 +94,9 @@ export declare class MenuItem extends EventEmitter {
     private options;
     private $id;
     private parent?;
+    private static defaultParams;
     constructor(params?: MenuItemParams, options?: MenuItemOptions);
+    static setDefault(value: MenuItemParams, reset?: boolean): void;
     get $params(): MenuItemParams;
     setParent(menu: Menu): void;
     getParent(): Menu | undefined;

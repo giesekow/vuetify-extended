@@ -5,6 +5,7 @@ import { OnHandler } from "./lib";
 export interface SelectorParams {
     ref?: string;
     invisible?: boolean;
+    persistent?: boolean;
     multiple?: boolean;
     title?: string;
     subtitle?: string;
@@ -45,8 +46,12 @@ export declare class Selector extends UIBase {
     private items;
     private storage;
     private dialog;
+    private loading;
+    private dialogRoot;
     private loaded;
+    private static defaultParams;
     constructor(params?: SelectorParams, options?: SelectorOptions);
+    static setDefault(value: SelectorParams, reset?: boolean): void;
     get $ref(): string | undefined;
     setParams(params: SelectorParams): void;
     get $params(): SelectorParams;
@@ -66,6 +71,7 @@ export declare class Selector extends UIBase {
     private buildSubTitle;
     private buildBody;
     private buildSearchBar;
+    private buildStatusMessage;
     show(): Promise<void>;
     hide(): Promise<void>;
     private initialize;
@@ -73,6 +79,12 @@ export declare class Selector extends UIBase {
     private buildBottomActions;
     private buildDefaultButtons;
     private onSelectItem;
+    private onSelectorKeyup;
+    private setDialogRoot;
+    private focusPrimaryInput;
+    private findFocusTarget;
+    private waitForFocusFrame;
+    private isVisibleFocusable;
     private onCancelClicked;
     forceCancel(): Promise<void>;
     setup(props: any, context: any): void;

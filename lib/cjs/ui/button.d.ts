@@ -33,7 +33,9 @@ export interface ButtonOptions {
 export declare class Button extends UIBase {
     private params;
     private options;
+    private static defaultParams;
     constructor(params?: ButtonParams, options?: ButtonOptions);
+    static setDefault(value: ButtonParams, reset?: boolean): void;
     get $ref(): string | undefined;
     get $readonly(): any;
     setParams(params: ButtonParams): void;

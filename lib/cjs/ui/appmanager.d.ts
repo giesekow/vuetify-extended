@@ -16,6 +16,8 @@ export declare class AppManager {
     static get(key: string | symbol): any;
     static clear(): void;
     static init(): void;
+    static get $app(): AppMain | undefined;
+    static get initialized(): boolean;
     static setApp(app: AppMain): void;
     static setPrinter(printer: PrinterBase): void;
     static get $printer(): PrinterBase;

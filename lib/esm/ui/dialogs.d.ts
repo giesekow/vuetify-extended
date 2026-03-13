@@ -26,8 +26,14 @@ export declare class Dialogs {
     private static progressIndeterminate;
     private static confirmYes;
     private static confirmNo;
+    private static confirmKeydownHandler?;
+    private static rootMounted;
     private static options;
     static setOptions(options: DialogOptions): void;
+    static get rootIsMounted(): boolean;
+    static rootComponent(): import("vue").DefineComponent<{}, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
+        [key: string]: any;
+    }>[], {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<{}>>, {}, {}>;
     static confirmComponent(): import("vue").DefineComponent<Readonly<{}>, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<Readonly<{}>>>, {}, {}>;
@@ -44,6 +50,9 @@ export declare class Dialogs {
         [key: string]: any;
     }>, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<Readonly<{}>>>, {}, {}>;
     static $confirm(text: string, title?: string): Promise<boolean>;
+    static hasBlockingDialog(): boolean;
+    private static installConfirmKeydownHandler;
+    private static removeConfirmKeydownHandler;
     static $error(text: string): void;
     static $success(text: string): void;
     static $warning(text: string): void;

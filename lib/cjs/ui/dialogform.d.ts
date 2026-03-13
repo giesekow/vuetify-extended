@@ -8,6 +8,7 @@ export interface DialogParams {
     objectType?: any;
     objectId?: any;
     invisible?: boolean;
+    persistent?: boolean;
     mode?: 'create' | 'edit' | 'display';
     closeOnSave?: boolean;
     fullscreen?: boolean | undefined;
@@ -29,7 +30,10 @@ export declare class DialogForm extends UIBase {
     private loaded;
     private loading;
     private currentForm;
+    private dialogRoot;
+    private static defaultParams;
     constructor(params?: DialogParams, options?: DialogFormOptions);
+    static setDefault(value: DialogParams, reset?: boolean): void;
     get $ref(): string | undefined;
     setParams(params: DialogParams): void;
     get $params(): DialogParams;
@@ -48,6 +52,12 @@ export declare class DialogForm extends UIBase {
     form(props: any, context: any): Promise<Form | undefined>;
     private initialize;
     private onCancelClicked;
+    private onDialogKeydown;
+    private setDialogRoot;
+    private focusPrimaryInput;
+    private findFocusTarget;
+    private waitForFocusFrame;
+    private isVisibleFocusable;
     private onSaved;
     forceCancel(): Promise<void>;
     setup(props: any, context: any): void;
