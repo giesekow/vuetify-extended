@@ -635,7 +635,7 @@ function buildHomeMenu() {
       children: async () => [
         new MenuItem(
           {
-            action: 'report',
+            action: 'function',
             mode: 'edit',
             text: 'Edit Report Demo',
             subText: 'Full report with multiple forms and many field types.',
@@ -645,7 +645,29 @@ function buildHomeMenu() {
             shortcutDisplay: 'compact'
           },
           {
-            report: async () => buildFullReport({ objectId: 'person-1', mode: 'edit', title: 'Person Workspace' }),
+            callback: async () => {
+              const report = buildFullReport({ objectId: 'person-1', mode: 'edit', title: 'Person Workspace' });
+              if (await report.access('edit')) {
+                report.$params.mode = 'edit';
+                AppManager.showReport(report, {
+                  fabIcon: 'mdi-file-document-edit-outline',
+                  fabColor: 'secondary',
+                  fabLabel: 'Report Tools',
+                  fabButtons: () => [
+                    new Button(
+                      { text: 'Save Hint', color: 'secondary', variant: 'elevated', icon: 'mdi-content-save-outline' },
+                      { onClicked: () => Dialogs.$success('Use Ctrl+S or the Save button to persist this report.') },
+                    ),
+                    new Button(
+                      { text: 'Review Flow', color: 'primary', variant: 'outlined', icon: 'mdi-map-marker-path' },
+                      { onClicked: () => Dialogs.$warning('This report is using screen-specific FAB actions.') },
+                    ),
+                  ],
+                });
+              } else {
+                Dialogs.$error('access denied!');
+              }
+            },
           },
         ),
         new MenuItem(
@@ -713,7 +735,23 @@ function buildHomeMenu() {
           },
           {
             callback: async () => {
-              AppManager.showUI(buildTriggerDemo());
+              const trigger = buildTriggerDemo() as any;
+              trigger.$screenParams = {
+                fabIcon: 'mdi-radar',
+                fabColor: 'deep-orange',
+                fabLabel: 'Trigger Tools',
+                fabButtons: () => [
+                  new Button(
+                    { text: 'Search Help', color: 'deep-orange', variant: 'elevated', icon: 'mdi-magnify-scan' },
+                    { onClicked: () => Dialogs.$warning('Use Enter to search and Escape to cancel the trigger.') },
+                  ),
+                  new Button(
+                    { text: 'Selection Tip', color: 'brown', variant: 'outlined', icon: 'mdi-lightbulb-on-outline' },
+                    { onClicked: () => Dialogs.$success('Screen-specific FAB actions are now overriding the global app FAB here.') },
+                  ),
+                ],
+              };
+              AppManager.showUI(trigger);
             },
           },
         ),
@@ -762,6 +800,10 @@ export function createDemoApp() {
       title: 'Vuetify Extended Demo Workspace',
       showHeader: true,
       showFooter: true,
+      showFab: true,
+      fabIcon: 'mdi-lightning-bolt',
+      fabColor: 'primary',
+      fabLabel: 'Quick Actions',
       backgroundColor: '#dfe7ef',
       backgroundGradient: 'linear-gradient(145deg, rgba(255,255,255,0.86) 0%, rgba(219,231,242,0.74) 45%, rgba(199,219,237,0.82) 100%)',
       backgroundImage: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1600&q=80',
@@ -774,6 +816,20 @@ export function createDemoApp() {
     {
       menu: async () => buildHomeMenu(),
       udfs: async () => [],
+      fabButtons: () => [
+        new Button(
+          { text: 'Quick Success', color: 'success', variant: 'elevated', icon: 'mdi-check-circle-outline' },
+          { onClicked: () => Dialogs.$success('Quick action executed successfully.') },
+        ),
+        new Button(
+          { text: 'Quick Warning', color: 'warning', variant: 'elevated', icon: 'mdi-alert-outline' },
+          { onClicked: () => Dialogs.$warning('Quick action warning example.') },
+        ),
+        new Button(
+          { text: 'Quick Confirm', color: 'primary', variant: 'outlined', icon: 'mdi-help-circle-outline' },
+          { onClicked: async () => { await Dialogs.$confirm('Run the quick confirm action?'); } },
+        ),
+      ],
       headerStart: (app) => [
         h(new AppTitleBlock({
           title: app.$params.title || 'Vuetify Extended',

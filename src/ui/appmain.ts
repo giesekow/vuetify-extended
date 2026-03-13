@@ -7,9 +7,10 @@ import { Selector } from "./selector";
 import { sleep } from "../misc";
 import { Dialogs } from "./dialogs";
 import { Field } from "./field";
+import { Button } from "./button";
 import { Api } from "../api";
 import { DialogForm } from "./dialogform";
-import { VApp, VAppBar, VAppBarTitle, VFooter, VMain } from 'vuetify/components';
+import { VApp, VAppBar, VAppBarTitle, VBtn, VCard, VCardText, VFooter, VMain, VMenu } from 'vuetify/components';
 
 export interface AppParams {
   ref?: string;
@@ -17,6 +18,12 @@ export interface AppParams {
   title?: string;
   showHeader?: boolean;
   showFooter?: boolean;
+  showFab?: boolean;
+  fabIcon?: string;
+  fabColor?: string;
+  fabPosition?: 'bottom-right'|'bottom-left';
+  fabDirection?: 'up'|'left';
+  fabLabel?: string;
   headerLayout?: 'balanced'|'auto'|'stacked';
   footerLayout?: 'balanced'|'auto'|'stacked';
   headerStartWidth?: string|number;
@@ -41,6 +48,7 @@ export interface AppOptions {
   menu?: (app: AppMain) => Promise<Menu|undefined>|Menu|undefined;
   udfs?: (app: AppMain, objectType: string|string[], query: any) => Promise<any[]>;
   makeUDF?: (app: AppMain, options: any) => Field|undefined;
+  fabButtons?: AppFabButtonsFactory;
   header?: (app: AppMain) => AppShellContent | AppShellContent[];
   footer?: (app: AppMain) => AppShellContent | AppShellContent[];
   headerStart?: (app: AppMain) => AppShellContent | AppShellContent[];
@@ -51,10 +59,23 @@ export interface AppOptions {
   footerEnd?: (app: AppMain) => AppShellContent | AppShellContent[];
 }
 
+export type AppFabButtonsFactory = Button[] | ((app: AppMain, item?: UIBase, stackItem?: AppStackItem) => Button[]);
+
+export interface AppScreenParams {
+  showFab?: boolean;
+  fabIcon?: string;
+  fabColor?: string;
+  fabPosition?: 'bottom-right'|'bottom-left';
+  fabDirection?: 'up'|'left';
+  fabLabel?: string;
+  fabButtons?: AppFabButtonsFactory;
+  [key: string]: any;
+}
+
 export interface AppStackItem {
   type: "menu"|"report"|"collection"|"selector"|"ui";
   item: UIBase,
-  params: any
+  params: AppScreenParams
 }
 
 export class AppMain extends UIBase {
@@ -70,9 +91,16 @@ export class AppMain extends UIBase {
   private dialogCount: Ref<number>;
   private selectorFocusTargets: Map<symbol, HTMLElement>;
   private dialogFocusTargets: Map<symbol, HTMLElement>;
+  private fabButtonInstances: Array<Button>;
   private static defaultParams: AppParams = {
     showHeader: false,
     showFooter: false,
+    showFab: false,
+    fabIcon: 'mdi-plus',
+    fabColor: 'primary',
+    fabPosition: 'bottom-right',
+    fabDirection: 'up',
+    fabLabel: 'Quick Actions',
     headerLayout: 'balanced',
     footerLayout: 'balanced',
   };
@@ -90,6 +118,7 @@ export class AppMain extends UIBase {
     this.dialogs = [];
     this.selectorFocusTargets = new Map();
     this.dialogFocusTargets = new Map();
+    this.fabButtonInstances = [];
   }
 
   static setDefault(value: AppParams, reset?: boolean): void {
@@ -139,7 +168,7 @@ export class AppMain extends UIBase {
     const showFooter = this.params.value.showFooter || !!footerBar || !!footer;
 
     if (!showHeader && !showFooter) {
-      return content;
+      return this.wrapWithFab(content, showFooter);
     }
 
     return h(
@@ -192,7 +221,7 @@ export class AppMain extends UIBase {
                     minHeight: '100%',
                   },
                 },
-                content as any
+                this.wrapWithFab(content, showFooter) as any
               ),
             ]
           )
@@ -235,6 +264,123 @@ export class AppMain extends UIBase {
     }
 
     return undefined;
+  }
+
+  private wrapWithFab(content: VNode | VNode[] | undefined, showFooter: boolean = false) {
+    const h = this.$h;
+    const fab = this.renderFabActions(showFooter);
+    if (!fab) {
+      return content;
+    }
+
+    const nodes = Array.isArray(content) ? content : (content ? [content] : []);
+    return [
+      ...nodes,
+      fab,
+    ];
+  }
+
+  private getActiveStackItem(): AppStackItem | undefined {
+    if (this.index.value < 0 || this.index.value >= this.stack.length) {
+      return undefined;
+    }
+    return this.stack[this.index.value];
+  }
+
+  private resolveFabConfig() {
+    const active = this.getActiveStackItem();
+    const itemScreen = ((active?.item as any)?.$screenParams || (active?.item as any)?.$appScreenParams || {}) as AppScreenParams;
+    const screen = {
+      ...itemScreen,
+      ...(active?.params || {}),
+    } as AppScreenParams;
+    return {
+      showFab: screen.showFab ?? this.params.value.showFab,
+      fabIcon: screen.fabIcon ?? this.params.value.fabIcon,
+      fabColor: screen.fabColor ?? this.params.value.fabColor,
+      fabPosition: screen.fabPosition ?? this.params.value.fabPosition,
+      fabDirection: screen.fabDirection ?? this.params.value.fabDirection,
+      fabLabel: screen.fabLabel ?? this.params.value.fabLabel,
+      fabButtons: screen.fabButtons ?? this.options.fabButtons,
+      active,
+    };
+  }
+
+  private resolveFabButtonSource(source: AppFabButtonsFactory | undefined, active?: AppStackItem) {
+    if (!source) {
+      return [];
+    }
+
+    if (typeof source === 'function') {
+      return source(this, active?.item, active) || [];
+    }
+
+    return source || [];
+  }
+
+  private buildFabButtons() {
+    this.fabButtonInstances.forEach((instance) => instance.removeEventListeners());
+    const config = this.resolveFabConfig();
+    this.fabButtonInstances = this.resolveFabButtonSource(config.fabButtons, config.active);
+    this.fabButtonInstances.forEach((instance) => instance.setParent(this));
+    return {
+      buttons: this.fabButtonInstances.filter((instance) => !instance.$params.invisible),
+      config,
+    };
+  }
+
+  private renderFabActions(showFooter: boolean = false) {
+    const { buttons, config } = this.buildFabButtons();
+    if (!config.showFab || buttons.length === 0) {
+      return undefined;
+    }
+
+    const h = this.$h;
+    const right = config.fabPosition !== 'bottom-left';
+    const location = right ? 'top end' : 'top start';
+
+    return h('div', {
+      style: {
+        position: 'fixed',
+        right: right ? '24px' : undefined,
+        left: right ? undefined : '24px',
+        bottom: showFooter ? '96px' : '24px',
+        zIndex: 1200,
+      },
+    }, [
+      h(VMenu, {
+        location,
+        offset: 12,
+        closeOnContentClick: true,
+      }, {
+        activator: ({ props: activatorProps }: any) => h(VBtn, {
+          ...activatorProps,
+          color: config.fabColor,
+          icon: config.fabIcon,
+          size: 'large',
+          elevation: 8,
+          title: config.fabLabel,
+          'aria-label': config.fabLabel,
+          style: {
+            borderRadius: '999px',
+          },
+        }),
+        default: () => h(VCard, {
+          elevation: 8,
+          style: {
+            minWidth: '220px',
+            maxWidth: '280px',
+          },
+        }, () => h(VCardText, {
+          style: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            padding: '12px',
+          },
+        }, () => buttons.map((button) => h('div', { style: { display: 'flex', width: '100%' } }, [h(button.component, { style: { width: '100%' } })])))),
+      }),
+    ]);
   }
 
   private renderShellRegion(region: 'header' | 'footer'): VNode | VNode[] | undefined {
