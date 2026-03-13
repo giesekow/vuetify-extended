@@ -17,6 +17,14 @@ export interface AppParams {
   title?: string;
   showHeader?: boolean;
   showFooter?: boolean;
+  backgroundColor?: string;
+  backgroundGradient?: string;
+  backgroundImage?: string;
+  backgroundSize?: string;
+  backgroundPosition?: string;
+  backgroundRepeat?: string;
+  backgroundAttachment?: string;
+  backgroundOverlay?: string;
 }
 
 export type AppShellContent = UIBase | VNode | string | number | boolean | null | undefined;
@@ -136,16 +144,29 @@ export class AppMain extends UIBase {
           VMain,
           {
             class: ['vuetify-extended-app-main'],
+            style: this.mainShellStyle(),
           },
           () => h(
             'div',
             {
-              style: {
-                minHeight: '100%',
-                paddingBottom: showFooter ? '72px' : undefined,
-              },
+              style: this.mainShellContentStyle(showFooter),
             },
-            content as any
+            [
+              ...(this.params.value.backgroundOverlay ? [
+                h('div', { style: this.mainShellOverlayStyle() })
+              ] : []),
+              h(
+                'div',
+                {
+                  style: {
+                    position: 'relative',
+                    zIndex: 1,
+                    minHeight: '100%',
+                  },
+                },
+                content as any
+              ),
+            ]
           )
         ),
         ...(showFooter ? [
@@ -196,6 +217,39 @@ export class AppMain extends UIBase {
 
     const content = render(this);
     return this.normalizeShellContent(content);
+  }
+
+  private mainShellStyle() {
+    const image = this.params.value.backgroundImage;
+    const gradient = this.params.value.backgroundGradient;
+    const backgroundImage = [gradient, image ? `url(${image})` : undefined].filter(Boolean).join(', ');
+
+    return {
+      backgroundColor: this.params.value.backgroundColor,
+      backgroundImage: backgroundImage || undefined,
+      backgroundSize: this.params.value.backgroundSize || (image ? 'cover' : undefined),
+      backgroundPosition: this.params.value.backgroundPosition || (image ? 'center center' : undefined),
+      backgroundRepeat: this.params.value.backgroundRepeat || (image ? 'no-repeat' : undefined),
+      backgroundAttachment: this.params.value.backgroundAttachment,
+    };
+  }
+
+  private mainShellContentStyle(showFooter: boolean) {
+    return {
+      position: 'relative',
+      minHeight: '100%',
+      paddingBottom: showFooter ? '72px' : undefined,
+    };
+  }
+
+  private mainShellOverlayStyle() {
+    return {
+      position: 'absolute',
+      inset: 0,
+      pointerEvents: 'none',
+      background: this.params.value.backgroundOverlay,
+      zIndex: 0,
+    };
   }
 
   private normalizeShellContent(content: AppShellContent | AppShellContent[]): VNode | VNode[] | undefined {
