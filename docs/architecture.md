@@ -10,6 +10,7 @@ The library is not a thin wrapper around Vuetify components. It adds:
 - A shared data model called `Master`
 - Screen orchestration primitives such as `Report`, `Form`, `Collection`, and `Selector`
 - An application shell and navigation stack via `AppMain` and `AppManager`
+- Optional header/footer framing around `AppMain` for full-app layouts
 - Integrated utility support for printing, export, document/image upload, code editing, maps, charts, and rich HTML
 
 ## Architectural Style
@@ -82,7 +83,7 @@ This is handled by `src/setup`.
 - `configureVuetifyExtendedDefaults(...)` applies project-wide UI defaults
 - `validateVuetifyExtendedSetup(...)` checks the most common bootstrap mistakes
 
-This layer does not replace the lower-level primitives. It packages them into a cleaner host-app entrypoint.
+This layer does not replace the lower-level primitives. It packages them into a cleaner host-app entrypoint and now works cleanly with the optional `AppMain` header/footer shell.
 
 ## High-Level Runtime View
 
@@ -104,6 +105,11 @@ Supporting globals:
 - `AppManager`: singleton-style runtime coordinator
 - `Dialogs`: singleton-style global confirm/snackbar/progress state
 - `EventEmitter`: shared event abstraction used by most classes
+
+Shell additions:
+
+- `AppMain` can optionally render a `VApp` / `VAppBar` / `VMain` / `VFooter` frame
+- host apps can inject header/footer content through `header(app)` and `footer(app)` callbacks
 
 Supporting bootstrap helpers:
 
@@ -272,6 +278,8 @@ The report layer also owns keyboard-oriented workflow behavior:
 
 - `Escape` triggers `Prev` when available, otherwise `Cancel`
 - `Ctrl+S` and `Meta+S` trigger the current primary action
+- side actions can live in a left or right rail through `sideButtons(...)`
+- `sideButtonWidth` controls the width of that rail and its matching small-screen dropdown card
 - focus is pushed into the active form when a report step becomes visible
 
 ## `Menu`
@@ -283,7 +291,7 @@ The report layer also owns keyboard-oriented workflow behavior:
 - A `Collection`
 - A custom callback
 
-This gives the library a lightweight in-app navigation model without introducing a full router dependency.
+This gives the library a lightweight in-app navigation model without introducing a full router dependency. The current menu implementation also supports visible card-selection state plus arrow-key navigation and activation.
 
 ## `Selector`
 
@@ -305,6 +313,7 @@ The current selector/dialog model also includes:
 - focus capture and restore through `AppMain`
 - `Enter` to confirm in `Selector`
 - `Escape` to cancel in `Selector` and `DialogForm`
+- confirm dialog key handling for `Enter` / `Y` and `Escape` / `N`
 
 ## `Collection`
 

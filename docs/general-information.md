@@ -248,6 +248,7 @@ Common usage patterns include:
 - print and export flows
 - UDF-backed dynamic fields
 - keyboard-driven menu and workflow navigation
+- optional app-shell header/footer framing around `AppMain`
 - long-form message history display through `messagingbox`
 
 ## Notable Integrations
@@ -334,6 +335,8 @@ Recommended order:
 5. Mount Vue and render the app shell plus `Dialogs` components
 
 The recommended shortcut for new apps is to use `createVuetifyExtendedApp(...)`, which performs the initialization and registration steps for you.
+
+When using the new optional `AppMain` shell, the same bootstrap path can also supply a header/footer frame around the workflow area. The host app still mounts `bootstrap.component` and `bootstrap.dialogs`; the shell lives inside `AppMain` itself.
 
 ## Backend Selection
 
@@ -465,3 +468,43 @@ Prefer avoiding:
 - tightly integrated with a shared object model
 
 For day-to-day usage, use the root `README.md`. For internals, use the architecture document in this folder.
+
+## Recent UI Configuration Additions
+
+A few notable params/options added in the current codebase:
+
+- `AppMain`
+  - `title`
+  - `showHeader`
+  - `showFooter`
+  - `header(app)`
+  - `footer(app)`
+- `Report`
+  - `sideButtons(...)`
+  - `sideButtonPosition`
+  - `sideButtonWidth`
+  - `confirmOnCancel`
+- `Trigger`
+  - `sideButtons(...)`
+  - `sideButtonPosition`
+  - `sideButtonWidth`
+- `Button` and `MenuItem`
+  - `shortcutDisplay`
+  - `shortcutFontSize`
+  - `shortcutShiftIcon`
+  - `cmdForCtrlOnMac`
+
+## Current Shortcut Rules
+
+- Button shortcuts are limited to function-key combinations
+- Menu shortcuts can still use general keys such as `U`
+- Compact shortcut rendering supports boxed keys plus modifier marks
+- macOS-aware rendering and matching are controlled by `cmdForCtrlOnMac`
+- on non-Mac platforms, Command-style shortcuts normalize to Ctrl for rendering and matching
+
+## Confirm Dialog Keys
+
+The global confirm dialog currently supports:
+
+- `Enter` or `Y` for Yes
+- `Escape` or `N` for No

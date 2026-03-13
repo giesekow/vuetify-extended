@@ -70,6 +70,7 @@ This gives you one place to:
 - apply project-wide UI defaults
 - configure dialog/snackbar behavior
 - expose a single dialog root component
+- scaffold an optional app shell around `AppMain`
 
 ## Importing CSS
 
@@ -98,6 +99,23 @@ The fastest way to understand the library is this:
 5. `Report` turns one or more forms into a workflow.
 6. `AppMain` hosts the visible screen stack.
 7. `AppManager` exposes app-level runtime helpers.
+
+## App Shell
+
+`AppMain` can now act as a lightweight application shell in addition to being the workflow host.
+
+Available params:
+
+- `title`
+- `showHeader`
+- `showFooter`
+
+Available options:
+
+- `header?: (app) => VNode | UIBase | Array<VNode | UIBase>`
+- `footer?: (app) => VNode | UIBase | Array<VNode | UIBase>`
+
+If neither header nor footer is enabled, `AppMain` renders the same way it did before. When enabled, it wraps the stack content in a Vuetify `VApp` / `VAppBar` / `VMain` / `VFooter` scaffold.
 
 ## Main Exports
 
@@ -1061,3 +1079,30 @@ The `build` script compiles TypeScript and copies `src/css` into both distributi
 - `AppMain` and `AppManager` for app orchestration
 
 If you learn those pieces first, the rest of the library becomes much easier to use and extend.
+
+## Keyboard And Shortcut Notes
+
+Current keyboard behavior includes:
+
+- `Menu` card navigation with arrow keys, `Enter`, `Space`, `Home`, `End`, `PageUp`, and `PageDown`
+- `Selector` support for `Enter` to confirm and `Escape` to cancel
+- `DialogForm`, `Form`, `Report`, and `Trigger` support for `Escape`-driven exit/back behavior where appropriate
+- `Form` / `Report` support for `Ctrl+S` and `Meta+S`
+- confirm dialog support for `Enter` / `Y` = yes and `Escape` / `N` = no
+
+Buttons and menu items now also support platform-aware shortcut rendering through:
+
+- `shortcutDisplay`
+- `shortcutFontSize`
+- `shortcutShiftIcon`
+- `cmdForCtrlOnMac`
+
+When `cmdForCtrlOnMac` is enabled, authored `Ctrl+...` shortcuts can render and match as Command on macOS, while non-Mac platforms normalize Command-style shortcuts back to Ctrl.
+
+For `Report` and `Trigger`, side action rails now support:
+
+- `sideButtonPosition`
+- `sideButtonWidth`
+- `sideButtons(...)`
+
+The side rail uses the configured width on desktop and the same stacked button rendering inside the small-screen `Actions` dropdown.

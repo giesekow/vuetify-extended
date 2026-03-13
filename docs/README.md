@@ -29,5 +29,6 @@ These docs describe the code currently present in this repository:
 - A setup/bootstrap layer for API, defaults, dialogs, and app-shell wiring
 - Class-based screen, form, field, selector, dialog, and menu composition
 - Keyboard-first workflow helpers for menus, selectors, dialogs, forms, and reports
+- Optional `AppMain` header/footer shell scaffolding for full-app framing
 - Rich messagebox rendering with attachments and incremental history loading
 - Build outputs published under `lib/cjs` and `lib/esm`
