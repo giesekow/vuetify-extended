@@ -1,6 +1,6 @@
 import { VNode, Ref } from "vue";
 import { ReportMode, UIBase } from "./base";
-import { VDivider, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VLayout, VCol, VRow, VContainer, VBtn, VMenu, VProgressLinear, VChip } from 'vuetify/components';
+import { VDivider, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VLayout, VCol, VRow, VContainer, VBtn, VMenu, VProgressLinear } from 'vuetify/components';
 import { Master } from "../master";
 import { Form } from './form';
 import { Button, ButtonParams } from "./button";
@@ -364,10 +364,24 @@ export class Report extends UIBase {
                 align: this.params.value.horizontalAlign !== "center" ? this.params.value.horizontalAlign : undefined,
                 style: { paddingTop: '16px', paddingBottom: '16px' },
               },
-              () => this.wrapWithSideButtons(
-                props,
-                context,
-                this.buildCurrentFormContent(props, context)
+              () => h(
+                'div',
+                {
+                  style: {
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: this.buildProgressHeader() ? '12px' : '0',
+                    width: '100%',
+                  },
+                },
+                [
+                  ...(this.buildProgressHeader() ? [this.buildProgressHeader()!] : []),
+                  this.wrapWithSideButtons(
+                    props,
+                    context,
+                    h(this.currentForm!.component)
+                  )
+                ]
               )
             )
           )
@@ -615,7 +629,7 @@ export class Report extends UIBase {
           style: {
             display: 'flex',
             flexDirection: 'column',
-            gap: '8px',
+            gap: '6px',
             padding: '12px',
           },
         },
@@ -676,7 +690,7 @@ export class Report extends UIBase {
                 style: {
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '8px',
+                  gap: '6px',
                   padding: '12px',
                 },
               },
@@ -747,25 +761,6 @@ export class Report extends UIBase {
     );
   }
 
-  private buildCurrentFormContent(props: any, context: any) {
-    const h = this.$h;
-    const content: VNode[] = [];
-    const progress = this.buildProgressHeader();
-    if (progress) {
-      content.push(progress);
-    }
-    content.push(h(this.currentForm!.component));
-
-    return h('div', {
-      style: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: progress ? '12px' : '0',
-        width: '100%',
-      },
-    }, content);
-  }
-
   private buildProgressHeader() {
     if (!this.currentForm) {
       return undefined;
@@ -781,7 +776,7 @@ export class Report extends UIBase {
     const percent = Math.max(0, Math.min(100, (current / total) * 100));
 
     return h(VCard, {
-      elevation: 1,
+      elevation: 0,
       variant: 'tonal',
       class: ['mx-auto'],
       style: {
@@ -791,32 +786,41 @@ export class Report extends UIBase {
     }, () => h(VCardText, {
       style: {
         display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-        padding: '14px 18px',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '2px 4px',
+        flexWrap: 'nowrap',
       },
     }, () => [
       h('div', {
         style: {
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '12px',
-          flexWrap: 'wrap',
+          alignItems: 'baseline',
+          gap: '4px',
+          whiteSpace: 'nowrap',
+          flex: '0 0 auto',
         },
       }, [
-        h('div', { style: { display: 'flex', flexDirection: 'column', gap: '2px' } }, [
-          h('div', { style: { fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: '0.72' } }, 'Report Progress'),
-          h('div', { style: { fontSize: '0.94rem', fontWeight: '700' } }, `Step ${current} of ${total}`),
-        ]),
-        h(VChip, { color: 'primary', variant: 'outlined', size: 'small' }, () => `${Math.round(percent)}% complete`),
+        h('div', { style: { fontSize: '0.58rem', lineHeight: '1', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: '0.68' } }, 'Progress'),
+        h('div', { style: { fontSize: '0.72rem', lineHeight: '1', fontWeight: '700' } }, `Step ${current} of ${total}`),
       ]),
-      h(VProgressLinear, {
-        modelValue: percent,
-        color: 'primary',
-        rounded: true,
-        height: 10,
-      }),
+      h('div', {
+        style: {
+          flex: '1 1 65%',
+          minWidth: '120px',
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+        },
+      }, [
+        h(VProgressLinear, {
+          modelValue: percent,
+          color: 'primary',
+          rounded: true,
+          height: 4,
+          style: { width: '100%' },
+        }),
+      ]),
     ]));
   }
 
