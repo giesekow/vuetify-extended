@@ -30,6 +30,7 @@ export interface ReportParams {
   finishButton?: ButtonParams;
   finishButtonStyle?: ReportButtonStyle;
   sideButtonPosition?: 'left'|'right';
+  sideButtonWidth?: string|number;
   multiple?: boolean;
   setActionButtons?: boolean;
   forms?: number;
@@ -100,6 +101,7 @@ export class Report extends UIBase {
   private sideActionMediaHandler?: ((ev: MediaQueryListEvent) => void) | undefined;
   private static defaultParams: ReportParams = {
     sideButtonPosition: 'right',
+    sideButtonWidth: 180,
   };
 
   constructor(params?: ReportParams, options?: ReportOptions) {
@@ -580,8 +582,8 @@ export class Report extends UIBase {
       {
         elevation: 2,
         style: {
-          width: '180px',
-          minWidth: '180px',
+          width: this.params.value.sideButtonWidth,
+          minWidth: this.params.value.sideButtonWidth,
           alignSelf: 'flex-start',
         },
       },
@@ -642,8 +644,8 @@ export class Report extends UIBase {
             {
               elevation: 2,
               style: {
-                width: '180px',
-                minWidth: '180px',
+                width: this.params.value.sideButtonWidth,
+                minWidth: this.params.value.sideButtonWidth,
               },
             },
             () => h(

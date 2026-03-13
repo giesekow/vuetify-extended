@@ -35,6 +35,7 @@ export interface TriggerParams {
   multiple?: boolean;
   defaultButtonPosition?: "top"|"bottom"|"both";
   sideButtonPosition?: 'left'|'right';
+  sideButtonWidth?: string|number;
   verticalAlign?: "center" | "end" | "start" | "space-around" | "space-between" | "space-evenly" | "stretch" | undefined;
   horizontalAlign?: "left"|"center"|"right";
   fluid?: boolean;
@@ -110,6 +111,7 @@ export class Trigger extends UIBase {
   private static defaultParams: TriggerParams = {
     fluid: true,
     sideButtonPosition: 'right',
+    sideButtonWidth: 180,
   };
 
   constructor(params?: TriggerParams, options?: TriggerOptions) {
@@ -745,8 +747,8 @@ export class Trigger extends UIBase {
       {
         elevation: 2,
         style: {
-          width: '180px',
-          minWidth: '180px',
+          width: this.params.value.sideButtonWidth,
+          minWidth: this.params.value.sideButtonWidth,
           alignSelf: 'flex-start',
         },
       },
@@ -807,8 +809,8 @@ export class Trigger extends UIBase {
             {
               elevation: 2,
               style: {
-                width: '180px',
-                minWidth: '180px',
+                width: this.params.value.sideButtonWidth,
+                minWidth: this.params.value.sideButtonWidth,
               },
             },
             () => h(
