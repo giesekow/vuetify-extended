@@ -335,14 +335,25 @@ export class Dialogs {
     }
 
     Dialogs.confirmKeydownHandler = (ev: KeyboardEvent) => {
-      if (!Dialogs.confirmDialog.value || ev.key !== 'Escape') {
+      if (!Dialogs.confirmDialog.value) {
         return;
       }
 
-      ev.preventDefault();
-      ev.stopPropagation();
-      if (Dialogs.confirmNo) {
-        Dialogs.confirmNo();
+      if (ev.key === 'Escape') {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (Dialogs.confirmNo) {
+          Dialogs.confirmNo();
+        }
+        return;
+      }
+
+      if (ev.key === 'Enter' || ev.key === 'Return') {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (Dialogs.confirmYes) {
+          Dialogs.confirmYes();
+        }
       }
     };
 

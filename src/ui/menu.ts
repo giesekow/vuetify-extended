@@ -1,4 +1,4 @@
-import { VNode, Ref } from "vue";
+import { VNode, Ref, nextTick } from "vue";
 import { ReportMode, UIBase } from "./base";
 import { VAvatar, VBtn, VCard, VCardTitle, VCol, VContainer, VIcon, VLayout, VListItem, VRow } from 'vuetify/components';
 import { EventEmitter, OnHandler } from "./lib";
@@ -32,6 +32,7 @@ export interface MenuParams {
   dense?: boolean | undefined;
   justify?: "center" | "end" | "start" | "space-around" | "space-between" | "space-evenly" | "stretch" | undefined;
   align?: "center" | "end" | "start" | "stretch" | "baseline" | undefined;
+  keyboardNavigation?: boolean;
 }
 
 export interface MenuOptions {
@@ -47,13 +48,18 @@ export class Menu extends UIBase {
   private childrenInstances: Array<MenuItem> = [];
   private loaded: Ref<boolean>;
   private shortcutHandler?: (ev: KeyboardEvent) => void;
-  private static defaultParams: MenuParams = {};
+  private activeIndex: Ref<number>;
+  private cardElements: Array<HTMLElement | undefined> = [];
+  private static defaultParams: MenuParams = {
+    keyboardNavigation: true,
+  };
 
   constructor(params?: MenuParams, options?: MenuOptions) {
     super();
     this.params = this.$makeRef({...Menu.defaultParams, ...(params || {})});
     this.options = options || {};
     this.loaded = this.$makeRef(false);
+    this.activeIndex = this.$makeRef(-1);
   }
 
   static setDefault(value: MenuParams, reset?: boolean): void {
@@ -218,7 +224,7 @@ export class Menu extends UIBase {
         return [
           title,
           ...(this.hasParent() && this.childrenInstances.length > 6 ? [backTop] : []),
-          ...this.childrenInstances.map((item) => h(
+          ...this.childrenInstances.map((item, index) => h(
             VCol,
             {
               cols: this.params.value.cols || 12,
@@ -232,13 +238,20 @@ export class Menu extends UIBase {
             () => h(
               VCard,
               {
+                ref: (el: Element | any) => this.setCardElement(index, el),
                 color: item.$params.color || 'primary',
                 elevation: 4,
                 maxWidth: this.params.value.maxWidth,
                 minWidth: this.params.value.minWidth,
                 width: this.params.value.width,
                 class: ['mx-auto'],
+                role: 'button',
+                tabindex: this.params.value.keyboardNavigation ? -1 : undefined,
+                'aria-selected': this.params.value.keyboardNavigation ? index === this.activeIndex.value : undefined,
+                style: this.menuCardStyle(index),
+                onMouseenter: () => this.setActiveIndex(index),
                 onClick: () => {
+                  this.setActiveIndex(index);
                   this.itemClicked(item);
                 }
               },
@@ -397,12 +410,140 @@ export class Menu extends UIBase {
     }
 
     this.childrenInstances = filtered;
+    this.cardElements = new Array(this.childrenInstances.length);
 
     this.childrenInstances.forEach((instance) => {
       instance.setParent(this);
     })
 
+    if (this.childrenInstances.length === 0) {
+      this.activeIndex.value = -1;
+    } else if (this.activeIndex.value < 0 || this.activeIndex.value >= this.childrenInstances.length) {
+      this.activeIndex.value = 0;
+    }
+
     this.loaded.value = true;
+    void this.ensureActiveCardVisible();
+  }
+
+  private menuCardStyle(index: number) {
+    if (!this.params.value.keyboardNavigation || index !== this.activeIndex.value) {
+      return undefined;
+    }
+
+    return {
+      outline: '4px solid rgba(255,255,255,0.98)',
+      outlineOffset: '4px',
+      boxShadow: '0 0 0 8px rgba(0,0,0,0.28), 0 14px 32px rgba(0,0,0,0.28)',
+      transform: 'translateY(-2px) scale(1.01)',
+      filter: 'saturate(1.08) brightness(1.04)',
+      transition: 'outline-offset 120ms ease, box-shadow 120ms ease, transform 120ms ease, filter 120ms ease',
+    };
+  }
+
+  private setCardElement(index: number, el: Element | any) {
+    const root = el instanceof HTMLElement ? el : el?.$el;
+    this.cardElements[index] = root instanceof HTMLElement ? root : undefined;
+  }
+
+  private setActiveIndex(index: number) {
+    if (!this.params.value.keyboardNavigation) {
+      return;
+    }
+
+    if (index < 0 || index >= this.childrenInstances.length) {
+      return;
+    }
+
+    this.activeIndex.value = index;
+    void this.ensureActiveCardVisible();
+  }
+
+  private async ensureActiveCardVisible() {
+    if (!this.params.value.keyboardNavigation) {
+      return;
+    }
+
+    await nextTick();
+    const el = this.cardElements[this.activeIndex.value];
+    el?.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+  }
+
+  private activateCurrentItem() {
+    if (!this.params.value.keyboardNavigation) {
+      return false;
+    }
+
+    const item = this.childrenInstances[this.activeIndex.value];
+    if (!item) {
+      return false;
+    }
+
+    void this.itemClicked(item);
+    return true;
+  }
+
+  private moveActiveIndex(direction: 'left'|'right'|'up'|'down') {
+    if (!this.params.value.keyboardNavigation || this.childrenInstances.length === 0) {
+      return false;
+    }
+
+    if (this.activeIndex.value < 0 || !this.cardElements[this.activeIndex.value]) {
+      this.setActiveIndex(0);
+      return true;
+    }
+
+    const currentEl = this.cardElements[this.activeIndex.value];
+    if (!currentEl) {
+      this.setActiveIndex(0);
+      return true;
+    }
+
+    const currentRect = currentEl.getBoundingClientRect();
+    const currentCenterX = currentRect.left + currentRect.width / 2;
+    const currentCenterY = currentRect.top + currentRect.height / 2;
+
+    let bestIndex = -1;
+    let bestScore = Number.POSITIVE_INFINITY;
+
+    for (let index = 0; index < this.cardElements.length; index++) {
+      if (index === this.activeIndex.value) {
+        continue;
+      }
+
+      const el = this.cardElements[index];
+      if (!el) {
+        continue;
+      }
+
+      const rect = el.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const deltaX = centerX - currentCenterX;
+      const deltaY = centerY - currentCenterY;
+
+      if (direction === 'left' && deltaX >= -4) continue;
+      if (direction === 'right' && deltaX <= 4) continue;
+      if (direction === 'up' && deltaY >= -4) continue;
+      if (direction === 'down' && deltaY <= 4) continue;
+
+      const horizontal = direction === 'left' || direction === 'right';
+      const primary = horizontal ? Math.abs(deltaX) : Math.abs(deltaY);
+      const secondary = horizontal ? Math.abs(deltaY) : Math.abs(deltaX);
+      const score = primary * 1000 + secondary;
+
+      if (score < bestScore) {
+        bestScore = score;
+        bestIndex = index;
+      }
+    }
+
+    if (bestIndex >= 0) {
+      this.setActiveIndex(bestIndex);
+      return true;
+    }
+
+    return false;
   }
 
   private async itemClicked(item: MenuItem) {
@@ -491,6 +632,45 @@ export class Menu extends UIBase {
       return;
     }
 
+    if (this.params.value.keyboardNavigation) {
+      if (ev.key === 'ArrowLeft' && this.moveActiveIndex('left')) {
+        ev.preventDefault();
+        return;
+      }
+
+      if (ev.key === 'ArrowRight' && this.moveActiveIndex('right')) {
+        ev.preventDefault();
+        return;
+      }
+
+      if (ev.key === 'ArrowUp' && this.moveActiveIndex('up')) {
+        ev.preventDefault();
+        return;
+      }
+
+      if (ev.key === 'ArrowDown' && this.moveActiveIndex('down')) {
+        ev.preventDefault();
+        return;
+      }
+
+      if (ev.key === 'Home' || ev.key === 'PageUp') {
+        ev.preventDefault();
+        this.setActiveIndex(0);
+        return;
+      }
+
+      if (ev.key === 'End' || ev.key === 'PageDown') {
+        ev.preventDefault();
+        this.setActiveIndex(Math.max(this.childrenInstances.length - 1, 0));
+        return;
+      }
+
+      if ((ev.key === 'Enter' || ev.key === ' ') && this.activateCurrentItem()) {
+        ev.preventDefault();
+        return;
+      }
+    }
+
     const eventShortcut = normalizeShortcutFromEvent(ev);
     if (!eventShortcut) {
       return;
@@ -503,6 +683,7 @@ export class Menu extends UIBase {
       }
 
       ev.preventDefault();
+      this.setActiveIndex(this.childrenInstances.indexOf(item));
       this.itemClicked(item);
       return;
     }
