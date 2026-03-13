@@ -560,6 +560,18 @@ export class Menu extends UIBase {
       return true;
     }
 
+    if (this.childrenInstances.length > 0) {
+      if (direction === 'left' || direction === 'up') {
+        this.setActiveIndex(this.childrenInstances.length - 1);
+        return true;
+      }
+
+      if (direction === 'right' || direction === 'down') {
+        this.setActiveIndex(0);
+        return true;
+      }
+    }
+
     return false;
   }
 
