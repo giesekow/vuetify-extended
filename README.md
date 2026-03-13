@@ -110,6 +110,7 @@ export * from './axios-api'
 export * from './feathers-api'
 export * from './master'
 export * from './misc'
+export * from './setup'
 ```
 
 The most commonly used exports are:
