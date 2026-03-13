@@ -5,12 +5,13 @@ import { Master } from "../master";
 import { Button } from "./button";
 import * as webtex from 'webtex';
 import { SimpleDate, SimpleTime, sleep } from "../misc";
-import { VDataTable, VDataTableFooter, VDataTableServer, VDataTableVirtual } from "vuetify/components";
+import { VDataTable, VDataTableFooter } from "vuetify/components";
 import Datepicker from '@vuepic/vue-datepicker';
 import { Form } from "./form";
 import { Report } from "./report";
 import { $v } from "../misc";
 import { buildChartWidget, buildCodeWidget, buildHTMLWidget, buildImageWidget, buildMapWidget, buildMessageBoxWidget, RichWidgetContext } from "./widgets/field-rich-widgets";
+import { buildReportTableWidget, buildServerTableWidget, buildTableWidget, buildViewTableWidget, TableWidgetContext } from "./widgets/field-table-widgets";
 
 import '@vuepic/vue-datepicker/dist/main.css';
 import { Dialogs } from "./dialogs";
@@ -1029,6 +1030,31 @@ export class Field extends UIBase {
     };
   }
 
+  private tableWidgetContext(): TableWidgetContext {
+    return {
+      $h: this.$h,
+      $readonly: this.$readonly,
+      params: this.params,
+      modelValue: this.modelValue,
+      maxWidth: this.maxWidth,
+      tableHeaders: this.tableHeaders,
+      tableItems: this.tableItems,
+      tableLoaded: this.tableLoaded,
+      tableItemsPerPage: this.tableItemsPerPage,
+      tableTotalItems: this.tableTotalItems,
+      tablePage: this.tablePage,
+      getCurrentCollectionItems: () => this.currentCollectionItems,
+      setCurrentCollectionItems: (items: any[]) => { this.currentCollectionItems = items; },
+      getCurrentCollectionFooter: () => this.currentCollectionFooter,
+      setCurrentCollectionFooter: (items: any[]) => { this.currentCollectionFooter = items; },
+      loadTableInformation: (options?: any) => this.loadTableInformation(options),
+      formatTableItems: (items: any[]) => this.format(items),
+      buildTableFooter: (items: any[]) => this.footer(items),
+      makeHTMLColumns: (headers: any[]) => this.makeHTMLColumns(headers),
+      handleOn: (event: string, data?: any) => this.handleOn(event, data),
+    };
+  }
+
   private getMessageWindow(items: any[]) {
     const total = Array.isArray(items) ? items.length : 0;
 
@@ -1928,95 +1954,7 @@ export class Field extends UIBase {
   }
 
   buildTable(props: any, context: any) {
-    const h = this.$h;
-    
-    if (!this.tableLoaded.value) {
-      this.loadTableInformation();
-    } else {
-      this.currentCollectionItems = this.format(this.tableItems.value || []);
-      if (this.params.value.hasFooter) this.currentCollectionFooter = this.footer(this.currentCollectionItems);
-    }
-
-    return h(
-      VRow,
-      {},
-      () => [
-        h(
-          VCol,
-          {
-            cols: 12
-          },
-          () => h(
-            'div',
-            {},
-            this.params.value.label
-          )
-        ),
-        h(
-          VCol,
-          {
-            cols: 12
-          },
-          () => h(
-            VCard,
-            {
-              class: ['overflow-auto', 'mx-auto', 'pa-0'],
-              maxWidth: this.maxWidth.value,
-              elevation: 0
-            },
-            () => h(
-              VDataTable,
-              {
-                headers: this.tableHeaders.value || [],
-                items: this.currentCollectionItems,
-                class: [...(this.params.value.class || []), 'dense-table', ...(this.params.value.bordered ? ['bordered-table'] : [])],
-                showSelect: !this.$readonly,
-                itemValue: this.params.value.idField || '_id',
-                itemsPerPage: this.params.value.itemsPerPage || 10,
-                returnObject: true,
-                fixedHeader: true,
-                fixedFooter: true,
-                hover: true,
-                height: this.params.value.height || 400,
-                modelValue: this.modelValue.value,
-                "onUpdate:modelValue": (value) => {
-                  this.modelValue.value = value;
-                },
-                "onClick:row": (_: any, {item}: any) => {
-                  this.handleOn('click:row', item);
-                }
-              },
-              {
-                ...this.makeHTMLColumns(this.tableHeaders.value),
-                ...(this.params.value.hasFooter ? {
-                  bottom: (options: any) => [
-                    h(
-                      VDataTable,
-                      {
-                        headers: options.headers[0],
-                        density: 'compact',
-                        hideNoData: true,
-                        items: this.currentCollectionFooter,
-                      },
-                      {
-                        top: () => h('hr'),
-                        headers: () => h('div'),
-                        bottom: () => h('hr', {class: ['mb-4']}),
-                        "item.data-table-select": () => h('div')
-                      }
-                    ),
-                    h(
-                      VDataTableFooter,
-                      {},
-                    )
-                  ]
-                } : {})
-              }
-            )
-          )
-        )
-      ]
-    )
+    return buildTableWidget(this.tableWidgetContext());
   }
 
   forceLoadTableInfo() {
@@ -2028,441 +1966,15 @@ export class Field extends UIBase {
   }
 
   buildServerTable(props: any, context: any) {
-    const h = this.$h;
-    
-    if (!this.tableLoaded.value) {
-      this.loadTableInformation({
-        itemsPerPage: this.tableItemsPerPage.value,
-        page: this.tablePage.value
-      });
-    } else {
-      if (this.params.value.hasFooter) this.currentCollectionFooter = this.footer(this.tableItems.value);
-    }
-
-    return h(
-      VRow,
-      {},
-      () => [
-        h(
-          VCol,
-          {
-            cols: 12
-          },
-          () => h(
-            'div',
-            {},
-            this.params.value.label
-          )
-        ),
-        h(
-          VCol,
-          {
-            cols: 12
-          },
-          () => h(
-            VCard,
-            {
-              class: ['overflow-auto', 'mx-auto', 'pa-0'],
-              maxWidth: this.maxWidth.value,
-              elevation: 0
-            },
-            () => h(
-              VDataTableServer,
-              {
-                headers: this.tableHeaders.value || [],
-                items: this.tableItems.value,
-                class: [...(this.params.value.class || []), 'dense-table', ...(this.params.value.bordered ? ['bordered-table'] : [])],
-                showSelect: !this.$readonly,
-                itemValue: this.params.value.idField || '_id',
-                returnObject: true,
-                fixedHeader: true,
-                fixedFooter: true,
-                density: 'compact',
-                height: this.params.value.height || 400,
-                page: this.tablePage.value,
-                itemsLength: this.tableTotalItems.value,
-                itemsPerPage: this.tableItemsPerPage.value,
-                hover: true,
-                modelValue: this.modelValue.value,
-                "onUpdate:options": (options: any) => {
-                  this.loadTableInformation(options);
-                  this.handleOn('changed:options', options);
-                },
-                "onUpdate:modelValue": (value) => {
-                  this.modelValue.value = value;
-                },
-                "onClick:row": (_: any, {item}: any) => {
-                  this.handleOn('click:row', item);
-                }
-              },
-              {
-                ...this.makeHTMLColumns(this.tableHeaders.value),
-                ...(this.params.value.hasFooter ? {
-                  bottom: (options: any) => [
-                    h(
-                      VDataTable,
-                      {
-                        headers: options.headers[0],
-                        density: 'compact',
-                        hideNoData: true,
-                        items: this.currentCollectionFooter
-                      },
-                      {
-                        top: () => h('hr'),
-                        headers: () => h('div'),
-                        bottom: () => h('hr', {class: ['mb-4']}),
-                        "item.data-table-select": () => h('div')
-                      }
-                    ),
-                    h(
-                      VDataTableFooter,
-                      {},
-                    )
-                  ]
-                } : {}),
-              }
-            )
-          )
-        )
-      ]
-    )
+    return buildServerTableWidget(this.tableWidgetContext());
   }
 
   buildViewTable(props: any, context: any) {
-    const h = this.$h;
-    
-    if (!this.tableLoaded.value) {
-      this.loadTableInformation();
-    } else {
-      if (this.params.value.hasFooter) this.currentCollectionFooter = this.footer(this.tableItems.value);
-    }
-
-    return h(
-      VRow,
-      {},
-      () => [
-        h(
-          VCol,
-          {
-            cols: 12
-          },
-          () => h(
-            'div',
-            {},
-            this.params.value.label
-          )
-        ),
-        h(
-          VCol,
-          {
-            cols: 12
-          },
-          () => h(
-            VCard,
-            {
-              class: ['overflow-auto', 'mx-auto', 'pa-0'],
-              maxWidth: this.maxWidth.value,
-              elevation: 0
-            },
-            () => h(
-              VDataTableVirtual,
-              {
-                headers: this.tableHeaders.value || [],
-                items: this.tableItems.value,
-                class: [...(this.params.value.class || []), 'dense-table', ...(this.params.value.bordered ? ['bordered-table'] : [])],
-                showSelect: !this.$readonly,
-                itemValue: this.params.value.idField || '_id',
-                itemsPerPage: this.params.value.itemsPerPage || 10,
-                returnObject: true,
-                fixedHeader: true,
-                fixedFooter: true,
-                hover: true,
-                height: this.params.value.height || 400,
-                modelValue: this.modelValue.value,
-                "onUpdate:modelValue": (value) => {
-                  this.modelValue.value = value;
-                },
-                "onClick:row": (_: any, {item}: any) => {
-                  this.handleOn('click:row', item);
-                }
-              },
-              {
-                ...this.makeHTMLColumns(this.tableHeaders.value),
-                ...(this.params.value.hasFooter ? {
-                  bottom: (options: any) => [
-                    h(
-                      VDataTable,
-                      {
-                        headers: options.headers[0],
-                        density: 'compact',
-                        hideNoData: true,
-                        items: this.currentCollectionFooter
-                      },
-                      {
-                        top: () => h('hr'),
-                        headers: () => h('div'),
-                        bottom: () => h('hr', {class: ['mb-4']}),
-                        "item.data-table-select": () => h('div')
-                      }
-                    ),
-                    h(
-                      VDataTableFooter,
-                      {},
-                    )
-                  ]
-                } : {})
-              }
-            )
-          )
-        )
-      ]
-    );
+    return buildViewTableWidget(this.tableWidgetContext());
   }
 
   buildReportTable(props: any, context: any) {
-    const h = this.$h;
-    
-    if (!this.tableLoaded.value) {
-      this.loadTableInformation();
-    } else {
-      if (this.params.value.hasFooter) this.currentCollectionFooter = this.footer(this.tableItems.value);
-    }
-
-    return h(
-      VRow,
-      {},
-      () => [
-        h(
-          VCol,
-          {
-            cols: 12
-          },
-          () => h(
-            'div',
-            {},
-            this.params.value.label
-          )
-        ),
-        h(
-          VCol,
-          {
-            cols: 12
-          },
-          () => h(
-            VCard,
-            {
-              class: ['overflow-auto', 'mx-auto', 'pa-0'],
-              maxWidth: this.maxWidth.value - 5,
-              elevation: 0
-            },
-            () => h(
-              'table',
-              {
-                class: ['reporttable'],
-                style: this.maxWidth.value ? {
-                  minWidth: `${Math.max(this.maxWidth.value - 5, this.params.value?.minWidth || 900)}px`
-                } : {}
-              },
-              [
-                h(
-                  'thead',
-                  {},
-                  this.makeReportTableHeader(props, context)
-                ),
-                h(
-                  'tbody',
-                  {
-                    style: {
-                      'max-height': this.params.value.height ? `${this.params.value.height}px` : '400px'
-                    }
-                  },
-                  this.makeReportTableBody(props, context, this.params.value.idField)
-                ),
-                ...(this.params.value.hasFooter ? [
-                  h(
-                  'tfoot',
-                  {},
-                  this.makeReportTableFooter(props, context, this.currentCollectionFooter)
-                )
-                ] : [])
-              ]
-            )
-          )
-        )
-      ]
-    );
-  }
-
-  private getColspan(header: any)  {
-    let span = 1;
-
-    if (header.children?.length > 0) {
-      const children = header.children;
-      span = 0
-      for (let i = 0; i < children.length; i++) {
-        const sp = this.getColspan(children[i]);
-        span += sp;
-      }
-    }
-
-    return span;
-  }
-
-  private calculateHeaderRows(headers: any[]) {
-    let cnt = 0
-    
-    let children: any[] = []
-    let currentHeaders: any[] = headers || [];
-    let headerRows: any[] = []
-
-    while (currentHeaders.length > 0) {
-      children = []
-      cnt += 1
-      for (let i = 0; i < currentHeaders.length; i++) {
-        const item = currentHeaders[i];
-        if (item.children && item.children.length > 0) {
-          children = children.concat(item.children || [])
-          item.colspan = this.getColspan(item);
-        } else {
-          item.colspan = 1;
-        }
-      }
-      
-      headerRows.push(currentHeaders)
-      currentHeaders = children
-    }
-
-    return {headerRows: headerRows, rowCount: cnt}
-
-  }
-
-  private getItemHeaders(headers: any[]) {
-    let items: any[] = []
-    for (let i = 0; i < headers.length; i++) {
-      const item = headers[i];
-      if (item.children?.length > 0) {
-        const cItems = this.getItemHeaders(item.children)
-        items = items.concat(cItems);
-      } else {
-        items.push(item);
-      }
-    }
-
-    return items;
-  }
-
-  private makeReportTableHeader(props: any, context: any) {
-    const h = this.$h;
-
-    const headers = this.tableHeaders.value || [];
-    const {headerRows, rowCount} = this.calculateHeaderRows(headers);
-
-    const rows: any[] = [];
-
-    for (let i = 0; i < headerRows.length; i++) {
-      const columns: any[] = [];
-      const heads = headerRows[i];
-
-      for (let c = 0; c < heads.length; c++) {
-        const col = heads[c];
-        columns.push(
-          h(
-            'th',
-            {
-              ...(col.attributes || {}),
-              colspan: col.colspan || 1,
-              rowspan: col.children?.length > 0 ? 1 : rowCount - i,
-              onClick: () => {
-                this.handleOn('click:header', col)
-              }
-            },
-            col.title || ''
-          )
-        );
-      }
-
-      rows.push(h('tr', {}, columns));
-
-    }
-
-    return rows;
-  }
-
-  private makeReportTableBody(props: any, context: any, idField: any) {
-    const h = this.$h;
-
-    const headers = this.getItemHeaders(this.tableHeaders.value || []);
-    const items = this.tableItems.value || [];
-
-    const rows: any[] = []
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const columns: any[] = [];
-      for (let a = 0; a < headers.length; a++) {
-        const head = headers[a];
-        columns.push(h(
-          'td',
-          {
-            ...(head.itemAttributes || {}),
-            onClick: () => {
-              this.handleOn('click:item', {header: head, item: item})
-            }
-          },
-          head.key ? (head.format ? head.format(nestedProperty.get(item, head.key), item, this) : nestedProperty.get(item, head.key)) : ''
-        ))
-      }
-
-      rows.push(h(
-        'tr',
-        {
-          onClick: () => {
-            this.handleOn('click:row', item);
-          }
-        },
-        columns
-      ))
-    }
-
-    return rows;
-  }
-
-  private makeReportTableFooter(props: any, context: any, items: any[]) {
-    const h = this.$h;
-
-    const headers = this.getItemHeaders(this.tableHeaders.value || []);
-
-    const rows: any[] = []
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const columns: any[] = [];
-      for (let a = 0; a < headers.length; a++) {
-        const head = headers[a];
-        columns.push(h(
-          'th',
-          {
-            ...(head.footerAttributes || {}),
-            onClick: () => {
-              this.handleOn('click:footer-item', {header: head, item})
-            }
-          },
-          head.key ? (head.footerFormat ? head.footerFormat(nestedProperty.get(item, head.key), item, this) : nestedProperty.get(item, head.key)) : ''
-        ))
-      }
-
-      rows.push(h(
-        'tr',
-        {
-          onClick: () => {
-            this.handleOn('click:footer-row', item)
-          }
-        },
-        columns
-      ))
-    }
-
-    return rows;
+    return buildReportTableWidget(this.tableWidgetContext());
   }
 
   private async loadTableInformation(options?: any) {

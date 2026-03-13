@@ -15,6 +15,10 @@ import {
   Report,
   Selector,
   Trigger,
+  AppTitleBlock,
+  EnvironmentTag,
+  StatusBadge,
+  UserArea,
 } from '../../src';
 import {
   createSeedStore,
@@ -771,65 +775,51 @@ export function createDemoApp() {
       menu: async () => buildHomeMenu(),
       udfs: async () => [],
       header: (app) => [
-        h(
-          'div',
-          {
+        h('div', {
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            gap: '16px',
+            flexWrap: 'wrap',
+          },
+        }, [
+          h(new AppTitleBlock({
+            title: app.$params.title || 'Vuetify Extended',
+            subtitle: 'Reusable shell widgets in the AppMain header',
+            overline: 'Workspace',
+            icon: 'mdi-view-dashboard-outline',
+            color: '#0f3d63',
+          }).component),
+          h('div', {
             style: {
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              width: '100%',
-              gap: '16px',
+              gap: '10px',
+              flexWrap: 'wrap',
             },
-          },
-          [
-            h(
-              'div',
-              {
-                style: {
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '2px',
-                },
-              },
-              [
-                h('div', { style: { fontSize: '1rem', fontWeight: '700' } }, app.$params.title || 'Vuetify Extended'),
-                h('div', { style: { fontSize: '0.78rem', opacity: '0.74' } }, 'Header/footer app shell scaffold around AppMain'),
-              ],
-            ),
-            h(
-              'div',
-              {
-                style: {
-                  fontSize: '0.8rem',
-                  opacity: '0.78',
-                  textAlign: 'right',
-                },
-              },
-              'Demo shell active',
-            ),
-          ],
-        ),
+          }, [
+            h(new EnvironmentTag({ text: 'Demo', color: 'warning' }).component),
+            h(new StatusBadge({ text: 'Shell Active', icon: 'mdi-check-circle-outline', color: 'success' }).component),
+            h(new UserArea({ name: 'Alex Builder', subtitle: 'UI Engineer', avatarColor: 'primary' }).component),
+          ]),
+        ]),
       ],
       footer: () => [
-        h(
-          'div',
-          {
-            style: {
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              width: '100%',
-              gap: '16px',
-              fontSize: '0.78rem',
-              opacity: '0.82',
-            },
+        h('div', {
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            gap: '16px',
+            flexWrap: 'wrap',
           },
-          [
-            h('span', {}, 'Vuetify Extended Test App'),
-            h('span', {}, 'Workflow shell scaffold: header + footer'),
-          ],
-        ),
+        }, [
+          h(new StatusBadge({ text: 'Vuetify Extended Test App', icon: 'mdi-flask-outline', color: 'primary', variant: 'outlined' }).component),
+          h(new EnvironmentTag({ text: 'Header + Footer + Background', color: 'info', variant: 'outlined' }).component),
+        ]),
       ],
     },
   );

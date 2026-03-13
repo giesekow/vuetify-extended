@@ -10,4 +10,4 @@ export * from './collection';
 export * from './dialogs';
 export * from './menu';
 export * from './appmain';
-export * from './appmanager';
+export * from './appmanager';export * from './shell';

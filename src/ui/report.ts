@@ -1,6 +1,6 @@
 import { VNode, Ref } from "vue";
 import { ReportMode, UIBase } from "./base";
-import { VDivider, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VLayout, VCol, VRow, VContainer, VBtn, VMenu } from 'vuetify/components';
+import { VDivider, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VLayout, VCol, VRow, VContainer, VBtn, VMenu, VProgressLinear, VChip } from 'vuetify/components';
 import { Master } from "../master";
 import { Form } from './form';
 import { Button, ButtonParams } from "./button";
@@ -95,6 +95,7 @@ export class Report extends UIBase {
   private lastProps: any;
   private lastContext: any;
   private cleanSnapshot: string;
+  private resolvedFormCount: Ref<number>;
   private shortcutHandler?: (ev: KeyboardEvent) => void;
   private compactSideActions: Ref<boolean>;
   private sideActionMediaQuery?: MediaQueryList;
@@ -120,6 +121,7 @@ export class Report extends UIBase {
     this.hasExportAccess = this.$makeRef(true);
     this.currentIndex = this.$makeRef(-1);
     this.currentForm = undefined;
+    this.resolvedFormCount = this.$makeRef(Math.max(1, this.params.value.forms || 1));
     this.lastProps = null;
     this.lastContext = null;
     this.cleanSnapshot = this.snapshotMasterData();
@@ -189,6 +191,7 @@ export class Report extends UIBase {
     await this.runAccess();
 
     if (this.hasAccess.value) {
+      await this.resolveFormCount(props, context);
       await this.prepareForm(props, context, 0);
       await this.loadObject();
       await this.focusCurrentForm();
@@ -254,6 +257,25 @@ export class Report extends UIBase {
   async hasNextForm(props: any, context: any, index: number): Promise<boolean|undefined> {
     if (this.options.hasNextForm) return await this.options.hasNextForm(this, index);
     return this.options.hasForm ? await this.options.hasForm(props, context, index + 1) : await this.hasForm(props, context, index + 1);
+  }
+
+  private async resolveFormCount(props: any, context: any) {
+    if (this.params.value.forms && this.params.value.forms > 0) {
+      this.resolvedFormCount.value = this.params.value.forms;
+      return;
+    }
+
+    let count = 0;
+    const limit = 50;
+    while (count < limit) {
+      const hasForm = this.options.hasForm ? await this.options.hasForm(props, context, count) : await this.hasForm(props, context, count);
+      if (!hasForm) {
+        break;
+      }
+      count += 1;
+    }
+
+    this.resolvedFormCount.value = Math.max(1, count || 1);
   }
 
   props() {
@@ -345,7 +367,7 @@ export class Report extends UIBase {
               () => this.wrapWithSideButtons(
                 props,
                 context,
-                h(this.currentForm!.component)
+                this.buildCurrentFormContent(props, context)
               )
             )
           )
@@ -723,6 +745,79 @@ export class Report extends UIBase {
         ),
       ]
     );
+  }
+
+  private buildCurrentFormContent(props: any, context: any) {
+    const h = this.$h;
+    const content: VNode[] = [];
+    const progress = this.buildProgressHeader();
+    if (progress) {
+      content.push(progress);
+    }
+    content.push(h(this.currentForm!.component));
+
+    return h('div', {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: progress ? '12px' : '0',
+        width: '100%',
+      },
+    }, content);
+  }
+
+  private buildProgressHeader() {
+    if (!this.currentForm) {
+      return undefined;
+    }
+
+    const total = Math.max(this.resolvedFormCount.value || this.params.value.forms || 1, 1);
+    if (total <= 1) {
+      return undefined;
+    }
+
+    const h = this.$h;
+    const current = Math.min(Math.max(this.currentIndex.value + 1, 1), total);
+    const percent = Math.max(0, Math.min(100, (current / total) * 100));
+
+    return h(VCard, {
+      elevation: 1,
+      variant: 'tonal',
+      class: ['mx-auto'],
+      style: {
+        width: this.currentForm?.$params.width || this.currentForm?.$params.maxWidth || '100%',
+        maxWidth: this.currentForm?.$params.maxWidth || this.currentForm?.$params.width || '100%',
+      },
+    }, () => h(VCardText, {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        padding: '14px 18px',
+      },
+    }, () => [
+      h('div', {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          flexWrap: 'wrap',
+        },
+      }, [
+        h('div', { style: { display: 'flex', flexDirection: 'column', gap: '2px' } }, [
+          h('div', { style: { fontSize: '0.72rem', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: '0.72' } }, 'Report Progress'),
+          h('div', { style: { fontSize: '0.94rem', fontWeight: '700' } }, `Step ${current} of ${total}`),
+        ]),
+        h(VChip, { color: 'primary', variant: 'outlined', size: 'small' }, () => `${Math.round(percent)}% complete`),
+      ]),
+      h(VProgressLinear, {
+        modelValue: percent,
+        color: 'primary',
+        rounded: true,
+        height: 10,
+      }),
+    ]));
   }
 
   private buildDefaultButtons(): Button[] {

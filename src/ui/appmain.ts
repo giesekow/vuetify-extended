@@ -137,7 +137,17 @@ export class AppMain extends UIBase {
               elevation: 2,
               density: 'comfortable',
             },
-            () => header || h(VAppBarTitle, {}, () => this.params.value.title || 'Application')
+            () => h(
+              'div',
+              {
+                style: {
+                  width: '100%',
+                  paddingLeft: '16px',
+                  paddingRight: '16px',
+                },
+              },
+              [header || h(VAppBarTitle, {}, () => this.params.value.title || 'Application')]
+            )
           ),
         ] : []),
         h(
