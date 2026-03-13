@@ -481,7 +481,7 @@ function buildTriggerDemo() {
       }),
       sideButtons: () => [
         new Button(
-          { text: 'Help', variant: 'outlined', color: 'primary', shortcut: 'T' },
+          { text: 'Help', variant: 'outlined', color: 'primary', shortcut: 'ALT+CTRL+f3', shortcutDisplay: 'compact' },
           {
             onClicked: () => {
               Dialogs.$success('Desktop side actions are enabled for this trigger.');
@@ -489,7 +489,7 @@ function buildTriggerDemo() {
           },
         ),
         new Button(
-          { text: 'Tips', variant: 'text', color: 'secondary', shortcut: 'Shift+F9' },
+          { text: 'Tips', variant: 'text', color: 'secondary', shortcut: 'SHIFT+F9', shortcutDisplay: 'compact', shortcutShiftIcon: 'mdi-apple-keyboard-shift', },
           {
             onClicked: () => {
               Dialogs.$success('Use search, filters, and row selection before choosing Edit.');

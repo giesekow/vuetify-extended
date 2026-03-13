@@ -3,7 +3,7 @@ import { UIBase } from "./base";
 import { VBtn, VIcon } from 'vuetify/components';
 import { Master } from "../master";
 import { OnHandler } from "./lib";
-import { formatButtonShortcut, normalizeButtonShortcut } from "./shortcut";
+import { describeButtonShortcut } from "./shortcut";
 
 export interface ButtonParams {
   ref?: string;
@@ -18,7 +18,9 @@ export interface ButtonParams {
   class?: string;
   text?: string;
   shortcut?: string;
+  shortcutDisplay?: 'text'|'compact';
   shortcutFontSize?: string | number;
+  shortcutShiftIcon?: string;
   flat?: boolean;
   loading?: boolean;
   rounded?: string | number | boolean;
@@ -98,6 +100,12 @@ export class Button extends UIBase {
       return;
     }
 
+    const displayShortcut = describeButtonShortcut(this.params.value.shortcut);
+    const titleParts = [this.params.value.text || ''].filter((item) => item && item !== '');
+    if (displayShortcut && this.params.value.shortcutDisplay === 'compact') {
+      titleParts.push(displayShortcut.label);
+    }
+
     return h(
       VBtn,
       {
@@ -117,14 +125,15 @@ export class Button extends UIBase {
         block: this.params.value.block,
         loading: this.params.value.loading,
         width: this.params.value.width,
+        title: titleParts.length > 0 ? titleParts.join(' - ') : undefined,
+        'aria-label': titleParts.length > 0 ? titleParts.join(' - ') : undefined,
+        'aria-keyshortcuts': displayShortcut?.label,
         onClick: () => this.clicked(props, context)
       },
       () => {
         if (this.params.value.iconOnly) {
           return h(VIcon, this.params.value.icon);
         }
-
-        const displayShortcut = formatButtonShortcut(this.params.value.shortcut);
 
         if (!displayShortcut) {
           return this.params.value.text || '';
@@ -141,22 +150,85 @@ export class Button extends UIBase {
           },
           [
             h('span', {}, this.params.value.text || ''),
-            h(
-              'span',
-              {
-                class: ['text-caption'],
-                style: {
-                  opacity: '0.7',
-                  fontWeight: '500',
-                  fontSize: this.params.value.shortcutFontSize || '0.5rem',
-                  letterSpacing: '0.02em',
-                },
-              },
-              displayShortcut
-            ),
+            this.params.value.shortcutDisplay === 'compact'
+              ? this.renderCompactShortcut(displayShortcut.key, displayShortcut.ctrl, displayShortcut.alt, displayShortcut.shift, displayShortcut.label)
+              : h(
+                  'span',
+                  {
+                    class: ['text-caption'],
+                    style: {
+                      opacity: '0.7',
+                      fontWeight: '500',
+                      fontSize: this.params.value.shortcutFontSize || '0.5rem',
+                      letterSpacing: '0.02em',
+                    },
+                  },
+                  displayShortcut.label
+                ),
           ]
         );
       }
+    );
+  }
+
+  private renderCompactShortcut(key: string, ctrl: boolean, alt: boolean, shift: boolean, label: string) {
+    const h = this.$h;
+
+    return this.$h(
+      'span',
+      {
+        class: ['text-caption'],
+        title: label,
+        'aria-label': label,
+        style: {
+          opacity: '0.82',
+          fontWeight: '600',
+          fontSize: this.params.value.shortcutFontSize || '0.5rem',
+          lineHeight: '1',
+          letterSpacing: '0.03em',
+          padding: '1px 4px',
+          border: '1px solid currentColor',
+          borderRadius: '4px',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0',
+          minWidth: shift ? '2.6em' : '1.8em',
+          whiteSpace: 'nowrap',
+        },
+      },
+      [
+        ...(shift ? [
+          h(
+            VIcon,
+            {
+              icon: this.params.value.shortcutShiftIcon || 'mdi-apple-keyboard-shift',
+              size: '1em',
+              style: {
+                opacity: '1',
+                marginRight: '-0.4em',
+              },
+            }
+          ),
+        ] : []),
+        h(
+          'span',
+          {
+            style: {
+              textDecorationLine: [ctrl ? 'underline' : '', alt ? 'overline' : ''].filter(Boolean).join(' ') || 'none',
+              textDecorationThickness: (ctrl || alt) ? '1px' : undefined,
+              textUnderlineOffset: ctrl ? '1px' : undefined,
+              textDecorationSkipInk: 'none',
+              textDecorationColor: 'currentColor',
+              display: 'inline-block',
+              minWidth: '1.8em',
+              textAlign: 'center',
+              paddingTop: alt ? '2px' : undefined,
+            },
+          },
+          key
+        ),
+      ]
     );
   }
 
