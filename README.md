@@ -136,6 +136,7 @@ The most commonly used exports are:
 
 These short aliases are useful when defining UI entirely in TypeScript:
 
+- `$API`: `Api`
 - `$FD`: `Field`
 - `$PT`: `Part`
 - `$FM`: `Form`

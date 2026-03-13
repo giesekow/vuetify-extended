@@ -35,3 +35,5 @@ export class Api {
     return instance;
   }
 }
+
+export const $API = Api;

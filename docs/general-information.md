@@ -132,6 +132,7 @@ The library includes short factory aliases for many classes.
 
 | Alias | Creates |
 | --- | --- |
+| `$API` | `Api` |
 | `$FD` | `Field` |
 | `$PT` | `Part` |
 | `$FM` | `Form` |
