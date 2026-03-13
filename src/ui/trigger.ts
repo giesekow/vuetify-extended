@@ -1011,11 +1011,6 @@ export class Trigger extends UIBase {
       return false;
     }
 
-    const eventShortcut = normalizeButtonShortcutFromEvent(ev);
-    if (!eventShortcut) {
-      return false;
-    }
-
     const seen = new Set<Button>();
     for (const button of this.getShortcutButtons()) {
       if (seen.has(button)) {
@@ -1027,7 +1022,12 @@ export class Trigger extends UIBase {
         continue;
       }
 
-      const shortcut = normalizeButtonShortcut(button.$params.shortcut);
+      const eventShortcut = normalizeButtonShortcutFromEvent(ev, { cmdForCtrlOnMac: button.$params.cmdForCtrlOnMac });
+      if (!eventShortcut) {
+        continue;
+      }
+
+      const shortcut = normalizeButtonShortcut(button.$params.shortcut, { cmdForCtrlOnMac: button.$params.cmdForCtrlOnMac });
       if (!shortcut || shortcut !== eventShortcut) {
         continue;
       }

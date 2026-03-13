@@ -304,7 +304,7 @@ export class Menu extends UIBase {
 
   private renderMenuItemShortcut(item: MenuItem) {
     const h = this.$h;
-    const displayShortcut = describeShortcut(item.$params.shortcut);
+    const displayShortcut = describeShortcut(item.$params.shortcut, { cmdForCtrlOnMac: item.$params.cmdForCtrlOnMac });
 
     if (!displayShortcut) {
       return undefined;
@@ -331,11 +331,25 @@ export class Menu extends UIBase {
             alignItems: 'center',
             justifyContent: 'center',
             gap: '0',
-            minWidth: displayShortcut.shift ? '2.0em' : '1.8em',
+            minWidth: (displayShortcut.shift || displayShortcut.meta) ? '2.4em' : '1.8em',
             whiteSpace: 'nowrap',
           },
         },
         [
+          ...(displayShortcut.meta ? [
+            h(
+              VIcon,
+              {
+                icon: 'mdi-apple-keyboard-command',
+                size: '1.05em',
+                style: {
+                  opacity: '1',
+                  marginRight: displayShortcut.shift ? '-0.3em' : '-0.15em',
+                  marginLeft: '-0.05em',
+                },
+              }
+            ),
+          ] : []),
           ...(displayShortcut.shift ? [
             h(
               VIcon,
@@ -671,13 +685,13 @@ export class Menu extends UIBase {
       }
     }
 
-    const eventShortcut = normalizeShortcutFromEvent(ev);
-    if (!eventShortcut) {
-      return;
-    }
-
     for (const item of this.childrenInstances) {
-      const itemShortcut = normalizeShortcut(item.$params.shortcut);
+      const eventShortcut = normalizeShortcutFromEvent(ev, { cmdForCtrlOnMac: item.$params.cmdForCtrlOnMac });
+      if (!eventShortcut) {
+        continue;
+      }
+
+      const itemShortcut = normalizeShortcut(item.$params.shortcut, { cmdForCtrlOnMac: item.$params.cmdForCtrlOnMac });
       if (!itemShortcut || itemShortcut !== eventShortcut) {
         continue;
       }
@@ -688,7 +702,7 @@ export class Menu extends UIBase {
       return;
     }
 
-    if (eventShortcut === 'escape' && this.hasParent()) {
+    if (normalizeShortcutFromEvent(ev) === 'escape' && this.hasParent()) {
       ev.preventDefault();
       this.backClicked();
     }
@@ -731,6 +745,7 @@ export interface MenuItemParams {
   shortcutDisplay?: 'text'|'compact';
   shortcutFontSize?: string | number;
   shortcutShiftIcon?: string;
+  cmdForCtrlOnMac?: boolean;
   icon?: string;
   color?: string;
   textColor?: string;
@@ -751,7 +766,9 @@ export class MenuItem extends EventEmitter {
   private options: MenuItemOptions;
   private $id: symbol;
   private parent?: Menu;
-  private static defaultParams: MenuItemParams = {};
+  private static defaultParams: MenuItemParams = {
+    cmdForCtrlOnMac: true,
+  };
 
   constructor(params?: MenuItemParams, options?: MenuItemOptions) {
     super();

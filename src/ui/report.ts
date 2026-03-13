@@ -877,17 +877,17 @@ export class Report extends UIBase {
       return false;
     }
 
-    const eventShortcut = normalizeButtonShortcutFromEvent(ev);
-    if (!eventShortcut) {
-      return false;
-    }
-
     for (const button of this.sideButtonInstances) {
       if (button.$params.disabled || button.$params.invisible || button.$readonly) {
         continue;
       }
 
-      const shortcut = normalizeButtonShortcut(button.$params.shortcut);
+      const eventShortcut = normalizeButtonShortcutFromEvent(ev, { cmdForCtrlOnMac: button.$params.cmdForCtrlOnMac });
+      if (!eventShortcut) {
+        continue;
+      }
+
+      const shortcut = normalizeButtonShortcut(button.$params.shortcut, { cmdForCtrlOnMac: button.$params.cmdForCtrlOnMac });
       if (!shortcut || shortcut !== eventShortcut) {
         continue;
       }

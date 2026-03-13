@@ -21,6 +21,7 @@ export interface ButtonParams {
   shortcutDisplay?: 'text'|'compact';
   shortcutFontSize?: string | number;
   shortcutShiftIcon?: string;
+  cmdForCtrlOnMac?: boolean;
   flat?: boolean;
   loading?: boolean;
   rounded?: string | number | boolean;
@@ -42,7 +43,9 @@ export interface ButtonOptions {
 export class Button extends UIBase {
   private params: Ref<ButtonParams>;
   private options: ButtonOptions;
-  private static defaultParams: ButtonParams = {};
+  private static defaultParams: ButtonParams = {
+    cmdForCtrlOnMac: true,
+  };
 
   constructor(params?: ButtonParams, options?: ButtonOptions) {
     super();
@@ -100,7 +103,7 @@ export class Button extends UIBase {
       return;
     }
 
-    const displayShortcut = describeButtonShortcut(this.params.value.shortcut);
+    const displayShortcut = describeButtonShortcut(this.params.value.shortcut, { cmdForCtrlOnMac: this.params.value.cmdForCtrlOnMac });
     const titleParts = [this.params.value.text || ''].filter((item) => item && item !== '');
     if (displayShortcut && this.params.value.shortcutDisplay === 'compact') {
       titleParts.push(displayShortcut.label);
@@ -151,7 +154,7 @@ export class Button extends UIBase {
           [
             h('span', {}, this.params.value.text || ''),
             this.params.value.shortcutDisplay === 'compact'
-              ? this.renderCompactShortcut(displayShortcut.key, displayShortcut.ctrl, displayShortcut.alt, displayShortcut.shift, displayShortcut.label)
+              ? this.renderCompactShortcut(displayShortcut.key, displayShortcut.ctrl, displayShortcut.alt, displayShortcut.shift, displayShortcut.meta, displayShortcut.label)
               : h(
                   'span',
                   {
@@ -171,7 +174,7 @@ export class Button extends UIBase {
     );
   }
 
-  private renderCompactShortcut(key: string, ctrl: boolean, alt: boolean, shift: boolean, label: string) {
+  private renderCompactShortcut(key: string, ctrl: boolean, alt: boolean, shift: boolean, meta: boolean, label: string) {
     const h = this.$h;
 
     return this.$h(
@@ -193,16 +196,30 @@ export class Button extends UIBase {
           alignItems: 'center',
           justifyContent: 'center',
           gap: '0',
-          minWidth: shift ? '2.6em' : '1.8em',
+          minWidth: (shift || meta) ? '2.8em' : '1.8em',
           whiteSpace: 'nowrap',
         },
       },
       [
+        ...(meta ? [
+          h(
+            VIcon,
+            {
+              icon: 'mdi-apple-keyboard-command',
+              size: '0.95em',
+              style: {
+                opacity: '1',
+                marginRight: shift ? '-0.15em' : '-0.1em',
+                marginLeft: '-0.05em',
+              },
+            }
+          ),
+        ] : []),
         ...(shift ? [
           h(
             VIcon,
             {
-              icon: this.params.value.shortcutShiftIcon || 'mdi-apple-keyboard-shift',
+              icon: this.params.value.shortcutShiftIcon || 'mdi-arrow-up-thin',
               size: '1em',
               style: {
                 opacity: '1',
