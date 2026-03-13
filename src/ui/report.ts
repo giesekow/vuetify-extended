@@ -1,6 +1,6 @@
 import { VNode, Ref } from "vue";
 import { ReportMode, UIBase } from "./base";
-import { VDivider, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VLayout, VCol, VRow, VContainer } from 'vuetify/components';
+import { VDivider, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VLayout, VCol, VRow, VContainer, VBtn, VMenu } from 'vuetify/components';
 import { Master } from "../master";
 import { Form } from './form';
 import { Button, ButtonParams } from "./button";
@@ -95,6 +95,9 @@ export class Report extends UIBase {
   private lastContext: any;
   private cleanSnapshot: string;
   private shortcutHandler?: (ev: KeyboardEvent) => void;
+  private compactSideActions: Ref<boolean>;
+  private sideActionMediaQuery?: MediaQueryList;
+  private sideActionMediaHandler?: ((ev: MediaQueryListEvent) => void) | undefined;
   private static defaultParams: ReportParams = {
     sideButtonPosition: 'right',
   };
@@ -118,6 +121,7 @@ export class Report extends UIBase {
     this.lastProps = null;
     this.lastContext = null;
     this.cleanSnapshot = this.snapshotMasterData();
+    this.compactSideActions = this.$makeRef(typeof window !== 'undefined' ? window.innerWidth < 1400 : false);
   }
 
   static setDefault(value: ReportParams, reset?: boolean): void {
@@ -286,7 +290,7 @@ export class Report extends UIBase {
                 cols: 12,
                 align: this.params.value.horizontalAlign !== "center" ? this.params.value.horizontalAlign : undefined
               },
-              () => this.wrapWithDesktopSideButtons(
+              () => this.wrapWithSideButtons(
                 props,
                 context,
                 h(
@@ -334,7 +338,7 @@ export class Report extends UIBase {
                 cols: 12,
                 align: this.params.value.horizontalAlign !== "center" ? this.params.value.horizontalAlign : undefined
               },
-              () => this.wrapWithDesktopSideButtons(
+              () => this.wrapWithSideButtons(
                 props,
                 context,
                 h(this.currentForm!.component)
@@ -559,21 +563,19 @@ export class Report extends UIBase {
     this.sideButtonInstances.forEach((instance) => {
       instance.setParent(this);
     });
-    return this.sideButtonInstances;
+    return this.sideButtonInstances.filter((instance) => !instance.$params.invisible);
   }
 
-  private buildDesktopSideActions(props: any, context: any) {
+  private buildDesktopSideActions(buttons: Button[]) {
     const h = this.$h;
-    const buttons = this.buildSideButtons(props, context);
 
-    if (buttons.length === 0) {
+    if (buttons.length === 0 || this.compactSideActions.value) {
       return undefined;
     }
 
     return h(
       VCard,
       {
-        class: ['d-none', 'd-md-flex'],
         elevation: 2,
         style: {
           width: '180px',
@@ -596,11 +598,77 @@ export class Report extends UIBase {
     );
   }
 
-  private wrapWithDesktopSideButtons(props: any, context: any, content: VNode) {
+  private buildMobileSideActions(buttons: Button[]) {
     const h = this.$h;
-    const sideActions = this.buildDesktopSideActions(props, context);
 
-    if (!sideActions) {
+    if (buttons.length === 0 || !this.compactSideActions.value) {
+      return undefined;
+    }
+
+    const justifyContent = this.params.value.sideButtonPosition === 'left' ? 'flex-start' : 'flex-end';
+    const location = this.params.value.sideButtonPosition === 'left' ? 'bottom start' : 'bottom end';
+
+    return h(
+      'div',
+      {
+        style: {
+          width: '100%',
+          display: 'flex',
+          justifyContent,
+          marginBottom: '12px',
+        },
+      },
+      [h(
+        VMenu,
+        {
+          location,
+        },
+        {
+          activator: ({ props: activatorProps }: any) => h(
+            VBtn,
+            {
+              ...activatorProps,
+              variant: 'outlined',
+              color: 'secondary',
+              prependIcon: 'mdi-dots-vertical',
+              size: 'small',
+            },
+            () => 'Actions'
+          ),
+          default: () => h(
+            VCard,
+            {
+              elevation: 2,
+              style: {
+                width: '180px',
+                minWidth: '180px',
+              },
+            },
+            () => h(
+              VCardText,
+              {
+                style: {
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  padding: '12px',
+                },
+              },
+              () => buttons.map((button) => h('div', { style: { display: 'flex', width: '100%' } }, [h(button.component, { style: { width: '100%' } })]))
+            )
+          ),
+        }
+      )]
+    );
+  }
+
+  private wrapWithSideButtons(props: any, context: any, content: VNode) {
+    const h = this.$h;
+    const buttons = this.buildSideButtons(props, context);
+    const sideActions = this.buildDesktopSideActions(buttons);
+    const mobileActions = this.buildMobileSideActions(buttons);
+
+    if (!sideActions && !mobileActions) {
       return h(
         'div',
         {
@@ -614,29 +682,42 @@ export class Report extends UIBase {
       );
     }
 
-    const children = this.params.value.sideButtonPosition === 'left' ? [sideActions, content] : [content, sideActions];
+    const desktopChildren = sideActions
+      ? (this.params.value.sideButtonPosition === 'left' ? [sideActions, content] : [content, sideActions])
+      : [content];
 
     return h(
       'div',
       {
         style: {
           width: '100%',
-          display: 'flex',
-          justifyContent: (this.params.value.horizontalAlign || 'center') === 'center' ? 'center' : this.params.value.horizontalAlign === 'right' ? 'flex-end' : 'flex-start',
         },
       },
-      [h(
-        'div',
-        {
-          style: {
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '12px',
-            maxWidth: '100%',
+      [
+        ...(mobileActions ? [mobileActions] : []),
+        h(
+          'div',
+          {
+            style: {
+              width: '100%',
+              display: 'flex',
+              justifyContent: (this.params.value.horizontalAlign || 'center') === 'center' ? 'center' : this.params.value.horizontalAlign === 'right' ? 'flex-end' : 'flex-start',
+            },
           },
-        },
-        children
-      )]
+          [h(
+            'div',
+            {
+              style: {
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                maxWidth: '100%',
+              },
+            },
+            desktopChildren
+          )]
+        ),
+      ]
     );
   }
 
@@ -898,6 +979,45 @@ export class Report extends UIBase {
     Dialogs.$hideProgress()
   }
 
+  private syncSideActionBreakpoint(matches?: boolean) {
+    this.compactSideActions.value = matches ?? (typeof window !== 'undefined' ? window.innerWidth < 1400 : false);
+  }
+
+  private attachSideActionBreakpoint() {
+    if (typeof window === 'undefined' || this.sideActionMediaQuery) {
+      return;
+    }
+
+    this.sideActionMediaQuery = window.matchMedia('(max-width: 1399px)');
+    this.syncSideActionBreakpoint(this.sideActionMediaQuery.matches);
+    this.sideActionMediaHandler = (ev: MediaQueryListEvent) => {
+      this.syncSideActionBreakpoint(ev.matches);
+    };
+
+    if (typeof this.sideActionMediaQuery.addEventListener === 'function') {
+      this.sideActionMediaQuery.addEventListener('change', this.sideActionMediaHandler);
+    } else {
+      this.sideActionMediaQuery.addListener(this.sideActionMediaHandler);
+    }
+  }
+
+  private detachSideActionBreakpoint() {
+    if (!this.sideActionMediaQuery || !this.sideActionMediaHandler) {
+      this.sideActionMediaQuery = undefined;
+      this.sideActionMediaHandler = undefined;
+      return;
+    }
+
+    if (typeof this.sideActionMediaQuery.removeEventListener === 'function') {
+      this.sideActionMediaQuery.removeEventListener('change', this.sideActionMediaHandler);
+    } else {
+      this.sideActionMediaQuery.removeListener(this.sideActionMediaHandler);
+    }
+
+    this.sideActionMediaQuery = undefined;
+    this.sideActionMediaHandler = undefined;
+  }
+
   private handleOn(event: string, data?: any) {
     if (this.options.on) {
       const events = this.options.on(this);
@@ -911,6 +1031,7 @@ export class Report extends UIBase {
 
   attachEventListeners() {
     if (this.options.attachEventListeners && !this.listenersAttached) this.options.attachEventListeners(this)
+    this.attachSideActionBreakpoint();
     if (typeof window !== 'undefined' && !this.shortcutHandler) {
       this.shortcutHandler = (ev: KeyboardEvent) => this.onReportKeydown(ev);
       window.addEventListener('keydown', this.shortcutHandler);
@@ -924,6 +1045,7 @@ export class Report extends UIBase {
       this.options.removeEventListeners(this);
       if (this.currentForm) this.currentForm.removeEventListeners()
     }
+    this.detachSideActionBreakpoint();
     if (typeof window !== 'undefined' && this.shortcutHandler) {
       window.removeEventListener('keydown', this.shortcutHandler);
       this.shortcutHandler = undefined;
