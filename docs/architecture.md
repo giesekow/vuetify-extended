@@ -74,6 +74,16 @@ This is handled by `src/misc`.
 - Validation helpers
 - Generic utility functions used by fields, reports, and triggers
 
+### 5. Setup Layer
+
+This is handled by `src/setup`.
+
+- `createVuetifyExtendedApp(...)` provides a higher-level bootstrap path
+- `configureVuetifyExtendedDefaults(...)` applies project-wide UI defaults
+- `validateVuetifyExtendedSetup(...)` checks the most common bootstrap mistakes
+
+This layer does not replace the lower-level primitives. It packages them into a cleaner host-app entrypoint.
+
 ## High-Level Runtime View
 
 The runtime model looks like this:
@@ -94,6 +104,13 @@ Supporting globals:
 - `AppManager`: singleton-style runtime coordinator
 - `Dialogs`: singleton-style global confirm/snackbar/progress state
 - `EventEmitter`: shared event abstraction used by most classes
+
+Supporting bootstrap helpers:
+
+- `createVuetifyExtendedApp(...)`
+- `createVuetifyExtendedPlugin(...)`
+- `configureVuetifyExtendedDefaults(...)`
+- `validateVuetifyExtendedSetup(...)`
 
 ## Core Building Blocks
 
@@ -337,6 +354,27 @@ Responsibilities:
 - Offer convenience methods like `showReport`, `showMenu`, `showDialog`, `back`, and `reload`
 
 This split gives the library a singleton-like application API while keeping the actual shell instance in `AppMain`.
+
+## Setup Responsibilities
+
+The current setup model has two layers.
+
+Low-level bootstrap:
+
+- configure `Api`
+- call `AppManager.init()`
+- create `AppMain`
+- call `AppManager.setApp(...)`
+- render `Dialogs.rootComponent()` at the root
+
+High-level bootstrap:
+
+- call `createVuetifyExtendedApp(...)`
+- render `bootstrap.component`
+- render `bootstrap.dialogs`
+- optionally install `bootstrap.plugin`
+
+The high-level path is now the recommended starting point for host applications because it keeps setup ordering in one place.
 
 ## Keyboard Model
 

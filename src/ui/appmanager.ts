@@ -34,6 +34,14 @@ export class AppManager {
     AppManager.channel = new EventEmitter();
   }
 
+  static get $app(): AppMain|undefined {
+    return AppManager.app;
+  }
+
+  static get initialized(): boolean {
+    return !!AppManager.channel;
+  }
+
   static setApp(app: AppMain) {
     if (AppManager.app) {
       AppManager.app.clearListeners();

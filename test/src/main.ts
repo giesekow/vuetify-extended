@@ -6,21 +6,22 @@ import '@mdi/font/css/materialdesignicons.css';
 import 'vuetify/styles';
 import '../../src/css/index.css';
 import './demo.css';
-import { AppManager, Dialogs } from '../../src';
+import { createVuetifyExtendedApp } from '../../src';
 import { createDemoApp, installDemoApi } from './demos';
 
-installDemoApi();
-AppManager.init();
-
-const appMain = createDemoApp();
-AppManager.setApp(appMain);
-
-Dialogs.setOptions({
-  progressSize: 96,
-  progressWidth: 10,
-  successTimeout: 2400,
-  warningTimeout: 3200,
-  errorTimeout: 4200,
+const bootstrap = createVuetifyExtendedApp({
+  api: {
+    type: 'instance',
+    instance: installDemoApi(),
+  },
+  app: createDemoApp(),
+  dialogs: {
+    progressSize: 96,
+    progressWidth: 10,
+    successTimeout: 2400,
+    warningTimeout: 3200,
+    errorTimeout: 4200,
+  },
 });
 
 const vuetify = createVuetify({
@@ -32,14 +33,11 @@ const Root = defineComponent({
   name: 'VuetifyExtendedTestApp',
   setup() {
     return () => [
-      h(appMain.component),
-      h(Dialogs.confirmComponent()),
-      h(Dialogs.successComponent()),
-      h(Dialogs.errorComponent()),
-      h(Dialogs.warningComponent()),
-      h(Dialogs.progressComponent()),
+      h(bootstrap.component),
+      h(bootstrap.dialogs),
     ];
   },
 });
 
-createApp(Root).use(vuetify).mount('#app');
+createApp(Root).use(vuetify).use(bootstrap.plugin).mount('#app');
+bootstrap.validate({ warn: true });

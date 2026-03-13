@@ -22,6 +22,7 @@ src/
   feathers-api/ Feathers client bootstrap and service helpers
   master/      Shared data model and persistence abstraction
   misc/        Utility helpers
+  setup/       High-level bootstrap helpers and setup diagnostics
   ui/          Class-based UI toolkit
   declarations Shared app/service contract plus Feathers typing support
 
@@ -81,6 +82,17 @@ This is the shared facade. It does not implement a backend by itself. Instead it
 - `Api.setInstance(...)`
 
 `Api.setup(...)` remains the backwards-compatible Feathers shortcut.
+
+## `setup`
+
+The `setup` module exports the high-level bootstrap helpers:
+
+- `createVuetifyExtendedApp(...)`
+- `createVuetifyExtendedPlugin(...)`
+- `configureVuetifyExtendedDefaults(...)`
+- `validateVuetifyExtendedSetup(...)`
+
+These helpers package the most common host-app setup work into a single entrypoint while keeping the low-level classes available.
 
 ## `feathers-api`
 
@@ -320,6 +332,8 @@ Recommended order:
 4. `AppManager.setApp(appMain)`
 5. Mount Vue and render the app shell plus `Dialogs` components
 
+The recommended shortcut for new apps is to use `createVuetifyExtendedApp(...)`, which performs the initialization and registration steps for you.
+
 ## Backend Selection
 
 Recommended choices:
@@ -327,6 +341,12 @@ Recommended choices:
 - Use `Api.useFeathers(...)` if your backend already follows Feathers patterns or you need Socket.IO support.
 - Use `Api.useAxios(...)` if you want a more general HTTP client while keeping the same UI-facing `service(path)` shape.
 - Use `Api.setInstance(...)` if you need to construct a backend implementation manually before assigning it.
+
+The new setup helper also accepts an already-constructed backend instance through:
+
+- `{ api: { type: 'instance', instance } }`
+
+This is useful for local adapters, tests, or custom backends that honor the shared application contract.
 
 ## Large Core Files
 

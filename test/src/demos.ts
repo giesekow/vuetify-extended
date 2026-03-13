@@ -704,7 +704,9 @@ function buildHomeMenu() {
 
 export function installDemoApi() {
   const store = createSeedStore();
-  Api.setInstance(new MemoryApi(clone(store)));
+  const instance = new MemoryApi(clone(store));
+  Api.setInstance(instance);
+  return instance;
 }
 
 export function createDemoApp() {

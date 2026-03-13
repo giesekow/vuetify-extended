@@ -54,6 +54,23 @@ The root package entrypoints are:
 - `main`: `./lib/cjs/index.js`
 - `module`: `./lib/esm/index.js`
 
+## Recommended Setup Path
+
+The easiest way to bootstrap the library in a host app is now through the setup helpers:
+
+- `createVuetifyExtendedApp(...)`
+- `configureVuetifyExtendedDefaults(...)`
+- `validateVuetifyExtendedSetup(...)`
+
+This gives you one place to:
+
+- configure the active API backend
+- initialize `AppManager`
+- register the active `AppMain`
+- apply project-wide UI defaults
+- configure dialog/snackbar behavior
+- expose a single dialog root component
+
 ## Importing CSS
 
 The library ships a small shared stylesheet that supports table and editor-related behavior.
@@ -208,6 +225,8 @@ Api.setInstance(feathersClient)
 
 ## 2. Initialize `AppManager`
 
+For advanced or existing apps, the low-level setup still works:
+
 ```ts
 import { AppManager } from 'vuetify-extended'
 
@@ -279,6 +298,67 @@ const Root = defineComponent({
 createApp(Root).use(createVuetify()).mount('#app')
 ```
 
+## Simplified Bootstrap
+
+For new projects, prefer the setup helper:
+
+```ts
+import { createApp, defineComponent, h } from 'vue'
+import { createVuetify } from 'vuetify'
+import {
+  createVuetifyExtendedApp,
+  validateVuetifyExtendedSetup,
+} from 'vuetify-extended'
+
+const bootstrap = createVuetifyExtendedApp({
+  api: {
+    type: 'axios',
+    apiURL: 'https://api.example.com',
+    keycloakConfig: {
+      keycloakConfig: {
+        url: 'https://sso.example.com',
+        realm: 'example',
+        clientId: 'frontend',
+      },
+      keycloakInit: {
+        onLoad: 'check-sso',
+        pkceMethod: 'S256',
+      },
+    },
+  },
+  defaults: {
+    field: { variant: 'outlined', clearable: true },
+    report: { confirmOnCancel: false },
+    selector: { persistent: true },
+    dialogForm: { persistent: true },
+  },
+  dialogs: {
+    successTimeout: 2400,
+    errorTimeout: 4200,
+  },
+  menu: async () => mainMenu,
+})
+
+const Root = defineComponent({
+  setup() {
+    return () => [
+      h(bootstrap.component),
+      h(bootstrap.dialogs),
+    ]
+  },
+})
+
+createApp(Root)
+  .use(createVuetify())
+  .use(bootstrap.plugin)
+  .mount('#app')
+
+validateVuetifyExtendedSetup({ warn: true })
+```
+
+`Dialogs.rootComponent()` is also available directly if you prefer the lower-level bootstrap path.
+`bootstrap.component` is a convenience alias for `bootstrap.appMain.component`.
+
 ## Manual Playground
 
 This repository also includes a manual Vue 3 + Vuetify playground under [`test/`](./test/).
@@ -298,6 +378,8 @@ It exercises the main UI primitives in a running app, including:
 - shared `Dialogs`
 
 The playground uses a local in-memory API adapter, so report, selector, trigger, and collection flows can be tested without a live backend.
+
+It now uses `createVuetifyExtendedApp(...)` as the bootstrap path for the local source build.
 
 ## Your First Report
 

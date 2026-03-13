@@ -1,4 +1,4 @@
-import { Ref, defineComponent, h, ref } from "vue";
+import { Ref, defineComponent, h, onMounted, onUnmounted, ref } from "vue";
 import { VBtn, VCard, VCardActions, VCardText, VCardTitle, VCol, VDialog, VLayout, VOverlay, VProgressCircular, VRow, VSnackbar, VSpacer } from 'vuetify/components';
 
 export interface DialogOptions {
@@ -35,11 +35,45 @@ export class Dialogs {
   private static confirmYes: any = null;
   private static confirmNo: any = null;
   private static confirmKeydownHandler?: (ev: KeyboardEvent) => void;
+  private static rootMounted = false;
 
   private static options: Ref<DialogOptions> = ref({});
 
   static setOptions(options: DialogOptions) {
     Dialogs.options.value = {...Dialogs.options.value , ...options};
+  }
+
+  static get rootIsMounted(): boolean {
+    return Dialogs.rootMounted;
+  }
+
+  static rootComponent() {
+    return defineComponent({
+      name: 'VuetifyExtendedDialogs',
+      setup: () => {
+        onMounted(() => {
+          Dialogs.rootMounted = true;
+        });
+
+        onUnmounted(() => {
+          Dialogs.rootMounted = false;
+        });
+
+        const ConfirmDialog = Dialogs.confirmComponent();
+        const SuccessSnackbar = Dialogs.successComponent();
+        const ErrorSnackbar = Dialogs.errorComponent();
+        const WarningSnackbar = Dialogs.warningComponent();
+        const ProgressOverlay = Dialogs.progressComponent();
+
+        return () => [
+          h(ConfirmDialog),
+          h(SuccessSnackbar),
+          h(ErrorSnackbar),
+          h(WarningSnackbar),
+          h(ProgressOverlay),
+        ];
+      },
+    });
   }
 
   static confirmComponent() {
