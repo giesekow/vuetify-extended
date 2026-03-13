@@ -8,6 +8,8 @@ import {
   DialogForm,
   Dialogs,
   Notifications,
+  Mailbox,
+  MailboxBell,
   Field,
   Form,
   Menu,
@@ -58,6 +60,92 @@ async function loadPeoplePage(page: number, itemsPerPage: number, query?: any) {
       $skip: Math.max(page - 1, 0) * itemsPerPage,
     },
   });
+}
+
+const DEMO_MAILBOX_ITEMS = [
+  { id: 'mail-1', title: 'Architecture Review Ready', text: 'The platform architecture review is ready for sign-off.', timestamp: '2026-03-13T08:30:00.000Z', category: 'Review', icon: 'mdi-file-document-check-outline', read: false, meta: { personId: 'person-1' } },
+  { id: 'mail-2', title: 'Keyboard UX Follow-up', text: 'Please validate the latest keyboard bindings across reports and triggers.', timestamp: '2026-03-13T07:15:00.000Z', category: 'Task', icon: 'mdi-keyboard-outline', read: false, meta: { personId: 'person-2' } },
+  { id: 'mail-3', title: 'Design Sync Notes', text: 'New notes are available from the shell layout review.', timestamp: '2026-03-12T16:45:00.000Z', category: 'Info', icon: 'mdi-note-text-outline', read: true, meta: { personId: 'person-3' } },
+  { id: 'mail-4', title: 'Collection Workflow Approved', text: 'The batch edit workflow was approved for the next demo.', timestamp: '2026-03-12T13:00:00.000Z', category: 'Approval', icon: 'mdi-check-decagram-outline', read: false, meta: { personId: 'person-1' } },
+  { id: 'mail-5', title: 'Report Styling Reminder', text: 'Align side rail width updates before cutting the next release.', timestamp: '2026-03-11T15:20:00.000Z', category: 'Reminder', icon: 'mdi-palette-outline', read: true, meta: { personId: 'person-2' } },
+  { id: 'mail-6', title: 'Notifications Feedback', text: 'Notifications should be a little less transparent by default.', timestamp: '2026-03-11T09:10:00.000Z', category: 'Feedback', icon: 'mdi-bell-badge-outline', read: false },
+  { id: 'mail-7', title: 'Mailbox Pagination Test', text: 'Load more should pull older mailbox items cleanly.', timestamp: '2026-03-10T18:40:00.000Z', category: 'QA', icon: 'mdi-page-next-outline', read: true },
+  { id: 'mail-8', title: 'Message Viewer Request', text: 'Selecting a mailbox item should open a report in the stack.', timestamp: '2026-03-10T10:05:00.000Z', category: 'Feature', icon: 'mdi-open-in-app', read: false },
+];
+
+let demoMailboxItems = clone(DEMO_MAILBOX_ITEMS);
+
+function demoMailboxUnreadCount() {
+  return demoMailboxItems.filter((item: any) => !item.read).length;
+}
+
+function buildMailboxItemReport(item: any) {
+  return new Report(
+    {
+      title: 'Mailbox Message',
+      forms: 1,
+      mode: 'display',
+      horizontalAlign: 'center',
+      verticalAlign: 'start',
+      fluid: true,
+    },
+    {
+      form: async () =>
+        new Form(
+          {
+            title: item.title || 'Mailbox Message',
+            width: 860,
+          },
+          {
+            children: () => [
+              new Part(
+                { cols: 12, dense: true },
+                {
+                  children: () => [
+                    buildInfoLabel(item.text || ''),
+                    new Field({ type: 'label', label: `Category: ${item.category || 'General'}`, cols: 6 }),
+                    new Field({ type: 'label', label: `Received: ${item.timestamp ? new Date(item.timestamp).toLocaleString() : 'Unknown'}`, cols: 6 }),
+                    new Field({ type: 'label', label: `Status: ${item.read ? 'Read' : 'Unread'}`, cols: 6 }),
+                    new Field({ type: 'label', label: `Reference: ${item.meta?.personId || 'N/A'}`, cols: 6 }),
+                  ],
+                },
+              ),
+            ],
+          },
+        ),
+    },
+  );
+}
+
+function configureDemoMailbox() {
+  Mailbox.configure({
+    title: 'Team Mailbox',
+    pageSize: 4,
+    load: async ({ page, pageSize }) => {
+      const start = Math.max(page - 1, 0) * pageSize;
+      const end = start + pageSize;
+      return {
+        items: clone(demoMailboxItems.slice(start, end)),
+        total: demoMailboxItems.length,
+        unreadCount: demoMailboxUnreadCount(),
+        hasMore: end < demoMailboxItems.length,
+      };
+    },
+    loadUnreadCount: async () => demoMailboxUnreadCount(),
+    markRead: async (item) => {
+      const target = demoMailboxItems.find((entry: any) => entry.id === item.id);
+      if (target) target.read = true;
+    },
+    markUnread: async (item) => {
+      const target = demoMailboxItems.find((entry: any) => entry.id === item.id);
+      if (target) target.read = false;
+    },
+    remove: async (item) => {
+      demoMailboxItems = demoMailboxItems.filter((entry: any) => entry.id !== item.id);
+    },
+    viewItem: async (item) => buildMailboxItemReport(item),
+  }, true);
+  Mailbox.setUnread(demoMailboxUnreadCount());
 }
 
 function buildInfoLabel(text: string) {
@@ -631,6 +719,32 @@ function buildNestedMenu() {
         new MenuItem(
           {
             action: 'function',
+            text: 'Push Mailbox Item',
+            subText: 'Adds a new mailbox item using the delegated mailbox API.',
+            icon: 'mdi-mail-plus-outline',
+            color: 'secondary',
+          },
+          {
+            callback: async () => {
+              const item = {
+                id: `mail-${Date.now()}`,
+                title: 'Realtime Mailbox Update',
+                text: 'A new mailbox item was pushed directly from the test app.',
+                timestamp: new Date().toISOString(),
+                category: 'Realtime',
+                icon: 'mdi-bell-ring-outline',
+                read: false,
+              };
+              demoMailboxItems = [item, ...demoMailboxItems];
+              Mailbox.push(item);
+              Mailbox.setUnread(demoMailboxUnreadCount());
+              Notifications.$info('A new mailbox item was added.', { title: 'Mailbox Updated' });
+            },
+          },
+        ),
+        new MenuItem(
+          {
+            action: 'function',
             text: 'Show Confirm',
             subText: 'Exercises the confirmation dialog flow.',
             icon: 'mdi-help-circle',
@@ -824,6 +938,7 @@ export function installDemoApi() {
 }
 
 export function createDemoApp() {
+  configureDemoMailbox();
   return new AppMain(
     {
       ref: 'demo-app',
@@ -875,6 +990,7 @@ export function createDemoApp() {
         h(new StatusBadge({ text: 'Shell Active', icon: 'mdi-check-circle-outline', color: 'success' }).component),
       ],
       headerEnd: () => [
+        h(new MailboxBell({ color: 'primary', badgeColor: 'error', title: 'Open Team Mailbox', viewWidth: 980 }).component),
         h(new UserArea({ name: 'Alex Builder', subtitle: 'UI Engineer', avatarColor: 'primary' }).component),
       ],
       footerStart: () => [
