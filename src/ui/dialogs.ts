@@ -339,7 +339,9 @@ export class Dialogs {
         return;
       }
 
-      if (ev.key === 'Escape') {
+      const key = ev.key.toLowerCase();
+
+      if (ev.key === 'Escape' || key === 'n') {
         ev.preventDefault();
         ev.stopPropagation();
         if (Dialogs.confirmNo) {
@@ -348,7 +350,7 @@ export class Dialogs {
         return;
       }
 
-      if (ev.key === 'Enter' || ev.key === 'Return') {
+      if (ev.key === 'Enter' || ev.key === 'Return' || key === 'y') {
         ev.preventDefault();
         ev.stopPropagation();
         if (Dialogs.confirmYes) {
