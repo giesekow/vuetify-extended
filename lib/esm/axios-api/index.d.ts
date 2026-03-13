@@ -1,4 +1,5 @@
 import { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { ManagerOptions, SocketOptions } from 'socket.io-client';
 import Keycloak, { KeycloakConfig, KeycloakInitOptions, KeycloakLoginOptions } from 'keycloak-js';
 import type { Application, Service } from '../declarations';
 type EventListener = (data?: any) => void;
@@ -18,6 +19,10 @@ export interface AxiosServiceParams {
 export type AxiosService<T = any> = Service<T>;
 export interface AxiosApiOptions {
     useSocket?: boolean;
+    socketURL?: string;
+    socketEvent?: string;
+    socketOptions?: Partial<ManagerOptions & SocketOptions>;
+    socketAuthMode?: 'auth' | 'query';
     axiosConfig?: AxiosRequestConfig;
     queryMode?: 'rawquery-header' | 'params';
     authPath?: string | false;
@@ -91,6 +96,12 @@ export declare class AxiosApplication extends SimpleEventEmitter implements Appl
     private readonly services;
     private readonly tokenHeader;
     private readonly tokenPrefix;
+    private readonly socketEnabled;
+    private readonly socketURL?;
+    private readonly socketEvent;
+    private readonly socketOptions?;
+    private readonly socketAuthMode;
+    private socket?;
     authenticate: AxiosKeycloakClient['login'];
     login: AxiosKeycloakClient['login'];
     logout: AxiosKeycloakClient['logout'];
@@ -105,6 +116,15 @@ export declare class AxiosApplication extends SimpleEventEmitter implements Appl
     loadUserProfile: Keycloak['loadUserProfile'];
     constructor(apiURL: any, keycloakConfig: AxiosKeycloakClientConfig, options?: AxiosApiOptions);
     private configureInterceptors;
+    private configureSocket;
+    private resolveSocketURL;
+    private buildSocketAuth;
+    connectSocket(forceReconnect?: boolean): Promise<void>;
+    disconnectSocket(): void;
+    private dispatchSocketMessage;
+    private parseSocketMessage;
+    private parseSocketEnvelope;
+    private parseSocketEventName;
     service<T = any>(path: string): Service<T>;
 }
 export declare class AxiosApi {

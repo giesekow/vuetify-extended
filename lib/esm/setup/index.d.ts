@@ -7,6 +7,7 @@ import { type ButtonParams } from '../ui/button';
 import { type CollectionParams } from '../ui/collection';
 import { type DialogParams } from '../ui/dialogform';
 import { DialogOptions } from '../ui/dialogs';
+import { NotificationOptions } from '../ui/notifications';
 import { type FieldParams } from '../ui/field';
 import { type FormParams } from '../ui/form';
 import { type MenuItemParams, type MenuParams } from '../ui/menu';
@@ -46,6 +47,7 @@ export interface VuetifyExtendedAppFactoryOptions {
     api?: VuetifyExtendedApiConfig;
     defaults?: VuetifyExtendedDefaults;
     dialogs?: DialogOptions;
+    notifications?: NotificationOptions;
     app?: AppMain | {
         params?: AppParams;
         options?: AppOptions;
@@ -63,11 +65,13 @@ export interface VuetifyExtendedSetupStatus {
     appManagerInitialized: boolean;
     appConfigured: boolean;
     dialogsMounted: boolean;
+    notificationsMounted: boolean;
 }
 export interface VuetifyExtendedBootstrap {
     appMain: AppMain;
     component: Component;
     dialogs: Component;
+    notifications: Component;
     install: (app: VueApp) => VueApp;
     plugin: Plugin;
     validate: (options?: {

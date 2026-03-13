@@ -5,6 +5,7 @@ import { Report } from "./report";
 import { Collection } from "./collection";
 import { Selector } from "./selector";
 import { Field } from "./field";
+import { Button } from "./button";
 import { DialogForm } from "./dialogform";
 export interface AppParams {
     ref?: string;
@@ -12,6 +13,13 @@ export interface AppParams {
     title?: string;
     showHeader?: boolean;
     showFooter?: boolean;
+    showFab?: boolean;
+    fabIcon?: string;
+    fabColor?: string;
+    fabPosition?: 'bottom-right' | 'bottom-left';
+    fabDirection?: 'up' | 'left';
+    fabLabel?: string;
+    fabShortcut?: string;
     headerLayout?: 'balanced' | 'auto' | 'stacked';
     footerLayout?: 'balanced' | 'auto' | 'stacked';
     headerStartWidth?: string | number;
@@ -34,6 +42,7 @@ export interface AppOptions {
     menu?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
     udfs?: (app: AppMain, objectType: string | string[], query: any) => Promise<any[]>;
     makeUDF?: (app: AppMain, options: any) => Field | undefined;
+    fabButtons?: AppFabButtonsFactory;
     header?: (app: AppMain) => AppShellContent | AppShellContent[];
     footer?: (app: AppMain) => AppShellContent | AppShellContent[];
     headerStart?: (app: AppMain) => AppShellContent | AppShellContent[];
@@ -43,10 +52,22 @@ export interface AppOptions {
     footerCenter?: (app: AppMain) => AppShellContent | AppShellContent[];
     footerEnd?: (app: AppMain) => AppShellContent | AppShellContent[];
 }
+export type AppFabButtonsFactory = Button[] | ((app: AppMain, item?: UIBase, stackItem?: AppStackItem) => Button[]);
+export interface AppScreenParams {
+    showFab?: boolean;
+    fabIcon?: string;
+    fabColor?: string;
+    fabPosition?: 'bottom-right' | 'bottom-left';
+    fabDirection?: 'up' | 'left';
+    fabLabel?: string;
+    fabShortcut?: string;
+    fabButtons?: AppFabButtonsFactory;
+    [key: string]: any;
+}
 export interface AppStackItem {
     type: "menu" | "report" | "collection" | "selector" | "ui";
     item: UIBase;
-    params: any;
+    params: AppScreenParams;
 }
 export declare class AppMain extends UIBase {
     private params;
@@ -60,6 +81,9 @@ export declare class AppMain extends UIBase {
     private dialogCount;
     private selectorFocusTargets;
     private dialogFocusTargets;
+    private fabButtonInstances;
+    private fabOpen;
+    private shortcutHandler?;
     private static defaultParams;
     constructor(params?: AppParams, options?: AppOptions);
     static setDefault(value: AppParams, reset?: boolean): void;
@@ -70,6 +94,17 @@ export declare class AppMain extends UIBase {
     menu(): Promise<Menu | undefined>;
     render(props: any, context: any): VNode | VNode[] | undefined;
     private renderStackContent;
+    private wrapWithFab;
+    private getActiveStackItem;
+    private resolveFabConfig;
+    private resolveFabButtonSource;
+    private buildFabButtons;
+    private renderFabActions;
+    private triggerComponentShortcut;
+    private triggerActiveScreenShortcut;
+    private triggerFabButtonShortcut;
+    private triggerFabShortcut;
+    private onAppKeydown;
     private renderShellRegion;
     private renderShellBar;
     private renderShellBarSection;
@@ -101,5 +136,7 @@ export declare class AppMain extends UIBase {
     private onDialogCancel;
     private captureActiveElement;
     private restoreFocus;
+    attachEventListeners(): void;
+    removeEventListeners(): void;
 }
 export declare const $APP: (params?: AppParams, options?: AppOptions) => AppMain;

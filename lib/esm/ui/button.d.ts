@@ -14,6 +14,8 @@ export interface ButtonParams {
     color?: string;
     class?: string;
     text?: string;
+    tooltip?: string;
+    tooltipLocation?: 'top' | 'bottom' | 'start' | 'end';
     shortcut?: string;
     shortcutDisplay?: 'text' | 'compact';
     shortcutFontSize?: string | number;
@@ -49,6 +51,7 @@ export declare class Button extends UIBase {
     onClicked(props: any, context: any): void;
     triggerShortcut(): void;
     render(props: any, context: any): VNode | undefined;
+    private renderButtonContent;
     private renderCompactShortcut;
     private clicked;
     setup(props: any, context: any): void;
