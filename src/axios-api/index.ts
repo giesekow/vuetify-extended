@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import { io, Socket, ManagerOptions, SocketOptions } from 'socket.io-client';
 import Keycloak, {
   KeycloakConfig,
   KeycloakInitOptions,
@@ -87,6 +88,10 @@ export type AxiosService<T = any> = Service<T>;
 
 export interface AxiosApiOptions {
   useSocket?: boolean;
+  socketURL?: string;
+  socketEvent?: string;
+  socketOptions?: Partial<ManagerOptions & SocketOptions>;
+  socketAuthMode?: 'auth' | 'query';
   axiosConfig?: AxiosRequestConfig;
   queryMode?: 'rawquery-header' | 'params';
   authPath?: string | false;
@@ -112,6 +117,16 @@ export type KeycloakClientConfig = AxiosKeycloakClientConfig;
 
 interface AxiosApiRequestConfig extends InternalAxiosRequestConfig {
   _veRetry?: boolean;
+}
+
+interface AxiosSocketEnvelope {
+  service?: string;
+  path?: string;
+  event?: string;
+  type?: string;
+  data?: any;
+  payload?: any;
+  item?: any;
 }
 
 function ensurePath(path: string): string {
@@ -606,6 +621,12 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
   private readonly services: Map<string, AxiosServiceClient<any>> = new Map();
   private readonly tokenHeader: string;
   private readonly tokenPrefix: string;
+  private readonly socketEnabled: boolean;
+  private readonly socketURL?: string;
+  private readonly socketEvent: string;
+  private readonly socketOptions?: Partial<ManagerOptions & SocketOptions>;
+  private readonly socketAuthMode: 'auth' | 'query';
+  private socket?: Socket;
 
   authenticate: AxiosKeycloakClient['login'];
   login: AxiosKeycloakClient['login'];
@@ -630,6 +651,11 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
     this.authRefreshMethod = options?.authRefreshMethod || 'patch';
     this.tokenHeader = options?.tokenHeader || 'Authorization';
     this.tokenPrefix = options?.tokenPrefix || 'Bearer';
+    this.socketEnabled = options?.useSocket === true;
+    this.socketURL = options?.socketURL;
+    this.socketEvent = options?.socketEvent || 'service-event';
+    this.socketOptions = options?.socketOptions;
+    this.socketAuthMode = options?.socketAuthMode || 'auth';
 
     this.client = axios.create({
       baseURL: apiURL,
@@ -653,6 +679,7 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
     this.loadUserProfile = this.keycloak.loadUserProfile.bind(this.keycloak);
 
     this.configureInterceptors();
+    this.configureSocket();
   }
 
   private configureInterceptors() {
@@ -692,6 +719,184 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
         }
       }
     );
+  }
+
+  private configureSocket() {
+    if (!this.socketEnabled) {
+      return;
+    }
+
+    const socketTarget = this.resolveSocketURL();
+    this.socket = io(socketTarget, {
+      autoConnect: false,
+      ...(this.socketOptions || {}),
+    });
+
+    this.socket.on('connect', () => {
+      this.emit('socket:connect', this.socket?.id);
+    });
+
+    this.socket.on('disconnect', (reason) => {
+      this.emit('socket:disconnect', reason);
+    });
+
+    this.socket.on('connect_error', (error) => {
+      this.emit('socket:error', error);
+    });
+
+    this.socket.on(this.socketEvent, (payload: AxiosSocketEnvelope) => {
+      this.dispatchSocketMessage(this.socketEvent, payload);
+    });
+
+    this.socket.onAny((eventName: string, payload: any) => {
+      if (eventName === this.socketEvent) {
+        return;
+      }
+
+      this.dispatchSocketMessage(eventName, payload);
+    });
+
+    this.on('authSuccess', () => {
+      void this.connectSocket();
+    }, Symbol('axios-socket-auth-success'));
+    this.on('token-refreshed', () => {
+      void this.connectSocket(true);
+    }, Symbol('axios-socket-token-refresh'));
+    this.on('authLogout', () => {
+      this.disconnectSocket();
+    }, Symbol('axios-socket-auth-logout'));
+
+    void this.connectSocket();
+  }
+
+  private resolveSocketURL() {
+    if (this.socketURL) {
+      return this.socketURL;
+    }
+
+    const baseURL = this.client.defaults.baseURL;
+    if (typeof baseURL === 'string' && baseURL.length > 0) {
+      return baseURL;
+    }
+
+    if (typeof location !== 'undefined') {
+      return location.origin;
+    }
+
+    return undefined as any;
+  }
+
+  private async buildSocketAuth() {
+    const token = await this.authentication.getToken();
+    if (!token) {
+      return {};
+    }
+
+    const authToken = `${this.tokenPrefix} ${token}`;
+    if (this.socketAuthMode === 'query') {
+      return { query: { token: authToken } };
+    }
+
+    return { auth: { token: authToken } };
+  }
+
+  async connectSocket(forceReconnect = false) {
+    if (!this.socketEnabled || !this.socket) {
+      return;
+    }
+
+    const authConfig = await this.buildSocketAuth();
+    if (this.socketAuthMode === 'query') {
+      this.socket.io.opts.query = { ...(this.socket.io.opts.query || {}), ...((authConfig as any).query || {}) };
+    } else {
+      this.socket.auth = { ...(this.socket.auth || {}), ...((authConfig as any).auth || {}) };
+    }
+
+    if (forceReconnect && this.socket.connected) {
+      this.socket.disconnect();
+    }
+
+    if (!this.socket.connected) {
+      this.socket.connect();
+    }
+  }
+
+  disconnectSocket() {
+    if (!this.socketEnabled || !this.socket) {
+      return;
+    }
+
+    this.socket.disconnect();
+  }
+
+  private dispatchSocketMessage(eventName: string, payload: any) {
+    const routed = this.parseSocketMessage(eventName, payload);
+    if (!routed) {
+      return;
+    }
+
+    const service = this.service(routed.service) as AxiosServiceClient<any>;
+    service.emit(routed.event, routed.data);
+    this.emit('socket:event', routed);
+  }
+
+  private parseSocketMessage(eventName: string, payload: any) {
+    const direct = this.parseSocketEnvelope(payload);
+    if (direct) {
+      return direct;
+    }
+
+    const fromEvent = this.parseSocketEventName(eventName, payload);
+    if (fromEvent) {
+      return fromEvent;
+    }
+
+    return undefined;
+  }
+
+  private parseSocketEnvelope(payload: any) {
+    if (!payload || typeof payload !== 'object') {
+      return undefined;
+    }
+
+    const service = payload.service || payload.path;
+    const event = payload.event || payload.type;
+    if (!service || !event) {
+      return undefined;
+    }
+
+    return {
+      service: ensurePath(String(service)),
+      event: String(event),
+      data: payload.data ?? payload.payload ?? payload.item ?? payload,
+    };
+  }
+
+  private parseSocketEventName(eventName: string, payload: any) {
+    const trimmed = (eventName || '').trim();
+    if (!trimmed || trimmed === this.socketEvent) {
+      return undefined;
+    }
+
+    if (trimmed.includes(':')) {
+      const parts = trimmed.split(':');
+      const event = parts.pop();
+      const service = parts.join(':');
+      if (service && event) {
+        return { service: ensurePath(service), event, data: payload };
+      }
+    }
+
+    const tokens = trimmed.split(/\s+/);
+    if (tokens.length >= 2) {
+      const event = tokens.pop();
+      const service = tokens.join(' ');
+      if (service && event) {
+        return { service: ensurePath(service), event, data: payload };
+      }
+    }
+
+    return undefined;
   }
 
   service<T = any>(path: string): Service<T> {
