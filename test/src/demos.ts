@@ -1,3 +1,4 @@
+import { h } from 'vue';
 import {
   Api,
   AppMain,
@@ -754,10 +755,74 @@ export function createDemoApp() {
   return new AppMain(
     {
       ref: 'demo-app',
+      title: 'Vuetify Extended Demo Workspace',
+      showHeader: true,
+      showFooter: true,
     },
     {
       menu: async () => buildHomeMenu(),
       udfs: async () => [],
+      header: (app) => [
+        h(
+          'div',
+          {
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              gap: '16px',
+            },
+          },
+          [
+            h(
+              'div',
+              {
+                style: {
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px',
+                },
+              },
+              [
+                h('div', { style: { fontSize: '1rem', fontWeight: '700' } }, app.$params.title || 'Vuetify Extended'),
+                h('div', { style: { fontSize: '0.78rem', opacity: '0.74' } }, 'Header/footer app shell scaffold around AppMain'),
+              ],
+            ),
+            h(
+              'div',
+              {
+                style: {
+                  fontSize: '0.8rem',
+                  opacity: '0.78',
+                  textAlign: 'right',
+                },
+              },
+              'Demo shell active',
+            ),
+          ],
+        ),
+      ],
+      footer: () => [
+        h(
+          'div',
+          {
+            style: {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              gap: '16px',
+              fontSize: '0.78rem',
+              opacity: '0.82',
+            },
+          },
+          [
+            h('span', {}, 'Vuetify Extended Test App'),
+            h('span', {}, 'Workflow shell scaffold: header + footer'),
+          ],
+        ),
+      ],
     },
   );
 }

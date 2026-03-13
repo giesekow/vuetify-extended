@@ -1,4 +1,4 @@
-import { VNode, Ref } from "vue";
+import { VNode, Ref, isVNode } from "vue";
 import { ReportMode, UIBase } from "./base";
 import { Menu } from "./menu";
 import { Report } from "./report";
@@ -9,16 +9,24 @@ import { Dialogs } from "./dialogs";
 import { Field } from "./field";
 import { Api } from "../api";
 import { DialogForm } from "./dialogform";
+import { VApp, VAppBar, VAppBarTitle, VFooter, VMain } from 'vuetify/components';
 
 export interface AppParams {
   ref?: string;
   udfQuery?: any;
+  title?: string;
+  showHeader?: boolean;
+  showFooter?: boolean;
 }
+
+export type AppShellContent = UIBase | VNode | string | number | boolean | null | undefined;
 
 export interface AppOptions {
   menu?: (app: AppMain) => Promise<Menu|undefined>|Menu|undefined;
   udfs?: (app: AppMain, objectType: string|string[], query: any) => Promise<any[]>;
   makeUDF?: (app: AppMain, options: any) => Field|undefined;
+  header?: (app: AppMain) => AppShellContent | AppShellContent[];
+  footer?: (app: AppMain) => AppShellContent | AppShellContent[];
 }
 
 export interface AppStackItem {
@@ -40,7 +48,10 @@ export class AppMain extends UIBase {
   private dialogCount: Ref<number>;
   private selectorFocusTargets: Map<symbol, HTMLElement>;
   private dialogFocusTargets: Map<symbol, HTMLElement>;
-  private static defaultParams: AppParams = {};
+  private static defaultParams: AppParams = {
+    showHeader: false,
+    showFooter: false,
+  };
 
   constructor(params?: AppParams, options?: AppOptions) {
     super();
@@ -95,6 +106,66 @@ export class AppMain extends UIBase {
       return undefined;
     }
 
+    const content = this.renderStackContent();
+    const header = this.renderShellRegion('header');
+    const footer = this.renderShellRegion('footer');
+    const showHeader = this.params.value.showHeader || !!header;
+    const showFooter = this.params.value.showFooter || !!footer;
+
+    if (!showHeader && !showFooter) {
+      return content;
+    }
+
+    return h(
+      VApp,
+      {
+        class: ['vuetify-extended-app-shell'],
+      },
+      () => [
+        ...(showHeader ? [
+          h(
+            VAppBar,
+            {
+              elevation: 2,
+              density: 'comfortable',
+            },
+            () => header || h(VAppBarTitle, {}, () => this.params.value.title || 'Application')
+          ),
+        ] : []),
+        h(
+          VMain,
+          {
+            class: ['vuetify-extended-app-main'],
+          },
+          () => h(
+            'div',
+            {
+              style: {
+                minHeight: '100%',
+                paddingBottom: showFooter ? '72px' : undefined,
+              },
+            },
+            content as any
+          )
+        ),
+        ...(showFooter ? [
+          h(
+            VFooter,
+            {
+              app: true,
+              elevation: 2,
+              class: ['px-4', 'py-2'],
+            },
+            () => footer || ''
+          ),
+        ] : []),
+      ]
+    );
+  }
+
+  private renderStackContent(): VNode | VNode[] | undefined {
+    const h = this.$h;
+
     if (this.index.value >= 0 && this.index.value < this.stack.length) {
       const item = this.stack[this.index.value].item;
       if (this.selectorCount.value > 0 || this.dialogCount.value > 0) {
@@ -102,17 +173,60 @@ export class AppMain extends UIBase {
           h(item.component),
           ...this.selectors.map((s) => h(s.component)),
           ...this.dialogs.map((d) => h(d.component))
-        ]
+        ];
       }
-      return h(item.component)
-    } else if (this.selectorCount.value > 0 || this.dialogCount.value > 0) {
+      return h(item.component);
+    }
+
+    if (this.selectorCount.value > 0 || this.dialogCount.value > 0) {
       return [
         ...this.selectors.map((s) => h(s.component)),
         ...this.dialogs.map((d) => h(d.component))
-      ]
+      ];
     }
 
     return undefined;
+  }
+
+  private renderShellRegion(region: 'header' | 'footer'): VNode | VNode[] | undefined {
+    const render = region === 'header' ? this.options.header : this.options.footer;
+    if (!render) {
+      return undefined;
+    }
+
+    const content = render(this);
+    return this.normalizeShellContent(content);
+  }
+
+  private normalizeShellContent(content: AppShellContent | AppShellContent[]): VNode | VNode[] | undefined {
+    const items = Array.isArray(content) ? content : [content];
+    const rendered = items
+      .map((item) => this.normalizeShellItem(item))
+      .filter((item): item is VNode => !!item);
+
+    if (rendered.length === 0) {
+      return undefined;
+    }
+
+    return rendered.length === 1 ? rendered[0] : rendered;
+  }
+
+  private normalizeShellItem(item: AppShellContent): VNode | undefined {
+    const h = this.$h;
+
+    if (item === null || item === undefined || item === false) {
+      return undefined;
+    }
+
+    if (item instanceof UIBase) {
+      return h(item.component);
+    }
+
+    if (isVNode(item)) {
+      return item;
+    }
+
+    return h('span', {}, String(item));
   }
 
   private async activateCurrentItem(index: number = this.index.value) {

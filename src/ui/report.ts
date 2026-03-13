@@ -288,7 +288,8 @@ export class Report extends UIBase {
               VCol,
               {
                 cols: 12,
-                align: this.params.value.horizontalAlign !== "center" ? this.params.value.horizontalAlign : undefined
+                align: this.params.value.horizontalAlign !== "center" ? this.params.value.horizontalAlign : undefined,
+                style: { paddingTop: '16px', paddingBottom: '16px' },
               },
               () => this.wrapWithSideButtons(
                 props,
@@ -336,7 +337,8 @@ export class Report extends UIBase {
               VCol,
               {
                 cols: 12,
-                align: this.params.value.horizontalAlign !== "center" ? this.params.value.horizontalAlign : undefined
+                align: this.params.value.horizontalAlign !== "center" ? this.params.value.horizontalAlign : undefined,
+                style: { paddingTop: '16px', paddingBottom: '16px' },
               },
               () => this.wrapWithSideButtons(
                 props,
