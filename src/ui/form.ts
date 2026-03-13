@@ -9,7 +9,7 @@ import { Report } from "./report";
 import { AppManager } from "./appmanager";
 import { Field, Refs } from "./field";
 import { OnHandler } from "./lib";
-import { normalizeShortcut, normalizeShortcutFromEvent, shouldIgnoreShortcutTarget } from "./shortcut";
+import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent, shouldIgnoreShortcutTarget } from "./shortcut";
 
 export interface FormParams {
   ref?: string;
@@ -727,11 +727,11 @@ export class Form extends UIBase {
   }
 
   private triggerButtonShortcut(ev: KeyboardEvent) {
-    if (ev.repeat || shouldIgnoreShortcutTarget(ev.target)) {
+    if (ev.repeat) {
       return false;
     }
 
-    const eventShortcut = normalizeShortcutFromEvent(ev);
+    const eventShortcut = normalizeButtonShortcutFromEvent(ev);
     if (!eventShortcut) {
       return false;
     }
@@ -747,7 +747,7 @@ export class Form extends UIBase {
         continue;
       }
 
-      const shortcut = normalizeShortcut(button.$params.shortcut);
+      const shortcut = normalizeButtonShortcut(button.$params.shortcut);
       if (!shortcut || shortcut !== eventShortcut) {
         continue;
       }

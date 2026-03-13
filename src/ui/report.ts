@@ -10,7 +10,7 @@ import { Dialogs } from "./dialogs";
 import { OnHandler } from "./lib";
 import { PRefs } from "./part";
 import { Refs } from "./field";
-import { normalizeShortcut, normalizeShortcutFromEvent, shouldIgnoreShortcutTarget } from "./shortcut";
+import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent } from "./shortcut";
 
 export type ReportButtonStyle = 'text'|'outlined'|'elevated';
 
@@ -792,11 +792,11 @@ export class Report extends UIBase {
   }
 
   private triggerButtonShortcut(ev: KeyboardEvent) {
-    if (ev.repeat || shouldIgnoreShortcutTarget(ev.target)) {
+    if (ev.repeat) {
       return false;
     }
 
-    const eventShortcut = normalizeShortcutFromEvent(ev);
+    const eventShortcut = normalizeButtonShortcutFromEvent(ev);
     if (!eventShortcut) {
       return false;
     }
@@ -806,7 +806,7 @@ export class Report extends UIBase {
         continue;
       }
 
-      const shortcut = normalizeShortcut(button.$params.shortcut);
+      const shortcut = normalizeButtonShortcut(button.$params.shortcut);
       if (!shortcut || shortcut !== eventShortcut) {
         continue;
       }

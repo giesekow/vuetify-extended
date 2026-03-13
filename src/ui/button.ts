@@ -3,6 +3,7 @@ import { UIBase } from "./base";
 import { VBtn, VIcon } from 'vuetify/components';
 import { Master } from "../master";
 import { OnHandler } from "./lib";
+import { formatButtonShortcut, normalizeButtonShortcut } from "./shortcut";
 
 export interface ButtonParams {
   ref?: string;
@@ -17,6 +18,7 @@ export interface ButtonParams {
   class?: string;
   text?: string;
   shortcut?: string;
+  shortcutFontSize?: string | number;
   flat?: boolean;
   loading?: boolean;
   rounded?: string | number | boolean;
@@ -117,7 +119,44 @@ export class Button extends UIBase {
         width: this.params.value.width,
         onClick: () => this.clicked(props, context)
       },
-      () => this.params.value.iconOnly ? h(VIcon, this.params.value.icon) : (this.params.value.text || '')
+      () => {
+        if (this.params.value.iconOnly) {
+          return h(VIcon, this.params.value.icon);
+        }
+
+        const displayShortcut = formatButtonShortcut(this.params.value.shortcut);
+
+        if (!displayShortcut) {
+          return this.params.value.text || '';
+        }
+
+        return h(
+          'span',
+          {
+            style: {
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+            },
+          },
+          [
+            h('span', {}, this.params.value.text || ''),
+            h(
+              'span',
+              {
+                class: ['text-caption'],
+                style: {
+                  opacity: '0.7',
+                  fontWeight: '500',
+                  fontSize: this.params.value.shortcutFontSize || '0.5rem',
+                  letterSpacing: '0.02em',
+                },
+              },
+              displayShortcut
+            ),
+          ]
+        );
+      }
     );
   }
 

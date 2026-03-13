@@ -359,7 +359,7 @@ function buildFullReport(params?: { objectId?: string; mode?: 'create' | 'edit' 
       },
       sideButtons: (_props, _context, report) => [
         new Button(
-          { text: 'Summary', variant: 'outlined', color: 'primary', icon: 'mdi-account' },
+          { text: 'Summary', variant: 'outlined', color: 'primary', icon: 'mdi-account', shortcut: 'F8' },
           {
             onClicked: () => {
               Dialogs.$success(`Active report step: ${report.$currentForm?.$params.title || report.$params.title || 'Unknown'}`);
@@ -367,7 +367,7 @@ function buildFullReport(params?: { objectId?: string; mode?: 'create' | 'edit' 
           },
         ),
         new Button(
-          { text: 'Help', variant: 'text', color: 'secondary', shortcut: 'Alt+2' },
+          { text: 'Help', variant: 'text', color: 'secondary', shortcut: 'Shift+F8' },
           {
             onClicked: () => {
               Dialogs.$success('Desktop side actions are enabled for this report.');
@@ -481,7 +481,7 @@ function buildTriggerDemo() {
       }),
       sideButtons: () => [
         new Button(
-          { text: 'Help', variant: 'outlined', color: 'primary', shortcut: 'Alt+H' },
+          { text: 'Help', variant: 'outlined', color: 'primary', shortcut: 'T' },
           {
             onClicked: () => {
               Dialogs.$success('Desktop side actions are enabled for this trigger.');
@@ -489,7 +489,7 @@ function buildTriggerDemo() {
           },
         ),
         new Button(
-          { text: 'Tips', variant: 'text', color: 'secondary', shortcut: 'Alt+T' },
+          { text: 'Tips', variant: 'text', color: 'secondary', shortcut: 'Shift+F9' },
           {
             onClicked: () => {
               Dialogs.$success('Use search, filters, and row selection before choosing Edit.');
@@ -636,7 +636,7 @@ function buildHomeMenu() {
             subText: 'Full report with multiple forms and many field types.',
             icon: 'mdi-form-select',
             color: 'primary',
-            shortcut: 'F6'
+            shortcut: 'U'
           },
           {
             report: async () => buildFullReport({ objectId: 'person-1', mode: 'edit', title: 'Person Workspace' }),

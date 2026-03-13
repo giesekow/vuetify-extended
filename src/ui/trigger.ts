@@ -10,7 +10,7 @@ import { Field, Refs } from "./field";
 import { ExportTemplateInfo } from "./report";
 import { AppManager } from "./appmanager";
 import { $excel, computeFunctionalCodeAsync } from "../misc";
-import { normalizeShortcut, normalizeShortcutFromEvent, shouldIgnoreShortcutTarget } from "./shortcut";
+import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent } from "./shortcut";
 
 export interface TriggerParams {
   ref?: string;
@@ -926,11 +926,11 @@ export class Trigger extends UIBase {
   }
 
   private triggerButtonShortcut(ev: KeyboardEvent) {
-    if (ev.repeat || shouldIgnoreShortcutTarget(ev.target)) {
+    if (ev.repeat) {
       return false;
     }
 
-    const eventShortcut = normalizeShortcutFromEvent(ev);
+    const eventShortcut = normalizeButtonShortcutFromEvent(ev);
     if (!eventShortcut) {
       return false;
     }
@@ -946,7 +946,7 @@ export class Trigger extends UIBase {
         continue;
       }
 
-      const shortcut = normalizeShortcut(button.$params.shortcut);
+      const shortcut = normalizeButtonShortcut(button.$params.shortcut);
       if (!shortcut || shortcut !== eventShortcut) {
         continue;
       }

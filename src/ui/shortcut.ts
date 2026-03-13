@@ -58,6 +58,48 @@ export function normalizeShortcutFromEvent(ev: KeyboardEvent) {
   return `${ev.ctrlKey ? 'ctrl+' : ''}${ev.altKey ? 'alt+' : ''}${ev.shiftKey ? 'shift+' : ''}${ev.metaKey ? 'meta+' : ''}${key}`;
 }
 
+export function normalizeButtonShortcut(shortcut?: string) {
+  const normalized = normalizeShortcut(shortcut);
+  if (!normalized) {
+    return undefined;
+  }
+
+  const parts = normalized.split('+');
+  const key = parts[parts.length - 1];
+  if (!isFunctionKey(key)) {
+    return undefined;
+  }
+
+  if (parts.includes('meta')) {
+    return undefined;
+  }
+
+  return normalized;
+}
+
+export function normalizeButtonShortcutFromEvent(ev: KeyboardEvent) {
+  const normalized = normalizeShortcutFromEvent(ev);
+  if (!normalized) {
+    return undefined;
+  }
+
+  const parts = normalized.split('+');
+  const key = parts[parts.length - 1];
+  if (!isFunctionKey(key)) {
+    return undefined;
+  }
+
+  if (parts.includes('meta')) {
+    return undefined;
+  }
+
+  return normalized;
+}
+
+function isFunctionKey(key?: string) {
+  return !!key && /^f([1-9]|1[0-2])$/.test(key);
+}
+
 export function normalizeShortcutKey(key?: string) {
   if (!key) {
     return undefined;
@@ -89,4 +131,32 @@ export function shouldIgnoreShortcutTarget(target: EventTarget | null) {
   }
 
   return false;
+}
+
+
+export function formatButtonShortcut(shortcut?: string) {
+  const normalized = normalizeButtonShortcut(shortcut);
+  if (!normalized) {
+    return undefined;
+  }
+
+  return normalized
+    .split('+')
+    .map((part) => formatShortcutPart(part))
+    .join('+');
+}
+
+function formatShortcutPart(part: string) {
+  if (/^f([1-9]|1[0-2])$/.test(part)) {
+    return part.toUpperCase();
+  }
+
+  const labels: Record<string, string> = {
+    ctrl: 'Ctrl',
+    alt: 'Alt',
+    shift: 'Shift',
+    meta: 'Meta',
+  };
+
+  return labels[part] || (part.charAt(0).toUpperCase() + part.slice(1));
 }
