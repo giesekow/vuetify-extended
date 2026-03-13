@@ -653,13 +653,14 @@ function buildHomeMenu() {
                   fabIcon: 'mdi-file-document-edit-outline',
                   fabColor: 'secondary',
                   fabLabel: 'Report Tools',
+                  fabShortcut: 'CTRL+SHIFT+F9',
                   fabButtons: () => [
                     new Button(
-                      { text: 'Save Hint', color: 'secondary', variant: 'elevated', icon: 'mdi-content-save-outline' },
+                      { text: 'Save Hint', color: 'secondary', variant: 'elevated', icon: 'mdi-content-save-outline', shortcut: 'F12', shortcutDisplay: 'compact' },
                       { onClicked: () => Dialogs.$success('Use Ctrl+S or the Save button to persist this report.') },
                     ),
                     new Button(
-                      { text: 'Review Flow', color: 'primary', variant: 'outlined', icon: 'mdi-map-marker-path' },
+                      { text: 'Review Flow', color: 'primary', variant: 'outlined', icon: 'mdi-map-marker-path', shortcut: 'SHIFT+F12', shortcutDisplay: 'compact' },
                       { onClicked: () => Dialogs.$warning('This report is using screen-specific FAB actions.') },
                     ),
                   ],
@@ -740,13 +741,14 @@ function buildHomeMenu() {
                 fabIcon: 'mdi-radar',
                 fabColor: 'deep-orange',
                 fabLabel: 'Trigger Tools',
+                fabShortcut: 'CTRL+ALT+F10',
                 fabButtons: () => [
                   new Button(
-                    { text: 'Search Help', color: 'deep-orange', variant: 'elevated', icon: 'mdi-magnify-scan' },
+                    { text: 'Search Help', color: 'deep-orange', variant: 'elevated', icon: 'mdi-magnify-scan', shortcut: 'CTRL+F12', shortcutDisplay: 'compact' },
                     { onClicked: () => Dialogs.$warning('Use Enter to search and Escape to cancel the trigger.') },
                   ),
                   new Button(
-                    { text: 'Selection Tip', color: 'brown', variant: 'outlined', icon: 'mdi-lightbulb-on-outline' },
+                    { text: 'Selection Tip', color: 'brown', variant: 'outlined', icon: 'mdi-lightbulb-on-outline', shortcut: 'ALT+F12', shortcutDisplay: 'compact' },
                     { onClicked: () => Dialogs.$success('Screen-specific FAB actions are now overriding the global app FAB here.') },
                   ),
                 ],
@@ -804,6 +806,7 @@ export function createDemoApp() {
       fabIcon: 'mdi-lightning-bolt',
       fabColor: 'primary',
       fabLabel: 'Quick Actions',
+      fabShortcut: 'CTRL+SHIFT+F8',
       backgroundColor: '#dfe7ef',
       backgroundGradient: 'linear-gradient(145deg, rgba(255,255,255,0.86) 0%, rgba(219,231,242,0.74) 45%, rgba(199,219,237,0.82) 100%)',
       backgroundImage: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1600&q=80',
@@ -818,15 +821,15 @@ export function createDemoApp() {
       udfs: async () => [],
       fabButtons: () => [
         new Button(
-          { text: 'Quick Success', color: 'success', variant: 'elevated', icon: 'mdi-check-circle-outline' },
+          { text: 'Quick Success', color: 'success', variant: 'elevated', icon: 'mdi-check-circle-outline', shortcut: 'F11', shortcutDisplay: 'compact' },
           { onClicked: () => Dialogs.$success('Quick action executed successfully.') },
         ),
         new Button(
-          { text: 'Quick Warning', color: 'warning', variant: 'elevated', icon: 'mdi-alert-outline' },
+          { text: 'Quick Warning', color: 'warning', variant: 'elevated', icon: 'mdi-alert-outline', shortcut: 'SHIFT+F11', shortcutDisplay: 'compact' },
           { onClicked: () => Dialogs.$warning('Quick action warning example.') },
         ),
         new Button(
-          { text: 'Quick Confirm', color: 'primary', variant: 'outlined', icon: 'mdi-help-circle-outline' },
+          { text: 'Quick Confirm', color: 'primary', variant: 'outlined', icon: 'mdi-help-circle-outline', shortcut: 'ALT+F11', shortcutDisplay: 'compact' },
           { onClicked: async () => { await Dialogs.$confirm('Run the quick confirm action?'); } },
         ),
       ],

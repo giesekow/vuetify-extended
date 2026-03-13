@@ -10,6 +10,7 @@ import { Field } from "./field";
 import { Button } from "./button";
 import { Api } from "../api";
 import { DialogForm } from "./dialogform";
+import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent } from "./shortcut";
 import { VApp, VAppBar, VAppBarTitle, VBtn, VCard, VCardText, VFooter, VMain, VMenu } from 'vuetify/components';
 
 export interface AppParams {
@@ -24,6 +25,7 @@ export interface AppParams {
   fabPosition?: 'bottom-right'|'bottom-left';
   fabDirection?: 'up'|'left';
   fabLabel?: string;
+  fabShortcut?: string;
   headerLayout?: 'balanced'|'auto'|'stacked';
   footerLayout?: 'balanced'|'auto'|'stacked';
   headerStartWidth?: string|number;
@@ -68,6 +70,7 @@ export interface AppScreenParams {
   fabPosition?: 'bottom-right'|'bottom-left';
   fabDirection?: 'up'|'left';
   fabLabel?: string;
+  fabShortcut?: string;
   fabButtons?: AppFabButtonsFactory;
   [key: string]: any;
 }
@@ -92,6 +95,8 @@ export class AppMain extends UIBase {
   private selectorFocusTargets: Map<symbol, HTMLElement>;
   private dialogFocusTargets: Map<symbol, HTMLElement>;
   private fabButtonInstances: Array<Button>;
+  private fabOpen: Ref<boolean>;
+  private shortcutHandler?: (ev: KeyboardEvent) => void;
   private static defaultParams: AppParams = {
     showHeader: false,
     showFooter: false,
@@ -101,6 +106,7 @@ export class AppMain extends UIBase {
     fabPosition: 'bottom-right',
     fabDirection: 'up',
     fabLabel: 'Quick Actions',
+    fabShortcut: undefined,
     headerLayout: 'balanced',
     footerLayout: 'balanced',
   };
@@ -119,6 +125,7 @@ export class AppMain extends UIBase {
     this.selectorFocusTargets = new Map();
     this.dialogFocusTargets = new Map();
     this.fabButtonInstances = [];
+    this.fabOpen = this.$makeRef(false);
   }
 
   static setDefault(value: AppParams, reset?: boolean): void {
@@ -301,6 +308,7 @@ export class AppMain extends UIBase {
       fabPosition: screen.fabPosition ?? this.params.value.fabPosition,
       fabDirection: screen.fabDirection ?? this.params.value.fabDirection,
       fabLabel: screen.fabLabel ?? this.params.value.fabLabel,
+      fabShortcut: screen.fabShortcut ?? this.params.value.fabShortcut,
       fabButtons: screen.fabButtons ?? this.options.fabButtons,
       active,
     };
@@ -349,6 +357,8 @@ export class AppMain extends UIBase {
       },
     }, [
       h(VMenu, {
+        modelValue: this.fabOpen.value,
+        'onUpdate:modelValue': (value: boolean) => { this.fabOpen.value = value; },
         location,
         offset: 12,
         closeOnContentClick: true,
@@ -381,6 +391,112 @@ export class AppMain extends UIBase {
         }, () => buttons.map((button) => h('div', { style: { display: 'flex', width: '100%' } }, [h(button.component, { style: { width: '100%' } })])))),
       }),
     ]);
+  }
+
+  private triggerComponentShortcut(target: any, ev: KeyboardEvent) {
+    if (!target) {
+      return false;
+    }
+
+    if (typeof target.triggerButtonShortcut === 'function') {
+      return !!target.triggerButtonShortcut(ev);
+    }
+
+    return false;
+  }
+
+  private triggerActiveScreenShortcut(ev: KeyboardEvent) {
+    const activeItem = this.getActiveStackItem()?.item as any;
+    const currentForm = activeItem?.currentForm;
+
+    if (this.triggerComponentShortcut(currentForm, ev)) {
+      return true;
+    }
+
+    if (ev.defaultPrevented) {
+      return true;
+    }
+
+    if (this.triggerComponentShortcut(activeItem, ev)) {
+      return true;
+    }
+
+    return ev.defaultPrevented;
+  }
+
+  private triggerFabButtonShortcut(ev: KeyboardEvent) {
+    if (!this.fabOpen.value || ev.repeat) {
+      return false;
+    }
+
+    const { buttons } = this.buildFabButtons();
+    for (const button of buttons) {
+      if (button.$params.disabled || button.$readonly) {
+        continue;
+      }
+
+      const eventShortcut = normalizeButtonShortcutFromEvent(ev, { cmdForCtrlOnMac: button.$params.cmdForCtrlOnMac });
+      if (!eventShortcut) {
+        continue;
+      }
+
+      const shortcut = normalizeButtonShortcut(button.$params.shortcut, { cmdForCtrlOnMac: button.$params.cmdForCtrlOnMac });
+      if (!shortcut || shortcut !== eventShortcut) {
+        continue;
+      }
+
+      ev.preventDefault();
+      this.fabOpen.value = false;
+      button.triggerShortcut();
+      return true;
+    }
+
+    return false;
+  }
+
+  private triggerFabShortcut(ev: KeyboardEvent) {
+    if (ev.repeat) {
+      return false;
+    }
+
+    const config = this.resolveFabConfig();
+    if (!config.showFab) {
+      return false;
+    }
+
+    const eventShortcut = normalizeButtonShortcutFromEvent(ev);
+    if (!eventShortcut) {
+      return false;
+    }
+
+    const shortcut = normalizeButtonShortcut(config.fabShortcut);
+    if (!shortcut || shortcut !== eventShortcut) {
+      return false;
+    }
+
+    ev.preventDefault();
+    this.fabOpen.value = !this.fabOpen.value;
+    return true;
+  }
+
+  private onAppKeydown(ev: KeyboardEvent) {
+    if (ev.defaultPrevented || Dialogs.hasBlockingDialog()) {
+      return;
+    }
+
+    if (this.triggerActiveScreenShortcut(ev)) {
+      return;
+    }
+
+    if (ev.defaultPrevented) {
+      return;
+    }
+
+    if (this.triggerFabButtonShortcut(ev)) {
+      return;
+    }
+
+    this.triggerFabShortcut(ev);
   }
 
   private renderShellRegion(region: 'header' | 'footer'): VNode | VNode[] | undefined {
@@ -545,6 +661,7 @@ export class AppMain extends UIBase {
   }
 
   private async activateCurrentItem(index: number = this.index.value) {
+    this.fabOpen.value = false;
     if (index < 0 || index >= this.stack.length) {
       return;
     }
@@ -566,6 +683,7 @@ export class AppMain extends UIBase {
   }
 
   private async loadApp() {
+    this.fabOpen.value = false;
     Dialogs.$showProgress({})
     const menu = await this.menu();
 
@@ -748,6 +866,7 @@ export class AppMain extends UIBase {
   }
 
   private async onCancel(item: UIBase) {
+    this.fabOpen.value = false;
     const ui = this.stack.filter((inst) => inst.item.$id === item.$id)[0];
     if (ui) {
       const index = this.stack.indexOf(ui);
@@ -808,6 +927,22 @@ export class AppMain extends UIBase {
     await sleep(50);
     if (target.isConnected && typeof target.focus === 'function') {
       target.focus();
+    }
+  }
+
+  attachEventListeners() {
+    super.attachEventListeners();
+    if (typeof window !== 'undefined' && !this.shortcutHandler) {
+      this.shortcutHandler = (ev: KeyboardEvent) => this.onAppKeydown(ev);
+      window.addEventListener('keydown', this.shortcutHandler);
+    }
+  }
+
+  removeEventListeners() {
+    super.removeEventListeners();
+    if (typeof window !== 'undefined' && this.shortcutHandler) {
+      window.removeEventListener('keydown', this.shortcutHandler);
+      this.shortcutHandler = undefined;
     }
   }
 
