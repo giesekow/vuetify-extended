@@ -17,6 +17,14 @@ export interface AppParams {
   title?: string;
   showHeader?: boolean;
   showFooter?: boolean;
+  headerLayout?: 'balanced'|'auto'|'stacked';
+  footerLayout?: 'balanced'|'auto'|'stacked';
+  headerStartWidth?: string|number;
+  headerCenterWidth?: string|number;
+  headerEndWidth?: string|number;
+  footerStartWidth?: string|number;
+  footerCenterWidth?: string|number;
+  footerEndWidth?: string|number;
   backgroundColor?: string;
   backgroundGradient?: string;
   backgroundImage?: string;
@@ -35,6 +43,12 @@ export interface AppOptions {
   makeUDF?: (app: AppMain, options: any) => Field|undefined;
   header?: (app: AppMain) => AppShellContent | AppShellContent[];
   footer?: (app: AppMain) => AppShellContent | AppShellContent[];
+  headerStart?: (app: AppMain) => AppShellContent | AppShellContent[];
+  headerCenter?: (app: AppMain) => AppShellContent | AppShellContent[];
+  headerEnd?: (app: AppMain) => AppShellContent | AppShellContent[];
+  footerStart?: (app: AppMain) => AppShellContent | AppShellContent[];
+  footerCenter?: (app: AppMain) => AppShellContent | AppShellContent[];
+  footerEnd?: (app: AppMain) => AppShellContent | AppShellContent[];
 }
 
 export interface AppStackItem {
@@ -59,6 +73,8 @@ export class AppMain extends UIBase {
   private static defaultParams: AppParams = {
     showHeader: false,
     showFooter: false,
+    headerLayout: 'balanced',
+    footerLayout: 'balanced',
   };
 
   constructor(params?: AppParams, options?: AppOptions) {
@@ -117,8 +133,10 @@ export class AppMain extends UIBase {
     const content = this.renderStackContent();
     const header = this.renderShellRegion('header');
     const footer = this.renderShellRegion('footer');
-    const showHeader = this.params.value.showHeader || !!header;
-    const showFooter = this.params.value.showFooter || !!footer;
+    const headerBar = this.renderShellBar('header');
+    const footerBar = this.renderShellBar('footer');
+    const showHeader = this.params.value.showHeader || !!headerBar || !!header;
+    const showFooter = this.params.value.showFooter || !!footerBar || !!footer;
 
     if (!showHeader && !showFooter) {
       return content;
@@ -146,7 +164,7 @@ export class AppMain extends UIBase {
                   paddingRight: '16px',
                 },
               },
-              [header || h(VAppBarTitle, {}, () => this.params.value.title || 'Application')]
+              [headerBar || header || h(VAppBarTitle, {}, () => this.params.value.title || 'Application')]
             )
           ),
         ] : []),
@@ -187,7 +205,7 @@ export class AppMain extends UIBase {
               elevation: 2,
               class: ['px-4', 'py-2'],
             },
-            () => footer || ''
+            () => footerBar || footer || ''
           ),
         ] : []),
       ]
@@ -227,6 +245,93 @@ export class AppMain extends UIBase {
 
     const content = render(this);
     return this.normalizeShellContent(content);
+  }
+
+  private renderShellBar(region: 'header' | 'footer'): VNode | undefined {
+    const start = this.renderShellBarSection(region, 'Start');
+    const center = this.renderShellBarSection(region, 'Center');
+    const end = this.renderShellBarSection(region, 'End');
+
+    if (!start && !center && !end) {
+      return undefined;
+    }
+
+    const h = this.$h;
+    const layout = this.getShellLayout(region);
+
+    return h('div', {
+      style: this.getShellBarContainerStyle(region, layout),
+    }, [
+      h('div', { style: this.getShellBarSectionStyle(region, 'Start', layout) }, start ? (Array.isArray(start) ? start : [start]) : []),
+      h('div', { style: this.getShellBarSectionStyle(region, 'Center', layout) }, center ? (Array.isArray(center) ? center : [center]) : []),
+      h('div', { style: this.getShellBarSectionStyle(region, 'End', layout) }, end ? (Array.isArray(end) ? end : [end]) : []),
+    ]);
+  }
+
+  private renderShellBarSection(region: 'header' | 'footer', section: 'Start' | 'Center' | 'End'): VNode | VNode[] | undefined {
+    const key = `${region}${section}` as keyof AppOptions;
+    const render = this.options[key] as ((app: AppMain) => AppShellContent | AppShellContent[]) | undefined;
+    if (!render) {
+      return undefined;
+    }
+
+    return this.normalizeShellContent(render(this));
+  }
+
+  private getShellLayout(region: 'header' | 'footer') {
+    return (region === 'header' ? this.params.value.headerLayout : this.params.value.footerLayout) || 'balanced';
+  }
+
+  private getShellWidthValue(region: 'header' | 'footer', section: 'Start' | 'Center' | 'End') {
+    const key = `${region}${section}Width` as keyof AppParams;
+    return this.params.value[key] as string | number | undefined;
+  }
+
+  private normalizeCssSize(value?: string | number) {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+
+    return typeof value === 'number' ? `${value}px` : value;
+  }
+
+  private getShellBarContainerStyle(region: 'header' | 'footer', layout: 'balanced'|'auto'|'stacked') {
+    if (layout === 'stacked') {
+      return {
+        width: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        gap: '10px',
+      };
+    }
+
+    const startWidth = this.normalizeCssSize(this.getShellWidthValue(region, 'Start')) || (layout === 'auto' ? 'auto' : 'minmax(0, 1fr)');
+    const centerWidth = this.normalizeCssSize(this.getShellWidthValue(region, 'Center')) || 'auto';
+    const endWidth = this.normalizeCssSize(this.getShellWidthValue(region, 'End')) || (layout === 'auto' ? 'auto' : 'minmax(0, 1fr)');
+
+    return {
+      width: '100%',
+      display: 'grid',
+      gridTemplateColumns: `${startWidth} ${centerWidth} ${endWidth}`,
+      alignItems: 'center',
+      gap: '16px',
+    };
+  }
+
+  private getShellBarSectionStyle(region: 'header' | 'footer', section: 'Start' | 'Center' | 'End', layout: 'balanced'|'auto'|'stacked') {
+    const justifyContent = section === 'Start' ? 'flex-start' : section === 'Center' ? 'center' : 'flex-end';
+    const width = this.normalizeCssSize(this.getShellWidthValue(region, section));
+
+    return {
+      minWidth: 0,
+      width: layout === 'stacked' ? '100%' : width,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent,
+      gap: '12px',
+      flexWrap: 'wrap',
+    };
   }
 
   private mainShellStyle() {
