@@ -1,6 +1,6 @@
 import { VNode, Ref } from "vue";
 import { UIBase } from "./base";
-import { VBtn, VIcon } from 'vuetify/components';
+import { VBtn, VIcon, VTooltip } from 'vuetify/components';
 import { Master } from "../master";
 import { OnHandler } from "./lib";
 import { describeButtonShortcut } from "./shortcut";
@@ -17,6 +17,8 @@ export interface ButtonParams {
   color?: string;
   class?: string;
   text?: string;
+  tooltip?: string;
+  tooltipLocation?: 'top' | 'bottom' | 'start' | 'end';
   shortcut?: string;
   shortcutDisplay?: 'text'|'compact';
   shortcutFontSize?: string | number;
@@ -98,7 +100,7 @@ export class Button extends UIBase {
 
   render(props: any, context: any): VNode|undefined {
     const h = this.$h;
-    
+
     if (this.params.value.invisible) {
       return;
     }
@@ -109,68 +111,94 @@ export class Button extends UIBase {
       titleParts.push(displayShortcut.label);
     }
 
-    return h(
+    const accessibleLabel = this.params.value.tooltip || (titleParts.length > 0 ? titleParts.join(' - ') : undefined);
+    const buttonProps = {
+      icon: this.params.value.iconOnly,
+      appendIcon: this.params.value.appendIcon && this.params.value.icon ? this.params.value.icon : undefined,
+      prependIcon: !this.params.value.appendIcon && this.params.value.icon ? this.params.value.icon : undefined,
+      color: this.params.value.color,
+      variant: this.params.value.variant,
+      disabled: this.params.value.disabled,
+      class: this.params.value.class,
+      elevation: this.params.value.elevation,
+      density: this.params.value.density,
+      position: this.params.value.position,
+      flat: this.params.value.flat,
+      size: this.params.value.size,
+      rounded: this.params.value.rounded,
+      block: this.params.value.block,
+      loading: this.params.value.loading,
+      width: this.params.value.width,
+      title: this.params.value.tooltip ? undefined : accessibleLabel,
+      'aria-label': accessibleLabel,
+      'aria-keyshortcuts': displayShortcut?.label,
+      onClick: () => this.clicked(props, context)
+    };
+
+    const buttonNode = h(
       VBtn,
+      buttonProps,
+      () => this.renderButtonContent(displayShortcut)
+    );
+
+    if (!this.params.value.tooltip) {
+      return buttonNode;
+    }
+
+    return h(VTooltip, {
+      location: this.params.value.tooltipLocation || 'top',
+      text: this.params.value.tooltip,
+    }, {
+      activator: ({ props: activatorProps }: any) => h(
+        VBtn,
+        {
+          ...buttonProps,
+          ...activatorProps,
+        },
+        () => this.renderButtonContent(displayShortcut)
+      ),
+      default: () => this.params.value.tooltip || '',
+    });
+  }
+
+  private renderButtonContent(displayShortcut?: ReturnType<typeof describeButtonShortcut>) {
+    const h = this.$h;
+
+    if (this.params.value.iconOnly) {
+      return h(VIcon, this.params.value.icon);
+    }
+
+    if (!displayShortcut) {
+      return this.params.value.text || '';
+    }
+
+    return h(
+      'span',
       {
-        icon: this.params.value.iconOnly,
-        appendIcon: this.params.value.appendIcon && this.params.value.icon ? this.params.value.icon : undefined,
-        prependIcon: !this.params.value.appendIcon && this.params.value.icon ? this.params.value.icon : undefined,
-        color: this.params.value.color,
-        variant: this.params.value.variant,
-        disabled: this.params.value.disabled,
-        class: this.params.value.class,
-        elevation: this.params.value.elevation,
-        density: this.params.value.density,
-        position: this.params.value.position,
-        flat: this.params.value.flat,
-        size: this.params.value.size,
-        rounded: this.params.value.rounded,
-        block: this.params.value.block,
-        loading: this.params.value.loading,
-        width: this.params.value.width,
-        title: titleParts.length > 0 ? titleParts.join(' - ') : undefined,
-        'aria-label': titleParts.length > 0 ? titleParts.join(' - ') : undefined,
-        'aria-keyshortcuts': displayShortcut?.label,
-        onClick: () => this.clicked(props, context)
+        style: {
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+        },
       },
-      () => {
-        if (this.params.value.iconOnly) {
-          return h(VIcon, this.params.value.icon);
-        }
-
-        if (!displayShortcut) {
-          return this.params.value.text || '';
-        }
-
-        return h(
-          'span',
-          {
-            style: {
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-            },
-          },
-          [
-            h('span', {}, this.params.value.text || ''),
-            this.params.value.shortcutDisplay === 'compact'
-              ? this.renderCompactShortcut(displayShortcut.key, displayShortcut.ctrl, displayShortcut.alt, displayShortcut.shift, displayShortcut.meta, displayShortcut.label)
-              : h(
-                  'span',
-                  {
-                    class: ['text-caption'],
-                    style: {
-                      opacity: '0.7',
-                      fontWeight: '500',
-                      fontSize: this.params.value.shortcutFontSize || '0.5rem',
-                      letterSpacing: '0.02em',
-                    },
-                  },
-                  displayShortcut.label
-                ),
-          ]
-        );
-      }
+      [
+        h('span', {}, this.params.value.text || ''),
+        this.params.value.shortcutDisplay === 'compact'
+          ? this.renderCompactShortcut(displayShortcut.key, displayShortcut.ctrl, displayShortcut.alt, displayShortcut.shift, displayShortcut.meta, displayShortcut.label)
+          : h(
+              'span',
+              {
+                class: ['text-caption'],
+                style: {
+                  opacity: '0.7',
+                  fontWeight: '500',
+                  fontSize: this.params.value.shortcutFontSize || '0.5rem',
+                  letterSpacing: '0.02em',
+                },
+              },
+              displayShortcut.label
+            ),
+      ]
     );
   }
 

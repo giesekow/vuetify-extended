@@ -453,7 +453,7 @@ function buildFullReport(params?: { objectId?: string; mode?: 'create' | 'edit' 
       },
       sideButtons: (_props, _context, report) => [
         new Button(
-          { text: 'Summary', variant: 'outlined', color: 'primary', icon: 'mdi-account', shortcut: 'F8' },
+          { text: 'Summary', variant: 'outlined', color: 'primary', icon: 'mdi-account', shortcut: 'F8', tooltip: 'Show a quick summary of the currently active report step and context.' },
           {
             onClicked: () => {
               Dialogs.$success(`Active report step: ${report.$currentForm?.$params.title || report.$params.title || 'Unknown'}`);
@@ -704,7 +704,7 @@ function buildNestedMenu() {
                 persistent: true,
                 actions: [
                   new Button(
-                    { text: 'Acknowledge', color: 'primary', variant: 'outlined' },
+                    { text: 'Acknowledge', color: 'primary', variant: 'outlined', tooltip: 'Mark this notification as handled without leaving the current screen.' },
                     { onClicked: () => Notifications.$success('Notification acknowledged.') },
                   ),
                   new Button(
@@ -886,7 +886,7 @@ function buildHomeMenu() {
                 fabShortcut: 'CTRL+ALT+F10',
                 fabButtons: () => [
                   new Button(
-                    { text: 'Search Help', color: 'deep-orange', variant: 'elevated', icon: 'mdi-magnify-scan', shortcut: 'CTRL+F12', shortcutDisplay: 'compact' },
+                    { text: 'Search Help', color: 'deep-orange', variant: 'elevated', icon: 'mdi-magnify-scan', shortcut: 'CTRL+F12', shortcutDisplay: 'compact', tooltip: 'Explain the trigger search flow, including Enter to search and Escape to cancel.' },
                     { onClicked: () => Dialogs.$warning('Use Enter to search and Escape to cancel the trigger.') },
                   ),
                   new Button(
@@ -964,7 +964,7 @@ export function createDemoApp() {
       udfs: async () => [],
       fabButtons: () => [
         new Button(
-          { text: 'Quick Success', color: 'success', variant: 'elevated', icon: 'mdi-check-circle-outline', shortcut: 'F11', shortcutDisplay: 'compact' },
+          { text: 'Quick Success', color: 'success', variant: 'elevated', icon: 'mdi-check-circle-outline', shortcut: 'F11', shortcutDisplay: 'compact', tooltip: 'Push a success notification using the global FAB quick-action set.' },
           { onClicked: () => Notifications.$success('Quick action executed successfully.', { title: 'FAB Action' }) },
         ),
         new Button(
