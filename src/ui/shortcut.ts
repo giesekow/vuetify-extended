@@ -96,6 +96,37 @@ export function normalizeButtonShortcutFromEvent(ev: KeyboardEvent) {
   return normalized;
 }
 
+
+export interface ShortcutDescriptor {
+  normalized: string;
+  key: string;
+  label: string;
+  ctrl: boolean;
+  alt: boolean;
+  shift: boolean;
+  meta: boolean;
+}
+
+export function describeShortcut(shortcut?: string): ShortcutDescriptor | undefined {
+  const normalized = normalizeShortcut(shortcut);
+  if (!normalized) {
+    return undefined;
+  }
+
+  const parts = normalized.split('+');
+  const key = parts[parts.length - 1];
+
+  return {
+    normalized,
+    key: /^f([1-9]|1[0-2])$/.test(key) ? key.toUpperCase() : formatShortcutPart(key),
+    label: parts.map((part) => formatShortcutPart(part)).join('+'),
+    ctrl: parts.includes('ctrl'),
+    alt: parts.includes('alt'),
+    shift: parts.includes('shift'),
+    meta: parts.includes('meta'),
+  };
+}
+
 export interface ButtonShortcutDescriptor {
   normalized: string;
   key: string;
@@ -163,6 +194,10 @@ export function shouldIgnoreShortcutTarget(target: EventTarget | null) {
 
 export function formatButtonShortcut(shortcut?: string) {
   return describeButtonShortcut(shortcut)?.label;
+}
+
+export function formatShortcut(shortcut?: string) {
+  return describeShortcut(shortcut)?.label;
 }
 
 function formatShortcutPart(part: string) {

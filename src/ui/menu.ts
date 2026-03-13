@@ -6,6 +6,7 @@ import { Report } from "./report";
 import { Collection } from "./collection";
 import { AppManager } from "./appmanager";
 import { Dialogs } from "./dialogs";
+import { describeShortcut, normalizeShortcut, normalizeShortcutFromEvent } from "./shortcut";
 
 export interface MenuParams {
   ref?: string;
@@ -275,13 +276,7 @@ export class Menu extends UIBase {
                       'span',
                       item.$params.subText,
                     ),
-                    append: () => item.$params.shortcut ? h(
-                      'span',
-                      {
-                        class: ['text-caption', 'text-medium-emphasis']
-                      },
-                      item.$params.shortcut
-                    ) : undefined,
+                    append: () => this.renderMenuItemShortcut(item),
                   }
                 )
               )
@@ -290,6 +285,95 @@ export class Menu extends UIBase {
           ...(this.hasParent() ? [back] : [])
         ]
       }
+    );
+  }
+
+
+  private renderMenuItemShortcut(item: MenuItem) {
+    const h = this.$h;
+    const displayShortcut = describeShortcut(item.$params.shortcut);
+
+    if (!displayShortcut) {
+      return undefined;
+    }
+
+    if (item.$params.shortcutDisplay === 'compact') {
+      return h(
+        'span',
+        {
+          class: ['text-caption'],
+          title: displayShortcut.label,
+          'aria-label': displayShortcut.label,
+          'aria-keyshortcuts': displayShortcut.label,
+          style: {
+            opacity: '0.82',
+            fontWeight: '600',
+            fontSize: item.$params.shortcutFontSize || '0.8rem',
+            lineHeight: '1.5',
+            letterSpacing: '0.03em',
+            padding: '1px 1px',
+            border: '1px solid currentColor',
+            borderRadius: '4px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0',
+            minWidth: displayShortcut.shift ? '2.0em' : '1.8em',
+            whiteSpace: 'nowrap',
+          },
+        },
+        [
+          ...(displayShortcut.shift ? [
+            h(
+              VIcon,
+              {
+                icon: item.$params.shortcutShiftIcon || 'mdi-arrow-up-thin',
+                size: '1.5em',
+                style: {
+                  opacity: '1',
+                  marginRight: '-0.8em',
+                  marginLeft: '-0.2em',
+                },
+              }
+            ),
+          ] : []),
+          h(
+            'span',
+            {
+              style: {
+                textDecorationLine: [displayShortcut.ctrl ? 'underline' : '', displayShortcut.alt ? 'overline' : ''].filter(Boolean).join(' ') || 'none',
+                textDecorationThickness: (displayShortcut.ctrl || displayShortcut.alt) ? '1px' : undefined,
+                textUnderlineOffset: displayShortcut.ctrl ? '1px' : undefined,
+                textDecorationSkipInk: 'none',
+                textDecorationColor: 'currentColor',
+                display: 'inline-block',
+                minWidth: '1.8em',
+                textAlign: 'center',
+                paddingTop: displayShortcut.alt ? '2px' : undefined,
+              },
+            },
+            displayShortcut.key
+          ),
+        ]
+      );
+    }
+
+    return h(
+      'span',
+      {
+        class: ['text-caption'],
+        title: displayShortcut.label,
+        'aria-label': displayShortcut.label,
+        'aria-keyshortcuts': displayShortcut.label,
+        style: {
+          fontWeight: '500',
+          fontSize: item.$params.shortcutFontSize || '0.5rem',
+          letterSpacing: '0.02em',
+          color: 'inherit',
+          opacity: '1',
+        },
+      },
+      displayShortcut.label
     );
   }
 
@@ -407,13 +491,13 @@ export class Menu extends UIBase {
       return;
     }
 
-    const eventShortcut = this.normalizeShortcutFromEvent(ev);
+    const eventShortcut = normalizeShortcutFromEvent(ev);
     if (!eventShortcut) {
       return;
     }
 
     for (const item of this.childrenInstances) {
-      const itemShortcut = this.normalizeShortcut(item.$params.shortcut);
+      const itemShortcut = normalizeShortcut(item.$params.shortcut);
       if (!itemShortcut || itemShortcut !== eventShortcut) {
         continue;
       }
@@ -443,87 +527,6 @@ export class Menu extends UIBase {
     return false;
   }
 
-  private normalizeShortcut(shortcut?: string) {
-    if (!shortcut) {
-      return undefined;
-    }
-
-    const tokens = shortcut
-      .split('+')
-      .map((token) => token.trim().toLowerCase())
-      .filter((token) => token !== '');
-
-    if (tokens.length === 0) {
-      return undefined;
-    }
-
-    let ctrl = false;
-    let alt = false;
-    let shift = false;
-    let meta = false;
-    let key: string | undefined;
-
-    for (const token of tokens) {
-      if (['ctrl', 'control'].includes(token)) {
-        ctrl = true;
-        continue;
-      }
-
-      if (['alt', 'option'].includes(token)) {
-        alt = true;
-        continue;
-      }
-
-      if (token === 'shift') {
-        shift = true;
-        continue;
-      }
-
-      if (['cmd', 'command', 'meta'].includes(token)) {
-        meta = true;
-        continue;
-      }
-
-      key = this.normalizeShortcutKey(token);
-    }
-
-    if (!key) {
-      return undefined;
-    }
-
-    return `${ctrl ? 'ctrl+' : ''}${alt ? 'alt+' : ''}${shift ? 'shift+' : ''}${meta ? 'meta+' : ''}${key}`;
-  }
-
-  private normalizeShortcutFromEvent(ev: KeyboardEvent) {
-    const key = this.normalizeShortcutKey(ev.key);
-    if (!key) {
-      return undefined;
-    }
-
-    return `${ev.ctrlKey ? 'ctrl+' : ''}${ev.altKey ? 'alt+' : ''}${ev.shiftKey ? 'shift+' : ''}${ev.metaKey ? 'meta+' : ''}${key}`;
-  }
-
-  private normalizeShortcutKey(key?: string) {
-    if (!key) {
-      return undefined;
-    }
-
-    const normalized = key.trim().toLowerCase();
-    const aliases: Record<string, string> = {
-      esc: 'escape',
-      return: 'enter',
-      ' ': 'space',
-      spacebar: 'space',
-      left: 'arrowleft',
-      right: 'arrowright',
-      up: 'arrowup',
-      down: 'arrowdown',
-      del: 'delete',
-    };
-
-    return aliases[normalized] || normalized;
-  }
-
   private handleOn(event: string, data?: any) {
     if (this.options.on) {
       const events = this.options.on(this);
@@ -544,6 +547,9 @@ export interface MenuItemParams {
   text?: string;
   subText?: string;
   shortcut?: string;
+  shortcutDisplay?: 'text'|'compact';
+  shortcutFontSize?: string | number;
+  shortcutShiftIcon?: string;
   icon?: string;
   color?: string;
   textColor?: string;

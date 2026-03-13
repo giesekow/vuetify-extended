@@ -636,7 +636,8 @@ function buildHomeMenu() {
             subText: 'Full report with multiple forms and many field types.',
             icon: 'mdi-form-select',
             color: 'primary',
-            shortcut: 'U'
+            shortcut: 'U',
+            shortcutDisplay: 'compact'
           },
           {
             report: async () => buildFullReport({ objectId: 'person-1', mode: 'edit', title: 'Person Workspace' }),
@@ -650,6 +651,8 @@ function buildHomeMenu() {
             subText: 'Exercises create mode and save flow.',
             icon: 'mdi-plus-box',
             color: 'indigo',
+            shortcut: 'CTRL+ALT+K',
+            shortcutDisplay: 'compact'
           },
           {
             report: async () => buildFullReport({ mode: 'create', title: 'New Person Workspace' }),
