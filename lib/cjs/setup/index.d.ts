@@ -10,24 +10,35 @@ import { DialogOptions } from '../ui/dialogs';
 import { NotificationOptions } from '../ui/notifications';
 import { type FieldParams } from '../ui/field';
 import { type FormParams } from '../ui/form';
+import { type MailboxBellParams, type MailboxViewParams } from '../ui/mailbox';
 import { type MenuItemParams, type MenuParams } from '../ui/menu';
 import { type PartParams } from '../ui/part';
 import { type ReportParams } from '../ui/report';
 import { type SelectorParams } from '../ui/selector';
+import { type AppTitleBlockParams, type EnvironmentTagParams, type StatusBadgeParams, type UserAreaParams } from '../ui/shell';
 import { type TriggerParams } from '../ui/trigger';
+import { type MasterOptions } from '../master';
 export interface VuetifyExtendedDefaults {
     app?: AppParams;
+    appTitleBlock?: AppTitleBlockParams;
     button?: ButtonParams;
     collection?: CollectionParams;
     dialogForm?: DialogParams;
+    environmentTag?: EnvironmentTagParams;
     field?: FieldParams;
     form?: FormParams;
+    mailboxBell?: MailboxBellParams;
+    mailboxView?: MailboxViewParams;
+    master?: MasterOptions;
     menu?: MenuParams;
     menuItem?: MenuItemParams;
+    notifications?: NotificationOptions;
     part?: PartParams;
     report?: ReportParams;
     selector?: SelectorParams;
+    statusBadge?: StatusBadgeParams;
     trigger?: TriggerParams;
+    userArea?: UserAreaParams;
 }
 export type VuetifyExtendedApiConfig = {
     type: 'feathers';

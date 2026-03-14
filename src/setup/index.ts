@@ -18,25 +18,36 @@ import { DialogOptions, Dialogs } from '../ui/dialogs';
 import { NotificationOptions, Notifications } from '../ui/notifications';
 import { Field, type FieldParams } from '../ui/field';
 import { Form, type FormParams } from '../ui/form';
+import { MailboxBell, MailboxView, type MailboxBellParams, type MailboxViewParams } from '../ui/mailbox';
 import { Menu, MenuItem, type MenuItemParams, type MenuParams } from '../ui/menu';
 import { Part, type PartParams } from '../ui/part';
 import { Report, type ReportParams } from '../ui/report';
 import { Selector, type SelectorParams } from '../ui/selector';
+import { AppTitleBlock, EnvironmentTag, StatusBadge, UserArea, type AppTitleBlockParams, type EnvironmentTagParams, type StatusBadgeParams, type UserAreaParams } from '../ui/shell';
 import { Trigger, type TriggerParams } from '../ui/trigger';
+import { Master, type MasterOptions } from '../master';
 
 export interface VuetifyExtendedDefaults {
   app?: AppParams;
+  appTitleBlock?: AppTitleBlockParams;
   button?: ButtonParams;
   collection?: CollectionParams;
   dialogForm?: DialogParams;
+  environmentTag?: EnvironmentTagParams;
   field?: FieldParams;
   form?: FormParams;
+  mailboxBell?: MailboxBellParams;
+  mailboxView?: MailboxViewParams;
+  master?: MasterOptions;
   menu?: MenuParams;
   menuItem?: MenuItemParams;
+  notifications?: NotificationOptions;
   part?: PartParams;
   report?: ReportParams;
   selector?: SelectorParams;
+  statusBadge?: StatusBadgeParams;
   trigger?: TriggerParams;
+  userArea?: UserAreaParams;
 }
 
 export type VuetifyExtendedApiConfig =
@@ -121,17 +132,25 @@ function createAppMain(options?: VuetifyExtendedAppFactoryOptions['app'], overri
 
 export function configureVuetifyExtendedDefaults(defaults: VuetifyExtendedDefaults, reset?: boolean) {
   if (defaults.app) AppMain.setDefault(defaults.app, reset);
+  if (defaults.appTitleBlock) AppTitleBlock.setDefault(defaults.appTitleBlock, reset);
   if (defaults.button) Button.setDefault(defaults.button, reset);
   if (defaults.collection) Collection.setDefault(defaults.collection, reset);
   if (defaults.dialogForm) DialogForm.setDefault(defaults.dialogForm, reset);
+  if (defaults.environmentTag) EnvironmentTag.setDefault(defaults.environmentTag, reset);
   if (defaults.field) Field.setDefault(defaults.field, reset);
   if (defaults.form) Form.setDefault(defaults.form, reset);
+  if (defaults.mailboxBell) MailboxBell.setDefault(defaults.mailboxBell, reset);
+  if (defaults.mailboxView) MailboxView.setDefault(defaults.mailboxView, reset);
+  if (defaults.master) Master.setDefault(defaults.master, reset);
   if (defaults.menu) Menu.setDefault(defaults.menu, reset);
   if (defaults.menuItem) MenuItem.setDefault(defaults.menuItem, reset);
+  if (defaults.notifications) Notifications.setDefault(defaults.notifications, reset);
   if (defaults.part) Part.setDefault(defaults.part, reset);
   if (defaults.report) Report.setDefault(defaults.report, reset);
   if (defaults.selector) Selector.setDefault(defaults.selector, reset);
+  if (defaults.statusBadge) StatusBadge.setDefault(defaults.statusBadge, reset);
   if (defaults.trigger) Trigger.setDefault(defaults.trigger, reset);
+  if (defaults.userArea) UserArea.setDefault(defaults.userArea, reset);
 }
 
 export function validateVuetifyExtendedSetup(options?: { requireApi?: boolean; warn?: boolean }): VuetifyExtendedSetupStatus {
