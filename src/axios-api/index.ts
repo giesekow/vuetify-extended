@@ -177,9 +177,9 @@ class AxiosServiceClient<T = any> extends SimpleEventEmitter implements AxiosSer
 
     const query = params?.query;
     if (query) {
-      if (this.app.queryMode === 'params') {
-        config.params = { ...(config.params || {}), ...query };
-      } else {
+      config.params = { ...(config.params || {}), ...query };
+
+      if (this.app.queryMode === 'rawquery-header') {
         config.headers = {
           ...(config.headers || {}),
           rawquery: JSON.stringify(query),
