@@ -22,6 +22,8 @@ The UI layer is class-based and centers around `UIBase` descendants that render 
   Most flexible input/display primitive in the library. `Field` covers text inputs, selects, editors, tables, charts, maps, collections, messaging UI, and file/image/document display.
 - [Form](./Form.md)
   Composable form container that hosts fields, action buttons, validation, save/cancel flows, and keyboard-first behavior.
+- [Fullscreen](./Fullscreen.md)
+  Full-screen utility widgets for access-denied and splash/loading states that can be used through `.component` or the normal UI stack.
 - [Mailbox](./Mailbox.md)
   Host-delegated mailbox/inbox system with a stack-based mailbox screen, header bell widget, pagination, unread state, and item actions.
 - [Menu](./Menu.md)

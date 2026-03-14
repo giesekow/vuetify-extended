@@ -23,6 +23,8 @@ import {
   StatusBadge,
   UserArea,
   MailboxView,
+  AccessDeniedScreen,
+  SplashScreen,
 } from '../../src';
 import {
   createSeedStore,
@@ -742,6 +744,55 @@ function buildNestedMenu() {
               Mailbox.push(item);
               Mailbox.setUnread(demoMailboxUnreadCount());
               Notifications.$info('A new mailbox item was added.', { title: 'Mailbox Updated' });
+            },
+          },
+        ),
+        new MenuItem(
+          {
+            action: 'function',
+            text: 'Show Access Denied Screen',
+            subText: 'Full-screen access denied utility screen rendered through the stack.',
+            icon: 'mdi-shield-lock-outline',
+            color: 'error',
+          },
+          {
+            callback: async () => {
+              AppManager.showUI(new AccessDeniedScreen(
+                {
+                  title: 'Workspace Access Required',
+                  subtitle: 'Authorization Needed',
+                  message: 'Your account is authenticated, but this tenant is not available for the current role. Please request access from the platform administrator.',
+                  actionText: 'Return Home',
+                  backgroundGradient: 'radial-gradient(circle at top, rgba(248,113,113,0.20), transparent 44%), linear-gradient(160deg, #111827 0%, #1f2937 52%, #334155 100%)',
+                },
+                {
+                  action: async () => {
+                    AppManager.back();
+                  },
+                },
+              ));
+            },
+          },
+        ),
+        new MenuItem(
+          {
+            action: 'function',
+            text: 'Show Splash Screen',
+            subText: 'Full-screen splash/loading utility screen with branding.',
+            icon: 'mdi-rocket-launch-outline',
+            color: 'info',
+          },
+          {
+            callback: async () => {
+              AppManager.showUI(new SplashScreen({
+                title: 'Vuetify Extended',
+                subtitle: 'Demo Workspace',
+                message: 'Loading demo services, shell widgets, mailbox data, and keyboard bindings.',
+                loadingText: 'Preparing the workspace…',
+                logo: 'https://upload.wikimedia.org/wikipedia/commons/9/95/Vue.js_Logo_2.svg',
+                backgroundGradient: 'radial-gradient(circle at top, rgba(16,185,129,0.18), transparent 40%), linear-gradient(180deg, #f8fbff 0%, #e8f3ef 100%)',
+                progressColor: 'success',
+              }));
             },
           },
         ),

@@ -14,3 +14,5 @@ export * from './menu';
 export * from './appmain';
 export * from './appmanager';
 export * from './shell';
+
+export * from './fullscreen';
