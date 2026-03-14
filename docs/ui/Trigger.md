@@ -107,6 +107,27 @@ export class Trigger extends UIBase {
 - `static setDefault(value: TriggerParams, reset?: boolean)`
 - `render(props: any, context: any)`
 
+
+## Keyboard Navigation
+
+When trigger results are visible, the trigger table supports keyboard-first navigation in addition to mouse interaction.
+
+- `ArrowUp` / `ArrowDown`
+  Move a trigger-local active-row highlight through the current result table, even when focus is still in the trigger search field.
+- `Ctrl+Enter` on Windows/Linux
+- `Cmd+Enter` on macOS
+  Activate the current active row using the same behavior as clicking the row.
+- `PageUp`
+  Load the previous result page when the server table has one.
+- `PageDown`
+  Load the next result page when the server table has one.
+- `Enter`
+  Still triggers the current search from the search text field.
+- `Home` / `End`
+  Are intentionally left alone so normal text-cursor movement still works in focused fields.
+
+The active-row highlight is separate from checkbox selection. In multiple-selection triggers, keyboard row navigation does not replace the selected-items model; it only determines the current row for keyboard activation.
+
 ## ID Resolution
 
 - `TriggerParams.idField` is used first for selected records, result tables, and remove actions.

@@ -89,6 +89,8 @@ export declare class Trigger extends UIBase {
     private currentSearchText;
     private computedHeaders;
     private tableOptions;
+    private activeRowIndex;
+    private resultTableRoot;
     private loaded;
     private loading;
     private hasPrintAccess;
@@ -154,6 +156,19 @@ export declare class Trigger extends UIBase {
     private onSearchClicked;
     private onTableItemClicked;
     private onSelectionChanged;
+    private setResultTableRoot;
+    private buildTableRowProps;
+    private resolveRowIndex;
+    private hasTableItems;
+    private syncActiveRowAfterLoad;
+    private setActiveRowByItem;
+    private moveActiveRow;
+    private scrollActiveRowIntoView;
+    private activateActiveRow;
+    private hasPreviousPage;
+    private hasNextPage;
+    private goToRelativePage;
+    private handleTableKeyboardNavigation;
     setup(props: any, context: any): void;
     print(): Promise<void>;
     beforePrint(): Promise<any | undefined>;

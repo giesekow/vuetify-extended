@@ -1,4 +1,4 @@
-import { VNode, Ref } from "vue";
+import { VNode, Ref, nextTick } from "vue";
 import { ReportMode, UIBase } from "./base";
 import { VDivider, VRow, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VCardSubtitle, VTextField, VCol, VContainer, VLayout, VAutocomplete, VBtn, VMenu } from 'vuetify/components';
 import { Button, ButtonParams } from "./button";
@@ -100,6 +100,8 @@ export class Trigger extends UIBase {
   private currentSearchText: string;
   private computedHeaders: Ref<any[]|undefined>;
   private tableOptions: Ref<ServerTableOptions>;
+  private activeRowIndex: Ref<number>;
+  private resultTableRoot: Ref<HTMLElement|undefined>;
   private loaded = false;
   private loading: Ref<boolean> = this.$makeRef(false);
   private hasPrintAccess: Ref<boolean>;
@@ -127,6 +129,8 @@ export class Trigger extends UIBase {
     this.searchText = this.$makeRef("");
     this.selectedSearchFields = this.$makeRef([])
     this.tableOptions = this.$makeRef({page: 1, itemsPerPage: 10, total: 0});
+    this.activeRowIndex = this.$makeRef(-1);
+    this.resultTableRoot = this.$makeRef();
     this.currentSearchText = "";
     this.searchFieldItems = this.$makeRef([]);
     this.searchFieldData = {};
@@ -344,6 +348,8 @@ export class Trigger extends UIBase {
         this.tableOptions.value.itemsPerPage = data.limit;
         this.tableOptions.value.page = options.page;
       }
+
+      this.syncActiveRowAfterLoad();
     } finally {
       this.loading.value = false;
     }
@@ -584,7 +590,8 @@ export class Trigger extends UIBase {
         VCol,
         {
           cols: 12,
-          class: ['pt-0']
+          class: ['pt-0'],
+          ref: (el: Element | any) => this.setResultTableRoot(el),
         },
         () => h(
           VDataTableServer,
@@ -608,6 +615,7 @@ export class Trigger extends UIBase {
             fixedHeader: true,
             fixedFooter: true,
             hover: true,
+            rowProps: (slot: any) => this.buildTableRowProps(slot),
             "onUpdate:options": (options: any) => this.onTableOptionsChanged(options),
             "onClick:row": (ev: any, item: any) => this.onTableItemClicked(item),
             "onUpdate:modelValue": (options: any) => this.onSelectionChanged(options)
@@ -1003,6 +1011,10 @@ export class Trigger extends UIBase {
       return;
     }
 
+    if (this.handleTableKeyboardNavigation(ev)) {
+      return;
+    }
+
     this.triggerButtonShortcut(ev);
   }
 
@@ -1096,17 +1108,220 @@ export class Trigger extends UIBase {
       total: 0
     };
 
+    this.activeRowIndex.value = -1;
     this.currentSearchText = this.searchText.value;
     await this.loadItems(options);
   }
 
   private async onTableItemClicked(options: any) {
     const item: any = options?.item || {};
+    this.setActiveRowByItem(item);
     this.handleOn("selected", item);
   }
 
   private async onSelectionChanged(options: any) {
     this.selected.value = options;
+  }
+
+
+  private setResultTableRoot(el: Element | any) {
+    if (el instanceof HTMLElement) {
+      this.resultTableRoot.value = el;
+      return;
+    }
+
+    const root = el?.$el;
+    this.resultTableRoot.value = root instanceof HTMLElement ? root : undefined;
+  }
+
+  private buildTableRowProps(slot: any) {
+    const index = this.resolveRowIndex(slot);
+    const active = index >= 0 && index === this.activeRowIndex.value;
+
+    return {
+      'data-trigger-row-index': index >= 0 ? String(index) : undefined,
+      'aria-selected': active ? 'true' : 'false',
+      style: active ? {
+        outline: '2px solid rgb(var(--v-theme-primary))',
+        outlineOffset: '-2px',
+        background: 'rgba(var(--v-theme-primary), 0.10)',
+      } : undefined,
+      onMouseenter: () => {
+        if (index >= 0) {
+          this.activeRowIndex.value = index;
+        }
+      },
+    };
+  }
+
+  private resolveRowIndex(slot: any): number {
+    if (typeof slot?.index === 'number') {
+      return slot.index;
+    }
+
+    const raw = slot?.item?.raw || slot?.item || slot?.internalItem?.raw;
+    return (this.items.value || []).indexOf(raw);
+  }
+
+  private hasTableItems() {
+    return (this.items.value || []).length > 0;
+  }
+
+  private syncActiveRowAfterLoad() {
+    const items = this.items.value || [];
+    if (items.length === 0) {
+      this.activeRowIndex.value = -1;
+      return;
+    }
+
+    if (this.activeRowIndex.value < 0) {
+      return;
+    }
+
+    if (this.activeRowIndex.value >= items.length) {
+      this.activeRowIndex.value = items.length - 1;
+    }
+
+    this.scrollActiveRowIntoView();
+  }
+
+  private setActiveRowByItem(item: any) {
+    if (!(item || item === 0)) {
+      return;
+    }
+
+    const items = this.items.value || [];
+    const itemId = Master.getItemId(item, this.params.value.idField);
+    const index = items.findIndex((entry: any) => Master.matchesItemId(entry, itemId, this.params.value.idField) || entry === item);
+    if (index >= 0) {
+      this.activeRowIndex.value = index;
+      this.scrollActiveRowIntoView();
+    }
+  }
+
+  private moveActiveRow(delta: number) {
+    const items = this.items.value || [];
+    if (items.length === 0) {
+      return false;
+    }
+
+    if (this.activeRowIndex.value < 0) {
+      this.activeRowIndex.value = 0;
+    } else {
+      const nextIndex = Math.max(0, Math.min(items.length - 1, this.activeRowIndex.value + delta));
+      this.activeRowIndex.value = nextIndex;
+    }
+
+    this.scrollActiveRowIntoView();
+    return true;
+  }
+
+  private async scrollActiveRowIntoView() {
+    await nextTick();
+
+    const root = this.resultTableRoot.value;
+    if (!root || this.activeRowIndex.value < 0) {
+      return;
+    }
+
+    const row = root.querySelector(`[data-trigger-row-index="${this.activeRowIndex.value}"]`) as HTMLElement | null;
+    row?.scrollIntoView({ block: 'nearest' });
+  }
+
+  private async activateActiveRow() {
+    const items = this.items.value || [];
+    if (items.length === 0) {
+      return false;
+    }
+
+    const index = this.activeRowIndex.value >= 0 ? this.activeRowIndex.value : 0;
+    const item = items[index];
+    if (!item) {
+      return false;
+    }
+
+    this.activeRowIndex.value = index;
+    await this.onTableItemClicked({ item });
+    return true;
+  }
+
+  private hasPreviousPage() {
+    return (this.tableOptions.value.page || 1) > 1;
+  }
+
+  private hasNextPage() {
+    const itemsPerPage = Number(this.tableOptions.value.itemsPerPage || 0);
+    if (itemsPerPage <= 0) {
+      return false;
+    }
+
+    const total = Number(this.tableOptions.value.total || 0);
+    return (this.tableOptions.value.page || 1) < Math.ceil(total / itemsPerPage);
+  }
+
+  private async goToRelativePage(delta: number) {
+    const itemsPerPage = this.tableOptions.value.itemsPerPage;
+    if (!(Number(itemsPerPage) > 0)) {
+      return false;
+    }
+
+    const page = (this.tableOptions.value.page || 1) + delta;
+    if (page < 1) {
+      return false;
+    }
+
+    if (delta < 0 && !this.hasPreviousPage()) {
+      return false;
+    }
+
+    if (delta > 0 && !this.hasNextPage()) {
+      return false;
+    }
+
+    this.activeRowIndex.value = -1;
+    await this.loadItems({
+      page,
+      itemsPerPage: this.tableOptions.value.itemsPerPage,
+      total: this.tableOptions.value.total,
+      selectedFilterFields: this.selectedSearchFields.value || [],
+    });
+    return true;
+  }
+
+  private handleTableKeyboardNavigation(ev: KeyboardEvent) {
+    if (ev.altKey) {
+      return false;
+    }
+
+    if (!ev.ctrlKey && !ev.metaKey && !ev.shiftKey && ev.key === 'ArrowDown' && this.hasTableItems()) {
+      ev.preventDefault();
+      return this.moveActiveRow(1);
+    }
+
+    if (!ev.ctrlKey && !ev.metaKey && !ev.shiftKey && ev.key === 'ArrowUp' && this.hasTableItems()) {
+      ev.preventDefault();
+      return this.moveActiveRow(-1);
+    }
+
+    if (!ev.altKey && !ev.shiftKey && (ev.ctrlKey || ev.metaKey) && (ev.key === 'Enter' || ev.key === 'Return') && this.hasTableItems()) {
+      ev.preventDefault();
+      void this.activateActiveRow();
+      return true;
+    }
+
+    if (!ev.ctrlKey && !ev.metaKey && !ev.shiftKey && ev.key === 'PageUp') {
+      ev.preventDefault();
+      void this.goToRelativePage(-1);
+      return true;
+    }
+
+    if (!ev.ctrlKey && !ev.metaKey && !ev.shiftKey && ev.key === 'PageDown') {
+      ev.preventDefault();
+      void this.goToRelativePage(1);
+      return true;
+    }
+
+    return false;
   }
 
   setup(props: any, context: any) {

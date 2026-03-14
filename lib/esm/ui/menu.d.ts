@@ -41,7 +41,12 @@ export declare class Menu extends UIBase {
     private childrenInstances;
     private loaded;
     private shortcutHandler?;
+    private resizeHandler?;
+    private resizeObserver?;
     private activeIndex;
+    private menuTopOffset;
+    private hostElement;
+    private contentElement;
     private cardElements;
     private static defaultParams;
     constructor(params?: MenuParams, options?: MenuOptions);
@@ -64,6 +69,9 @@ export declare class Menu extends UIBase {
     private setCardElement;
     private setActiveIndex;
     private ensureActiveCardVisible;
+    private setHostElement;
+    private setContentElement;
+    private updateVerticalLayout;
     private activateCurrentItem;
     private moveActiveIndex;
     private itemClicked;
@@ -71,6 +79,10 @@ export declare class Menu extends UIBase {
     $reload(): Promise<void>;
     forceCancel(): Promise<void>;
     setup(props: any, context: any): void;
+    mounted(): void;
+    unmounted(): void;
+    private setupVerticalLayoutObservers;
+    private teardownVerticalLayoutObservers;
     attachEventListeners(): void;
     removeEventListeners(): void;
     private onShortcutKeydown;

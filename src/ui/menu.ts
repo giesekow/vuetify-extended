@@ -48,7 +48,12 @@ export class Menu extends UIBase {
   private childrenInstances: Array<MenuItem> = [];
   private loaded: Ref<boolean>;
   private shortcutHandler?: (ev: KeyboardEvent) => void;
+  private resizeHandler?: () => void;
+  private resizeObserver?: ResizeObserver;
   private activeIndex: Ref<number>;
+  private menuTopOffset: Ref<number>;
+  private hostElement: Ref<HTMLElement|undefined>;
+  private contentElement: Ref<HTMLElement|undefined>;
   private cardElements: Array<HTMLElement | undefined> = [];
   private static defaultParams: MenuParams = {
     keyboardNavigation: true,
@@ -60,6 +65,9 @@ export class Menu extends UIBase {
     this.options = options || {};
     this.loaded = this.$makeRef(false);
     this.activeIndex = this.$makeRef(-1);
+    this.menuTopOffset = this.$makeRef(0);
+    this.hostElement = this.$makeRef();
+    this.contentElement = this.$makeRef();
   }
 
   static setDefault(value: MenuParams, reset?: boolean): void {
@@ -108,41 +116,69 @@ export class Menu extends UIBase {
     return h(
       'div',
       {
+        ref: (el: Element | any) => this.setHostElement(el),
         style: {
           height: 'calc(100vh - var(--v-layout-top, 0px) - var(--v-layout-bottom, 0px))',
           width: '100%',
           boxSizing: 'border-box',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
           overflowY: 'auto',
           overflowX: 'hidden',
         },
       },
       [
         h(
-          VContainer,
+          'div',
           {
-            class: ['py-4'],
             style: {
               width: '100%',
+              boxSizing: 'border-box',
             },
           },
-          () => h(
-            VCol,
-            {
-              class: ['mx-auto'],
-              cols: this.params.value.containerCols || 12,
-              lg: this.params.value.containerLg,
-              xs: this.params.value.containerXs,
-              md: this.params.value.containerMd,
-              xl: this.params.value.containerXl,
-              xxl: this.params.value.containerXxl,
-              sm: this.params.value.containerSm,
-              style: { paddingTop: '16px', paddingBottom: '16px', paddingLeft: '24px', paddingRight: '24px', overflow: 'visible' },
-            },
-            () => this.build(props, context)
-          )
+          [
+            h('div', {
+              style: {
+                height: `${this.menuTopOffset.value}px`,
+                width: '100%',
+                flexShrink: 0,
+              },
+            }),
+            h(
+              'div',
+              {
+                ref: (el: Element | any) => this.setContentElement(el),
+                style: {
+                  width: '100%',
+                  boxSizing: 'border-box',
+                },
+              },
+              [
+                h(
+                  VContainer,
+                  {
+                    class: ['py-4'],
+                    style: {
+                      width: '100%',
+                    },
+                  },
+                  () => h(
+                    VCol,
+                    {
+                      class: ['mx-auto'],
+                      cols: this.params.value.containerCols || 12,
+                      lg: this.params.value.containerLg,
+                      xs: this.params.value.containerXs,
+                      md: this.params.value.containerMd,
+                      xl: this.params.value.containerXl,
+                      xxl: this.params.value.containerXxl,
+                      sm: this.params.value.containerSm,
+                      style: { paddingTop: '16px', paddingBottom: '16px', paddingLeft: '24px', paddingRight: '24px', overflow: 'visible' },
+                    },
+                    () => this.build(props, context)
+                  )
+                )
+              ]
+            )
+          ]
         )
       ]
     );
@@ -448,6 +484,7 @@ export class Menu extends UIBase {
 
     this.loaded.value = true;
     void this.ensureActiveCardVisible();
+    void this.updateVerticalLayout();
   }
 
   private menuCardStyle(index: number) {
@@ -492,6 +529,65 @@ export class Menu extends UIBase {
     await nextTick();
     const el = this.cardElements[this.activeIndex.value];
     el?.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+  }
+
+
+  private setHostElement(el: Element | any) {
+    const root = el instanceof HTMLElement ? el : el?.$el;
+    const nextRoot = root instanceof HTMLElement ? root : undefined;
+
+    if (this.hostElement.value === nextRoot) {
+      return;
+    }
+
+    this.hostElement.value = nextRoot;
+    if (this.resizeObserver && nextRoot) {
+      this.resizeObserver.observe(nextRoot);
+    }
+    void this.updateVerticalLayout();
+  }
+
+  private setContentElement(el: Element | any) {
+    const root = el instanceof HTMLElement ? el : el?.$el;
+    const nextRoot = root instanceof HTMLElement ? root : undefined;
+
+    if (this.contentElement.value === nextRoot) {
+      return;
+    }
+
+    this.contentElement.value = nextRoot;
+    if (this.resizeObserver && nextRoot) {
+      this.resizeObserver.observe(nextRoot);
+    }
+    void this.updateVerticalLayout();
+  }
+
+  private async updateVerticalLayout() {
+    await nextTick();
+
+    const host = this.hostElement.value;
+    const content = this.contentElement.value;
+    if (!host || !content) {
+      return;
+    }
+
+    const usableHeight = host.clientHeight;
+    const contentHeight = content.scrollHeight;
+
+    if (!usableHeight || !contentHeight) {
+      this.menuTopOffset.value = 0;
+      return;
+    }
+
+    if (contentHeight >= usableHeight) {
+      this.menuTopOffset.value = 0;
+      return;
+    }
+
+    const freeSpace = Math.max(usableHeight - contentHeight, 0);
+    const centeredTop = freeSpace / 2;
+    const oneThirdTop = freeSpace / 3;
+    this.menuTopOffset.value = Math.max(Math.floor(Math.min(centeredTop, oneThirdTop)), 0);
   }
 
   private activateCurrentItem() {
@@ -644,6 +740,50 @@ export class Menu extends UIBase {
     this.handleOn('setup', this);
   }
 
+  mounted() {
+    this.setupVerticalLayoutObservers();
+    void this.updateVerticalLayout();
+  }
+
+  unmounted() {
+    this.teardownVerticalLayoutObservers();
+  }
+
+  private setupVerticalLayoutObservers() {
+    if (typeof window !== 'undefined' && !this.resizeHandler) {
+      this.resizeHandler = () => {
+        void this.updateVerticalLayout();
+      };
+      window.addEventListener('resize', this.resizeHandler);
+    }
+
+    if (typeof ResizeObserver !== 'undefined' && !this.resizeObserver) {
+      this.resizeObserver = new ResizeObserver(() => {
+        void this.updateVerticalLayout();
+      });
+
+      if (this.hostElement.value) {
+        this.resizeObserver.observe(this.hostElement.value);
+      }
+
+      if (this.contentElement.value) {
+        this.resizeObserver.observe(this.contentElement.value);
+      }
+    }
+  }
+
+  private teardownVerticalLayoutObservers() {
+    if (typeof window !== 'undefined' && this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
+      this.resizeHandler = undefined;
+    }
+
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = undefined;
+    }
+  }
+
   attachEventListeners() {
     super.attachEventListeners();
 
@@ -661,6 +801,7 @@ export class Menu extends UIBase {
       this.shortcutHandler = undefined;
     }
 
+    this.teardownVerticalLayoutObservers();
     super.removeEventListeners();
   }
 
