@@ -33,6 +33,7 @@ It is less focused on template-heavy, animation-heavy, or design-system-first fr
 - [docs/architecture.md](./docs/architecture.md)
 - [docs/general-information.md](./docs/general-information.md)
 - [test/README.md](./test/README.md)
+- [starter-template/README.md](./starter-template/README.md)
 
 ## Installation
 
@@ -126,6 +127,14 @@ Available options include:
 - `fabButtons?: (app, item, stackItem) => Button[]`
 
 If neither header nor footer is enabled, `AppMain` renders the same way it did before. When enabled, it wraps the stack content in a Vuetify `VApp` / `VAppBar` / `VMain` / `VFooter` scaffold. The structured header/footer regions make it easier to place shell widgets such as a mailbox bell, user area, environment tag, or status badges without building a custom header row in every app.
+
+`UserArea` is now designed as a dropdown account menu. The shell trigger can be just the avatar/icon, while the dropdown header shows the user name, subtitle, email, account ID, and optional avatar image. Custom menu actions are supplied by the host app through an async `buttons()` factory that returns `Button` instances and labeled separator entries.
+
+## Starter Template
+
+The repository now also includes a git-based starter app under [`starter-template/`](./starter-template/).
+
+It mirrors the local `test/` playground structure, but imports `vuetify-extended` from the GitHub package instead of `../../src`. The starter template keeps its bootstrap logic in `starter-template/src/bootstrap.ts` so `main.ts` stays focused on app mounting.
 
 ## Main Exports
 
@@ -227,6 +236,15 @@ Api.useFeathers('https://api.example.com', keycloakConfig, {
 })
 ```
 
+Both backends now expose the same high-level auth and socket state surface on `Api.instance`, including:
+
+- `user` / `userRef`
+- `token` / `tokenRef`
+- `authenticatedRef`
+- `permissionsRef`
+- `socket` / `onSocket(...)` / `offSocket(...)` / `emitSocket(...)`
+- `socketConnectedRef`
+
 ### Axios backend
 
 If you want the general-purpose axios implementation with the same `Api.instance.service(...)` shape:
@@ -237,6 +255,10 @@ import { Api } from 'vuetify-extended'
 Api.useAxios('https://api.example.com', {
   useSocket: true,
   socketEvent: 'service-event',
+  authPath: 'auth/me',
+  authCreateMethod: 'get',
+  refreshAuthPath: 'auth/me',
+  authRefreshMethod: 'get',
   keycloakConfig: {
     url: 'https://sso.example.com',
     realm: 'example',
@@ -1002,6 +1024,13 @@ Notifications example:
 Notifications.$success('Saved successfully', { title: 'Profile Updated' })
 Notifications.$warning('Background sync is delayed', { title: 'Heads up' })
 ```
+
+Reactive mailbox state is also exposed directly through:
+
+- `Mailbox.itemsRef`
+- `Mailbox.loadingRef`
+- `Mailbox.hasMoreRef`
+- `Mailbox.unreadCountRef`
 
 Mailbox example:
 

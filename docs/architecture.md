@@ -370,6 +370,7 @@ Responsibilities:
 - Offer convenience methods like `showReport`, `showMenu`, `showDialog`, `back`, and `reload`
 
 This split gives the library a singleton-like application API while keeping the actual shell instance in `AppMain`. `AppMain` now also owns optional shell framing, global FAB presentation, and the entry point used by shell widgets such as `MailboxBell`.
+ `AppMain` also exposes `stackRef` and `activeItemRef`, while `Report` exposes `currentStepRef` and `totalStepsRef`, so shell-level UI can react to navigation and workflow progress without custom event bridges.
 
 ## Setup Responsibilities
 
@@ -537,6 +538,8 @@ The runtime now includes two non-form feedback/inbox systems alongside `Dialogs`
 
 `MailboxView` extends `UIBase`, so it can be opened through `AppManager.showUI(...)` and behaves like other stack-based screens. `MailboxBell` is a shell widget that simply opens `MailboxView` and shows the unread badge in the shell.
 
+`Mailbox` also exposes its internal screen state as Vue refs (`itemsRef`, `loadingRef`, `hasMoreRef`, `unreadCountRef`) so shell widgets and host apps can bind to mailbox state directly without mirroring it.
+
 ## API Backend Strategy
 
 The project now uses an adapter-style API abstraction.
@@ -548,6 +551,8 @@ The UI layer only depends on a small common surface:
 - `Api.instance.service(path)`
 - service methods like `findAll`, `findOne`, `count`, `get`, `create`, `patch`, and `remove`
 - auth helpers such as `login`, `logout`, and `reAuthenticate`
+- current auth state via `user`, `token`, `userRef`, `tokenRef`, `authenticatedRef`, and `permissionsRef`
+- optional custom socket access via `socket`, `onSocket(...)`, `offSocket(...)`, and `emitSocket(...)`
 
 This lets the UI remain backend-agnostic as long as the active client satisfies the shared contract.
 
@@ -566,6 +571,8 @@ This lets the UI remain backend-agnostic as long as the active client satisfies 
 - the same `Api.instance.service(...)` style
 - Keycloak-backed bearer auth
 - backend swapping without changing the UI layer
+
+It now also supports optional Socket.IO event routing and direct `GET`-based current-user sync against endpoints such as `/auth/me`.
 
 ## Packaging and Distribution
 

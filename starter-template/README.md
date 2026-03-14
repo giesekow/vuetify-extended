@@ -24,6 +24,7 @@ npm run build
 
 - Vue 3 + Vuetify 3 + Vite
 - `createVuetifyExtendedApp(...)` bootstrap usage
+- `src/bootstrap.ts` for app/bootstrap wiring so `main.ts` stays clean
 - Dialogs and notifications roots mounted from the package
 - In-memory demo API and seeded demo data
 - Demo screens for menus, reports, triggers, mailbox, notifications, and shell widgets

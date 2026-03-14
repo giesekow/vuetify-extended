@@ -33,6 +33,9 @@ lib/
 test/
   src/         Manual Vue + Vuetify playground
   README.md    Playground usage notes
+starter-template/
+  src/         Package-based starter app
+  README.md    Starter usage notes
 ```
 
 ## Main Public Modules
@@ -63,6 +66,7 @@ Key exports:
 - `EnvironmentTag`
 - `StatusBadge`
 - `UserArea`
+  Dropdown account-menu shell widget with avatar/image support and host-defined async menu buttons
 - `AppMain`
 - `AppManager`
 
@@ -124,6 +128,13 @@ It contains the axios-specific implementation with:
 - request/refresh handling through axios interceptors
 - optional Socket.IO realtime routing into `service(path).on(...)`
 
+It also now supports:
+
+- `authCreateMethod` / `authRefreshMethod` values of `get`, `post`, `put`, and `patch` where applicable
+- current-user sync through endpoints such as `GET /auth/me`
+- custom socket access through `socket`, `onSocket(...)`, `offSocket(...)`, and `emitSocket(...)`
+- reactive auth/socket refs such as `userRef`, `tokenRef`, `authenticatedRef`, `permissionsRef`, and `socketConnectedRef`
+
 ## `misc`
 
 The `misc` module exports utility helpers for:
@@ -156,6 +167,26 @@ The library includes short factory aliases for many classes.
 | `$APP` | `AppMain` |
 
 The alias style makes large TypeScript-defined screens shorter and easier to read.
+
+## Reactive Runtime State
+
+Several runtime coordinators now expose Vue refs directly so host apps can bind to them without writing their own bridge layer.
+
+Important examples:
+
+- `Api.instance.userRef`
+- `Api.instance.tokenRef`
+- `Api.instance.authenticatedRef`
+- `Api.instance.permissionsRef`
+- `Api.instance.socketConnectedRef`
+- `Mailbox.itemsRef`
+- `Mailbox.loadingRef`
+- `Mailbox.hasMoreRef`
+- `Mailbox.unreadCountRef`
+- `appMain.stackRef`
+- `appMain.activeItemRef`
+- `report.currentStepRef`
+- `report.totalStepsRef`
 
 ## Core Conventions
 

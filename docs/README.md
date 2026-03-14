@@ -13,12 +13,16 @@ This folder collects project-level documentation for `vuetify-extended`.
 - [Test App](../test/README.md)
   A manual Vue 3 + Vuetify playground for exercising the library in a running app.
 
+- [Starter Template](../starter-template/README.md)
+  A git-package starter app that mirrors the playground structure for host applications.
+
 ## Recommended Reading Order
 
 1. Start with the root [`README.md`](../README.md) for setup and everyday usage.
 2. Read [Architecture](./architecture.md) to understand how the library is organized internally.
 3. Use [General Information](./general-information.md) as a quick reference while extending the library.
 4. Use [Test App](../test/README.md) when you want to manually verify UI workflows.
+5. Use [Starter Template](../starter-template/README.md) when you want a clean package-based host app starting point.
 
 ## Scope
 
