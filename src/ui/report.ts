@@ -89,6 +89,7 @@ export class Report extends UIBase {
   private sideButtonInstances: Array<Button> = [];
   private currentForm: Form|undefined;
   private currentIndex: Ref<number>;
+  private currentFormRenderKey: Ref<number>;
   private currentStepRefState: Ref<number>;
   private hasNext = false;
   private hasPrev = false;
@@ -121,6 +122,7 @@ export class Report extends UIBase {
     this.hasPrintAccess = this.$makeRef(true);
     this.hasExportAccess = this.$makeRef(true);
     this.currentIndex = this.$makeRef(-1);
+    this.currentFormRenderKey = this.$makeRef(0);
     this.currentStepRefState = this.$makeRef(0);
     this.currentForm = undefined;
     this.resolvedFormCount = this.$makeRef(Math.max(1, this.params.value.forms || 1));
@@ -393,7 +395,7 @@ export class Report extends UIBase {
                   this.wrapWithSideButtons(
                     props,
                     context,
-                    h(this.currentForm!.component)
+                    h(this.currentForm!.component, { key: this.currentFormRenderKey.value })
                   )
                 ]
               )
@@ -501,6 +503,7 @@ export class Report extends UIBase {
         }
 
         this.currentForm = newForm
+        this.currentFormRenderKey.value += 1;
         this.currentIndex.value = index;
         this.syncStepRefs();
         this.currentForm.clearListeners(this.$id);
@@ -513,6 +516,7 @@ export class Report extends UIBase {
 
     } else {
       this.currentForm = undefined;
+      this.currentFormRenderKey.value += 1;
       this.currentIndex.value = -1;
       this.syncStepRefs();
     }
