@@ -645,6 +645,14 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
   loadUserInfo: Keycloak['loadUserInfo'];
   loadUserProfile: Keycloak['loadUserProfile'];
 
+  get user(): any {
+    return this.authentication.user;
+  }
+
+  get token(): string | undefined {
+    return this.authentication.token;
+  }
+
   constructor(apiURL: any, keycloakConfig: AxiosKeycloakClientConfig, options?: AxiosApiOptions) {
     super();
 

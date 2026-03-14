@@ -114,6 +114,8 @@ export declare class AxiosApplication extends SimpleEventEmitter implements Appl
     hasResourceRole: Keycloak['hasResourceRole'];
     loadUserInfo: Keycloak['loadUserInfo'];
     loadUserProfile: Keycloak['loadUserProfile'];
+    get user(): any;
+    get token(): string | undefined;
     constructor(apiURL: any, keycloakConfig: AxiosKeycloakClientConfig, options?: AxiosApiOptions);
     private configureInterceptors;
     private configureSocket;

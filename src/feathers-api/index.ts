@@ -34,6 +34,22 @@ export class FeathersApi {
     }
     
     client.configure(AuthConfigure(keycloakConfig));
+
+    Object.defineProperty(client, 'user', {
+      get() {
+        return client.authentication?.user;
+      },
+      enumerable: true,
+      configurable: true,
+    });
+
+    Object.defineProperty(client, 'token', {
+      get() {
+        return client.keycloak?.token;
+      },
+      enumerable: true,
+      configurable: true,
+    });
     client.configure(findOne());
     client.configure(findAll());
     client.configure(count());

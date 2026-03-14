@@ -22,6 +22,8 @@ export interface Application {
     service<T = any>(path: string): Service<T>;
     authentication?: any;
     keycloak?: Keycloak;
+    user?: any;
+    token?: string | undefined;
     authenticated?: (...args: any[]) => any;
     authenticate?: (...args: any[]) => any;
     login?: (...args: any[]) => any;
@@ -56,6 +58,8 @@ export interface FeathersApplication extends BaseFeathersApplication {
     service<T = any>(path: string): FeathersService<T> & FeathersServiceAddons;
     authentication: FeathersKeycloakClient;
     keycloak: Keycloak;
+    user: any;
+    token: string | undefined;
     authenticated: FeathersKeycloakClient['authenticated'];
     authenticate: FeathersKeycloakClient['login'];
     login: FeathersKeycloakClient['login'];
