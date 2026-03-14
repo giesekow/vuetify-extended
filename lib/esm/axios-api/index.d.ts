@@ -27,8 +27,8 @@ export interface AxiosApiOptions {
     queryMode?: 'rawquery-header' | 'params';
     authPath?: string | false;
     refreshAuthPath?: string | false;
-    authCreateMethod?: 'post' | 'put';
-    authRefreshMethod?: 'patch' | 'post' | 'put';
+    authCreateMethod?: 'get' | 'post' | 'put';
+    authRefreshMethod?: 'get' | 'patch' | 'post' | 'put';
     tokenHeader?: string;
     tokenPrefix?: string;
 }
@@ -91,8 +91,8 @@ export declare class AxiosApplication extends SimpleEventEmitter implements Appl
     readonly queryMode: 'rawquery-header' | 'params';
     readonly authPath: string | false;
     readonly refreshAuthPath: string | false;
-    readonly authCreateMethod: 'post' | 'put';
-    readonly authRefreshMethod: 'patch' | 'post' | 'put';
+    readonly authCreateMethod: 'get' | 'post' | 'put';
+    readonly authRefreshMethod: 'get' | 'patch' | 'post' | 'put';
     private readonly services;
     private readonly tokenHeader;
     private readonly tokenPrefix;
