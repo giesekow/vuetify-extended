@@ -1,6 +1,7 @@
 import type { Application as BaseFeathersApplication, Service as BaseFeathersService, ServiceAddons as FeathersServiceAddons } from '@feathersjs/feathers';
 import type Keycloak from 'keycloak-js';
 import type { Socket } from 'socket.io-client';
+import type { ShallowRef } from 'vue';
 import type { KeycloakClient as FeathersKeycloakClient } from 'feathers-keycloak-connect-client';
 export interface Service<T = any> {
     on(event: string, listener: (...args: any[]) => void): any;
@@ -25,7 +26,9 @@ export interface Application {
     keycloak?: Keycloak;
     socket?: Socket | undefined;
     user?: any;
+    userRef?: ShallowRef<any>;
     token?: string | undefined;
+    tokenRef?: ShallowRef<string | undefined>;
     authenticated?: (...args: any[]) => any;
     authenticate?: (...args: any[]) => any;
     login?: (...args: any[]) => any;
@@ -65,7 +68,9 @@ export interface FeathersApplication extends BaseFeathersApplication {
     keycloak: Keycloak;
     socket: Socket | undefined;
     user: any;
+    userRef: ShallowRef<any>;
     token: string | undefined;
+    tokenRef: ShallowRef<string | undefined>;
     authenticated: FeathersKeycloakClient['authenticated'];
     authenticate: FeathersKeycloakClient['login'];
     login: FeathersKeycloakClient['login'];

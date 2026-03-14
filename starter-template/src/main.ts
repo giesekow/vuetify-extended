@@ -5,12 +5,14 @@ import * as directives from 'vuetify/directives';
 import '@mdi/font/css/materialdesignicons.css';
 import 'vuetify/styles';
 import 'vuetify-extended/lib/esm/css/index.css';
-import { bootstrap } from './bootstrap';
+import { initializeBootstrap } from './bootstrap';
 
 const vuetify = createVuetify({
   components,
   directives,
 });
+
+const bootstrap = initializeBootstrap()
 
 const Root = defineComponent({
   name: 'VuetifyExtendedStarterTemplate',

@@ -1,6 +1,7 @@
 import { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { Socket, ManagerOptions, SocketOptions } from 'socket.io-client';
 import Keycloak, { KeycloakConfig, KeycloakInitOptions, KeycloakLoginOptions } from 'keycloak-js';
+import { type ShallowRef } from 'vue';
 import type { Application, Service } from '../declarations';
 type EventListener = (data?: any) => void;
 declare class SimpleEventEmitter {
@@ -56,10 +57,14 @@ declare class AxiosKeycloakClient {
     private initialized;
     private refreshPromise?;
     private currentUser;
+    readonly userRef: ShallowRef<any>;
     private currentToken?;
+    readonly tokenRef: ShallowRef<string | undefined>;
     constructor(app: AxiosApplication, config: AxiosKeycloakClientConfig);
     get user(): any;
     get token(): string | undefined;
+    private setCurrentUser;
+    private setCurrentToken;
     private get storage();
     private ensureInitialized;
     private getStoredLoginParams;
@@ -116,6 +121,8 @@ export declare class AxiosApplication extends SimpleEventEmitter implements Appl
     loadUserProfile: Keycloak['loadUserProfile'];
     get user(): any;
     get token(): string | undefined;
+    get userRef(): ShallowRef<any>;
+    get tokenRef(): ShallowRef<string | undefined>;
     onSocket(event: string, listener: (...args: any[]) => void): this;
     offSocket(event: string, listener?: (...args: any[]) => void): this;
     emitSocket(event: string, ...args: any[]): this;

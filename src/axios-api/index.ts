@@ -5,6 +5,7 @@ import Keycloak, {
   KeycloakInitOptions,
   KeycloakLoginOptions,
 } from 'keycloak-js';
+import { shallowRef, type ShallowRef } from 'vue';
 import type { Application, Service } from '../declarations';
 
 type EventListener = (data?: any) => void;
@@ -249,7 +250,9 @@ class AxiosKeycloakClient {
   private initialized: Promise<boolean>;
   private refreshPromise?: Promise<string | undefined>;
   private currentUser: any = null;
+  readonly userRef: ShallowRef<any> = shallowRef(null);
   private currentToken?: string;
+  readonly tokenRef: ShallowRef<string | undefined> = shallowRef(undefined);
 
   constructor(private readonly app: AxiosApplication, private readonly config: AxiosKeycloakClientConfig) {
     this.keycloak = new Keycloak(config.keycloakConfig);
@@ -293,6 +296,16 @@ class AxiosKeycloakClient {
 
   get token(): string | undefined {
     return this.currentToken;
+  }
+
+  private setCurrentUser(user: any) {
+    this.currentUser = user;
+    this.userRef.value = user;
+  }
+
+  private setCurrentToken(token?: string) {
+    this.currentToken = token;
+    this.tokenRef.value = token;
   }
 
   private get storage() {
@@ -354,11 +367,11 @@ class AxiosKeycloakClient {
     if (mode === 'create') {
       const method = this.app.authCreateMethod;
       if (method === 'get') {
-        this.currentUser = await service.get(null);
+        this.setCurrentUser(await service.get(null));
       } else if (method === 'put') {
-        this.currentUser = await service.update(null, { access_token: token });
+        this.setCurrentUser(await service.update(null, { access_token: token }));
       } else {
-        this.currentUser = await service.create({ access_token: token });
+        this.setCurrentUser(await service.create({ access_token: token }));
       }
       return this.currentUser;
     }
@@ -371,21 +384,21 @@ class AxiosKeycloakClient {
     } else if (refreshMethod === 'put') {
       this.currentUser = await service.update(null, { access_token: token });
     } else {
-      this.currentUser = await service.patch(null, { access_token: token });
+      this.setCurrentUser(await service.patch(null, { access_token: token }));
     }
 
     return this.currentUser;
   }
 
   async onAuthSuccess() {
-    this.currentToken = this.keycloak.token;
+    this.setCurrentToken(this.keycloak.token);
 
     try {
       if (this.currentToken) {
         await this.syncCurrentUser('create', this.currentToken);
       }
     } catch (error) {
-      this.currentUser = null;
+      this.setCurrentUser(null);
     }
 
     this.app.emit('authSuccess', {
@@ -396,8 +409,8 @@ class AxiosKeycloakClient {
   }
 
   async onAuthLogout() {
-    this.currentUser = null;
-    this.currentToken = undefined;
+    this.setCurrentUser(null);
+    this.setCurrentToken(undefined);
     this.app.emit('authLogout');
   }
 
@@ -421,19 +434,19 @@ class AxiosKeycloakClient {
 
     this.refreshPromise = (async () => {
       if (!this.keycloak.authenticated) {
-        this.currentToken = undefined;
+        this.setCurrentToken(undefined);
         return undefined;
       }
 
       const shouldRefresh = force || !!this.keycloak.token;
       if (!shouldRefresh) {
-        this.currentToken = this.keycloak.token;
+        this.setCurrentToken(this.keycloak.token);
         return this.currentToken;
       }
 
       try {
         const refreshed = await this.keycloak.updateToken(this.minValidity);
-        this.currentToken = this.keycloak.token;
+        this.setCurrentToken(this.keycloak.token);
 
         if (refreshed && this.currentToken) {
           try {
@@ -451,7 +464,7 @@ class AxiosKeycloakClient {
 
         return this.currentToken;
       } catch (error) {
-        this.currentToken = undefined;
+        this.setCurrentToken(undefined);
         throw error;
       } finally {
         this.refreshPromise = undefined;
@@ -465,12 +478,12 @@ class AxiosKeycloakClient {
     await this.ensureInitialized();
 
     if (!this.keycloak.authenticated) {
-      this.currentToken = undefined;
+      this.setCurrentToken(undefined);
       return undefined;
     }
 
     if (!this.keycloak.token) {
-      this.currentToken = undefined;
+      this.setCurrentToken(undefined);
       return undefined;
     }
 
@@ -478,7 +491,7 @@ class AxiosKeycloakClient {
       return this.refreshToken(true);
     }
 
-    this.currentToken = this.keycloak.token;
+    this.setCurrentToken(this.keycloak.token);
     return this.currentToken;
   }
 
@@ -651,6 +664,14 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
 
   get token(): string | undefined {
     return this.authentication.token;
+  }
+
+  get userRef(): ShallowRef<any> {
+    return this.authentication.userRef;
+  }
+
+  get tokenRef(): ShallowRef<string | undefined> {
+    return this.authentication.tokenRef;
   }
 
   onSocket(event: string, listener: (...args: any[]) => void) {

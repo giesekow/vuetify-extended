@@ -6,6 +6,7 @@ import rest from '@feathersjs/rest-client';
 import axios from 'axios';
 import { AuthConfigure } from 'feathers-keycloak-connect-client'
 import type { KeycloakClientConfig } from 'feathers-keycloak-connect-client'
+import { shallowRef } from 'vue';
 import findOne from './find-one';
 import count from './count';
 import findAll from './find-all';
@@ -37,6 +38,24 @@ export class FeathersApi {
     
     client.configure(AuthConfigure(keycloakConfig));
 
+    const userRef = shallowRef(client.authentication?.user ?? null);
+    const tokenRef = shallowRef<string | undefined>(client.keycloak?.token);
+
+    client.on('authSuccess', (payload: any) => {
+      userRef.value = payload?.user ?? client.authentication?.user ?? null;
+      tokenRef.value = payload?.token ?? client.keycloak?.token;
+    }, Symbol('feathers-user-ref-auth-success'));
+
+    client.on('token-refreshed', (payload: any) => {
+      userRef.value = payload?.user ?? client.authentication?.user ?? null;
+      tokenRef.value = payload?.token ?? client.keycloak?.token;
+    }, Symbol('feathers-user-ref-token-refreshed'));
+
+    client.on('authLogout', () => {
+      userRef.value = null;
+      tokenRef.value = undefined;
+    }, Symbol('feathers-user-ref-auth-logout'));
+
     Object.defineProperty(client, 'user', {
       get() {
         return client.authentication?.user;
@@ -48,6 +67,22 @@ export class FeathersApi {
     Object.defineProperty(client, 'token', {
       get() {
         return client.keycloak?.token;
+      },
+      enumerable: true,
+      configurable: true,
+    });
+
+    Object.defineProperty(client, 'userRef', {
+      get() {
+        return userRef;
+      },
+      enumerable: true,
+      configurable: true,
+    });
+
+    Object.defineProperty(client, 'tokenRef', {
+      get() {
+        return tokenRef;
       },
       enumerable: true,
       configurable: true,
