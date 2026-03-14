@@ -31,6 +31,7 @@ export declare class AccessDeniedScreen extends UIBase {
     constructor(params?: AccessDeniedScreenParams, options?: AccessDeniedScreenOptions);
     static setDefault(value: AccessDeniedScreenParams, reset?: boolean): void;
     get $params(): AccessDeniedScreenParams;
+    forceCancel(): Promise<void>;
     render(): VNode | undefined;
 }
 export interface SplashScreenParams extends FullScreenBaseParams {
@@ -46,6 +47,7 @@ export declare class SplashScreen extends UIBase {
     constructor(params?: SplashScreenParams);
     static setDefault(value: SplashScreenParams, reset?: boolean): void;
     get $params(): SplashScreenParams;
+    forceCancel(): Promise<void>;
     render(): VNode | undefined;
 }
 export declare const $AccessDeniedScreen: (params?: AccessDeniedScreenParams, options?: AccessDeniedScreenOptions) => AccessDeniedScreen;

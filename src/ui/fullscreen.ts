@@ -192,6 +192,10 @@ export class AccessDeniedScreen extends UIBase {
     return this.params.value;
   }
 
+  async forceCancel() {
+    this.emit('cancel', this);
+  }
+
   render(): VNode | undefined {
     const h = this.$h;
     const trailing: VNode[] = [];
@@ -255,6 +259,10 @@ export class SplashScreen extends UIBase {
 
   get $params() {
     return this.params.value;
+  }
+
+  async forceCancel() {
+    this.emit('cancel', this);
   }
 
   render(): VNode | undefined {
