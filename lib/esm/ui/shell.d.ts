@@ -46,6 +46,29 @@ export declare class StatusBadge extends UIBase {
     get $params(): StatusBadgeParams;
     render(): VNode | undefined;
 }
+export interface ShellIconActionParams {
+    icon?: string;
+    title?: string;
+    color?: string;
+    variant?: 'flat' | 'text' | 'outlined' | 'plain' | 'elevated' | 'tonal';
+    size?: 'x-small' | 'small' | 'default' | 'large' | 'x-large';
+    iconSize?: string | number;
+    badge?: string | number;
+    badgeColor?: string;
+    disabled?: boolean;
+}
+export interface ShellIconActionOptions {
+    onClicked?: (widget: ShellIconAction) => Promise<void> | void;
+}
+export declare class ShellIconAction extends UIBase {
+    private params;
+    private options;
+    private static defaultParams;
+    constructor(params?: ShellIconActionParams, options?: ShellIconActionOptions);
+    static setDefault(value: ShellIconActionParams, reset?: boolean): void;
+    get $params(): ShellIconActionParams;
+    render(): VNode | undefined;
+}
 export interface UserAreaParams {
     name?: string;
     subtitle?: string;
@@ -96,4 +119,5 @@ export declare class UserArea extends UIBase {
 export declare const $ATB: (params?: AppTitleBlockParams) => AppTitleBlock;
 export declare const $ENV: (params?: EnvironmentTagParams) => EnvironmentTag;
 export declare const $STB: (params?: StatusBadgeParams) => StatusBadge;
+export declare const $SIA: (params?: ShellIconActionParams, options?: ShellIconActionOptions) => ShellIconAction;
 export declare const $USR: (params?: UserAreaParams) => UserArea;

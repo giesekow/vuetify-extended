@@ -1,7 +1,7 @@
 import { Ref, VNode, markRaw } from "vue";
 import { UIBase } from "./base";
 import { Button } from "./button";
-import { VAvatar, VBtn, VCard, VCardText, VDivider, VIcon, VList, VListItem, VListItemTitle, VMenu, VChip } from 'vuetify/components';
+import { VAvatar, VBadge, VBtn, VCard, VCardText, VDivider, VIcon, VList, VListItem, VListItemTitle, VMenu, VChip } from 'vuetify/components';
 
 export interface AppTitleBlockParams {
   title?: string;
@@ -145,6 +145,102 @@ export class StatusBadge extends UIBase {
       prependIcon: this.$params.icon,
       label: true,
     }, () => this.$params.text || '');
+  }
+}
+
+
+export interface ShellIconActionParams {
+  icon?: string;
+  title?: string;
+  color?: string;
+  variant?: 'flat'|'text'|'outlined'|'plain'|'elevated'|'tonal';
+  size?: 'x-small'|'small'|'default'|'large'|'x-large';
+  iconSize?: string | number;
+  badge?: string | number;
+  badgeColor?: string;
+  disabled?: boolean;
+}
+
+export interface ShellIconActionOptions {
+  onClicked?: (widget: ShellIconAction) => Promise<void> | void;
+}
+
+export class ShellIconAction extends UIBase {
+  private params: Ref<ShellIconActionParams>;
+  private options: ShellIconActionOptions;
+  private static defaultParams: ShellIconActionParams = {
+    color: 'primary',
+    variant: 'text',
+    size: 'default',
+    badgeColor: 'error',
+  };
+
+  constructor(params?: ShellIconActionParams, options?: ShellIconActionOptions) {
+    super();
+    this.params = this.$makeRef({ ...ShellIconAction.defaultParams, ...(params || {}) });
+    this.options = options || {};
+  }
+
+  static setDefault(value: ShellIconActionParams, reset?: boolean) {
+    ShellIconAction.defaultParams = reset ? value : { ...ShellIconAction.defaultParams, ...value };
+  }
+
+  get $params() {
+    return this.params.value;
+  }
+
+  render(): VNode | undefined {
+    if (!this.$params.icon) {
+      return undefined;
+    }
+
+    const h = this.$h;
+    const button = h(VBtn, {
+      icon: true,
+      color: this.$params.color,
+      variant: this.$params.variant,
+      size: this.$params.size,
+      disabled: this.$params.disabled,
+      title: this.$params.title,
+      'aria-label': this.$params.title || 'Shell action',
+      style: {
+        height: 'auto',
+        minWidth: '0',
+        paddingInline: '4px',
+        paddingBlock: '4px',
+        borderRadius: '999px',
+      },
+      onClick: () => {
+        if (!this.$params.disabled) {
+          void this.options.onClicked?.(this);
+        }
+      },
+    }, () => h(VIcon, {
+      size: this.$params.iconSize,
+    }, () => this.$params.icon || ''));
+
+    if (this.$params.badge === undefined || this.$params.badge === null || this.$params.badge === '') {
+      return button;
+    }
+
+    return h('div', {
+      style: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      },
+    }, [
+      h(VBadge, {
+        content: this.$params.badge,
+        color: this.$params.badgeColor,
+        floating: true,
+        location: 'top end',
+        offsetX: 0,
+        offsetY: 0,
+      }, {
+        default: () => button,
+      }),
+    ]);
   }
 }
 
@@ -436,4 +532,5 @@ export class UserArea extends UIBase {
 export const $ATB = (params?: AppTitleBlockParams) => new AppTitleBlock(params || {});
 export const $ENV = (params?: EnvironmentTagParams) => new EnvironmentTag(params || {});
 export const $STB = (params?: StatusBadgeParams) => new StatusBadge(params || {});
+export const $SIA = (params?: ShellIconActionParams, options?: ShellIconActionOptions) => new ShellIconAction(params || {}, options || {});
 export const $USR = (params?: UserAreaParams) => new UserArea(params || {});

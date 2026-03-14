@@ -21,6 +21,7 @@ import {
   AppTitleBlock,
   EnvironmentTag,
   StatusBadge,
+  ShellIconAction,
   UserArea,
   MailboxView,
   AccessDeniedScreen,
@@ -1044,6 +1045,16 @@ export function createDemoApp() {
         h(new StatusBadge({ text: 'Shell Active', icon: 'mdi-check-circle-outline', color: 'success' }).component),
       ],
       headerEnd: () => [
+        h(new ShellIconAction(
+          {
+            icon: 'mdi-help-circle-outline',
+            color: 'secondary',
+            title: 'Show shell help',
+          },
+          {
+            onClicked: () => Dialogs.$info('This header action is rendered with the reusable ShellIconAction widget.', { title: 'Shell Icon Action' }),
+          },
+        ).component),
         h(new MailboxBell({ color: 'primary', badgeColor: 'error', title: 'Open Team Mailbox', viewWidth: 980 }).component),
         h(new UserArea(
           {

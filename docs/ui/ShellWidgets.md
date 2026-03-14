@@ -1,6 +1,6 @@
 # Shell Widgets
 
-Reusable shell-friendly widgets for app titles, environment tags, status badges, and account/user presentation.
+Reusable shell-friendly widgets for app titles, environment tags, status badges, standalone shell action icons, and account/user presentation.
 
 ## Source
 
@@ -46,6 +46,30 @@ export interface StatusBadgeParams {
   color?: string;
   variant?: 'flat'|'text'|'outlined'|'plain'|'elevated'|'tonal';
   size?: 'x-small'|'small'|'default'|'large'|'x-large';
+}
+```
+
+### `ShellIconActionParams`
+
+```ts
+export interface ShellIconActionParams {
+  icon?: string;
+  title?: string;
+  color?: string;
+  variant?: 'flat'|'text'|'outlined'|'plain'|'elevated'|'tonal';
+  size?: 'x-small'|'small'|'default'|'large'|'x-large';
+  iconSize?: string | number;
+  badge?: string | number;
+  badgeColor?: string;
+  disabled?: boolean;
+}
+```
+
+### `ShellIconActionOptions`
+
+```ts
+export interface ShellIconActionOptions {
+  onClicked?: (widget: ShellIconAction) => Promise<void> | void;
 }
 ```
 
@@ -98,6 +122,14 @@ export class EnvironmentTag extends UIBase {
 
 ```ts
 export class StatusBadge extends UIBase {
+  // see source for full implementation
+}
+```
+
+### `ShellIconAction`
+
+```ts
+export class ShellIconAction extends UIBase {
   // see source for full implementation
 }
 ```
