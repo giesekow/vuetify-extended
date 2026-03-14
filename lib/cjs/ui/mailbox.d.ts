@@ -1,4 +1,4 @@
-import { VNode } from "vue";
+import { Ref, VNode } from "vue";
 import { UIBase } from "./base";
 import { Report } from "./report";
 export interface MailboxItem {
@@ -67,10 +67,14 @@ export declare class Mailbox {
     private static nextCursor;
     static configure(options: MailboxOptions, reset?: boolean): void;
     static setOptions(options: MailboxOptions): void;
+    static get itemsRef(): Ref<MailboxItem[]>;
     static get $items(): MailboxItem[];
+    static get unreadCountRef(): Ref<number>;
     static get $unreadCount(): number;
+    static get loadingRef(): Ref<boolean>;
     static get $loading(): boolean;
     static get $loaded(): boolean;
+    static get hasMoreRef(): Ref<boolean>;
     static get $hasMore(): boolean;
     static get $title(): string;
     static setUnread(count: number): void;

@@ -36,6 +36,9 @@ export interface Application {
   userRef?: ShallowRef<any>;
   token?: string | undefined;
   tokenRef?: ShallowRef<string | undefined>;
+  authenticatedRef?: ShallowRef<boolean | undefined>;
+  permissionsRef?: ShallowRef<any[]>;
+  socketConnectedRef?: ShallowRef<boolean>;
   authenticated?: (...args: any[]) => any;
   authenticate?: (...args: any[]) => any;
   login?: (...args: any[]) => any;
@@ -80,6 +83,9 @@ export interface FeathersApplication extends BaseFeathersApplication {
   userRef: ShallowRef<any>;
   token: string | undefined;
   tokenRef: ShallowRef<string | undefined>;
+  authenticatedRef: ShallowRef<boolean | undefined>;
+  permissionsRef: ShallowRef<any[]>;
+  socketConnectedRef: ShallowRef<boolean>;
   authenticated: FeathersKeycloakClient['authenticated'];
   authenticate: FeathersKeycloakClient['login'];
   login: FeathersKeycloakClient['login'];

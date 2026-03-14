@@ -58,6 +58,8 @@ declare class AxiosKeycloakClient {
     private refreshPromise?;
     private currentUser;
     readonly userRef: ShallowRef<any>;
+    readonly authenticatedRef: ShallowRef<boolean | undefined>;
+    readonly permissionsRef: ShallowRef<any[]>;
     private currentToken?;
     readonly tokenRef: ShallowRef<string | undefined>;
     constructor(app: AxiosApplication, config: AxiosKeycloakClientConfig);
@@ -65,6 +67,7 @@ declare class AxiosKeycloakClient {
     get token(): string | undefined;
     private setCurrentUser;
     private setCurrentToken;
+    private syncDerivedRefs;
     private get storage();
     private ensureInitialized;
     private getStoredLoginParams;
@@ -106,6 +109,7 @@ export declare class AxiosApplication extends SimpleEventEmitter implements Appl
     private readonly socketEvent;
     private readonly socketOptions?;
     private readonly socketAuthMode;
+    readonly socketConnectedRef: ShallowRef<boolean>;
     socket?: Socket;
     authenticate: AxiosKeycloakClient['login'];
     login: AxiosKeycloakClient['login'];
@@ -123,6 +127,8 @@ export declare class AxiosApplication extends SimpleEventEmitter implements Appl
     get token(): string | undefined;
     get userRef(): ShallowRef<any>;
     get tokenRef(): ShallowRef<string | undefined>;
+    get authenticatedRef(): ShallowRef<boolean | undefined>;
+    get permissionsRef(): ShallowRef<any[]>;
     onSocket(event: string, listener: (...args: any[]) => void): this;
     offSocket(event: string, listener?: (...args: any[]) => void): this;
     emitSocket(event: string, ...args: any[]): this;

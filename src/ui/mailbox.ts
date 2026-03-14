@@ -84,12 +84,24 @@ export class Mailbox {
     Mailbox.configure(options);
   }
 
+  static get itemsRef() {
+    return Mailbox.items;
+  }
+
   static get $items() {
     return Mailbox.items.value;
   }
 
+  static get unreadCountRef() {
+    return Mailbox.unreadCount;
+  }
+
   static get $unreadCount() {
     return Mailbox.unreadCount.value;
+  }
+
+  static get loadingRef() {
+    return Mailbox.loading;
   }
 
   static get $loading() {
@@ -98,6 +110,10 @@ export class Mailbox {
 
   static get $loaded() {
     return Mailbox.loaded.value;
+  }
+
+  static get hasMoreRef() {
+    return Mailbox.hasMore;
   }
 
   static get $hasMore() {

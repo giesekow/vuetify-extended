@@ -1,4 +1,4 @@
-import { VNode } from "vue";
+import { VNode, Ref } from "vue";
 import { ReportMode, UIBase } from "./base";
 import { Master } from "../master";
 import { Form } from './form';
@@ -79,6 +79,7 @@ export declare class Report extends UIBase {
     private sideButtonInstances;
     private currentForm;
     private currentIndex;
+    private currentStepRefState;
     private hasNext;
     private hasPrev;
     private listenersAttached;
@@ -104,6 +105,9 @@ export declare class Report extends UIBase {
     setParams(params: ReportParams): void;
     get $params(): ReportParams;
     get $access(): boolean;
+    get currentStepRef(): Ref<number>;
+    get totalStepsRef(): Ref<number>;
+    private syncStepRefs;
     private initialize;
     private runAccess;
     loadObject(): Promise<void>;

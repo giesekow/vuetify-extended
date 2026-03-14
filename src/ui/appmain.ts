@@ -86,6 +86,8 @@ export class AppMain extends UIBase {
   private options: AppOptions;
 
   private stack: Array<AppStackItem>;
+  private stackRefState: Ref<Array<AppStackItem>>;
+  private activeItemRefState: Ref<AppStackItem | undefined>;
   private loaded: Ref<boolean>;
   private index: Ref<number>;
   private selectors: Array<Selector>;
@@ -116,6 +118,8 @@ export class AppMain extends UIBase {
     this.params = this.$makeRef({...AppMain.defaultParams, ...(params || {})});
     this.options = options || {};
     this.stack = [];
+    this.stackRefState = this.$makeRef([]);
+    this.activeItemRefState = this.$makeRef(undefined);
     this.loaded = this.$makeRef(false);
     this.index = this.$makeRef(-1);
     this.selectorCount = this.$makeRef(0);
@@ -146,6 +150,19 @@ export class AppMain extends UIBase {
 
   get $params(): AppParams {
     return this.params.value;
+  }
+
+  get stackRef() {
+    return this.stackRefState;
+  }
+
+  get activeItemRef() {
+    return this.activeItemRefState;
+  }
+
+  private syncStackRefs() {
+    this.stackRefState.value = [...this.stack];
+    this.activeItemRefState.value = this.getActiveStackItem();
   }
 
   props() {
@@ -859,6 +876,7 @@ export class AppMain extends UIBase {
         const info = this.stack.pop();
         if (info) info.item.removeEventListeners();
       }
+      this.syncStackRefs();
       await this.activateCurrentItem();
     } else if (rem >= this.stack.length) {
       this.loadApp();

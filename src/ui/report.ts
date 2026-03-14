@@ -89,6 +89,7 @@ export class Report extends UIBase {
   private sideButtonInstances: Array<Button> = [];
   private currentForm: Form|undefined;
   private currentIndex: Ref<number>;
+  private currentStepRefState: Ref<number>;
   private hasNext = false;
   private hasPrev = false;
   private listenersAttached = false;
@@ -120,6 +121,7 @@ export class Report extends UIBase {
     this.hasPrintAccess = this.$makeRef(true);
     this.hasExportAccess = this.$makeRef(true);
     this.currentIndex = this.$makeRef(-1);
+    this.currentStepRefState = this.$makeRef(0);
     this.currentForm = undefined;
     this.resolvedFormCount = this.$makeRef(Math.max(1, this.params.value.forms || 1));
     this.lastProps = null;
@@ -184,6 +186,18 @@ export class Report extends UIBase {
 
   get $access(): boolean {
     return this.hasAccess.value;
+  }
+
+  get currentStepRef() {
+    return this.currentStepRefState;
+  }
+
+  get totalStepsRef() {
+    return this.resolvedFormCount;
+  }
+
+  private syncStepRefs() {
+    this.currentStepRefState.value = this.currentIndex.value >= 0 ? this.currentIndex.value + 1 : 0;
   }
 
   private async initialize(props: any, context: any) {
@@ -488,6 +502,7 @@ export class Report extends UIBase {
 
         this.currentForm = newForm
         this.currentIndex.value = index;
+        this.syncStepRefs();
         this.currentForm.clearListeners(this.$id);
         this.currentForm.on('saved', () => this.save(), this.$id);
         this.currentForm.on('prev', () => this.onprev(), this.$id);
@@ -499,6 +514,7 @@ export class Report extends UIBase {
     } else {
       this.currentForm = undefined;
       this.currentIndex.value = -1;
+      this.syncStepRefs();
     }
     
   }

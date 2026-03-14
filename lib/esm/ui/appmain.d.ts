@@ -1,4 +1,4 @@
-import { VNode } from "vue";
+import { VNode, Ref } from "vue";
 import { ReportMode, UIBase } from "./base";
 import { Menu } from "./menu";
 import { Report } from "./report";
@@ -73,6 +73,8 @@ export declare class AppMain extends UIBase {
     private params;
     private options;
     private stack;
+    private stackRefState;
+    private activeItemRefState;
     private loaded;
     private index;
     private selectors;
@@ -90,6 +92,9 @@ export declare class AppMain extends UIBase {
     get $ref(): string | undefined;
     setParams(params: AppParams): void;
     get $params(): AppParams;
+    get stackRef(): Ref<AppStackItem[]>;
+    get activeItemRef(): Ref<AppStackItem | undefined>;
+    private syncStackRefs;
     props(): never[];
     menu(): Promise<Menu | undefined>;
     render(props: any, context: any): VNode | VNode[] | undefined;

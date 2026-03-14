@@ -40,20 +40,42 @@ export class FeathersApi {
 
     const userRef = shallowRef(client.authentication?.user ?? null);
     const tokenRef = shallowRef<string | undefined>(client.keycloak?.token);
+    const authenticatedRef = shallowRef<boolean | undefined>(client.keycloak?.authenticated);
+    const permissionsRef = shallowRef<any[]>(client.authentication?.user?.permissions || []);
+    const socketConnectedRef = shallowRef<boolean>(!!socket?.connected);
+
+    socket?.on('connect', () => {
+      socketConnectedRef.value = true;
+    });
+
+    socket?.on('disconnect', () => {
+      socketConnectedRef.value = false;
+    });
+
+    socket?.on('connect_error', () => {
+      socketConnectedRef.value = false;
+    });
 
     client.on('authSuccess', (payload: any) => {
       userRef.value = payload?.user ?? client.authentication?.user ?? null;
       tokenRef.value = payload?.token ?? client.keycloak?.token;
+      authenticatedRef.value = client.keycloak?.authenticated;
+      permissionsRef.value = userRef.value?.permissions || [];
     }, Symbol('feathers-user-ref-auth-success'));
 
     client.on('token-refreshed', (payload: any) => {
       userRef.value = payload?.user ?? client.authentication?.user ?? null;
       tokenRef.value = payload?.token ?? client.keycloak?.token;
+      authenticatedRef.value = client.keycloak?.authenticated;
+      permissionsRef.value = userRef.value?.permissions || [];
     }, Symbol('feathers-user-ref-token-refreshed'));
 
     client.on('authLogout', () => {
       userRef.value = null;
       tokenRef.value = undefined;
+      authenticatedRef.value = client.keycloak?.authenticated;
+      permissionsRef.value = [];
+      socketConnectedRef.value = false;
     }, Symbol('feathers-user-ref-auth-logout'));
 
     Object.defineProperty(client, 'user', {
@@ -83,6 +105,30 @@ export class FeathersApi {
     Object.defineProperty(client, 'tokenRef', {
       get() {
         return tokenRef;
+      },
+      enumerable: true,
+      configurable: true,
+    });
+
+    Object.defineProperty(client, 'authenticatedRef', {
+      get() {
+        return authenticatedRef;
+      },
+      enumerable: true,
+      configurable: true,
+    });
+
+    Object.defineProperty(client, 'permissionsRef', {
+      get() {
+        return permissionsRef;
+      },
+      enumerable: true,
+      configurable: true,
+    });
+
+    Object.defineProperty(client, 'socketConnectedRef', {
+      get() {
+        return socketConnectedRef;
       },
       enumerable: true,
       configurable: true,

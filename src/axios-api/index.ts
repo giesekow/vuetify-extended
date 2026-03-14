@@ -251,6 +251,8 @@ class AxiosKeycloakClient {
   private refreshPromise?: Promise<string | undefined>;
   private currentUser: any = null;
   readonly userRef: ShallowRef<any> = shallowRef(null);
+  readonly authenticatedRef: ShallowRef<boolean | undefined> = shallowRef(undefined);
+  readonly permissionsRef: ShallowRef<any[]> = shallowRef([]);
   private currentToken?: string;
   readonly tokenRef: ShallowRef<string | undefined> = shallowRef(undefined);
 
@@ -301,11 +303,18 @@ class AxiosKeycloakClient {
   private setCurrentUser(user: any) {
     this.currentUser = user;
     this.userRef.value = user;
+    this.syncDerivedRefs();
   }
 
   private setCurrentToken(token?: string) {
     this.currentToken = token;
     this.tokenRef.value = token;
+    this.syncDerivedRefs();
+  }
+
+  private syncDerivedRefs() {
+    this.authenticatedRef.value = this.keycloak.authenticated;
+    this.permissionsRef.value = this.currentUser?.permissions || [];
   }
 
   private get storage() {
@@ -411,10 +420,12 @@ class AxiosKeycloakClient {
   async onAuthLogout() {
     this.setCurrentUser(null);
     this.setCurrentToken(undefined);
+    this.syncDerivedRefs();
     this.app.emit('authLogout');
   }
 
   onAuthError(error?: any) {
+    this.syncDerivedRefs();
     this.app.emit('authError', {
       error: error instanceof Error ? error : new Error('Unable to authenticate user!'),
       params: this.getStoredLoginParams(),
@@ -643,6 +654,7 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
   private readonly socketEvent: string;
   private readonly socketOptions?: Partial<ManagerOptions & SocketOptions>;
   private readonly socketAuthMode: 'auth' | 'query';
+  readonly socketConnectedRef: ShallowRef<boolean> = shallowRef(false);
   socket?: Socket;
 
   authenticate: AxiosKeycloakClient['login'];
@@ -672,6 +684,14 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
 
   get tokenRef(): ShallowRef<string | undefined> {
     return this.authentication.tokenRef;
+  }
+
+  get authenticatedRef(): ShallowRef<boolean | undefined> {
+    return this.authentication.authenticatedRef;
+  }
+
+  get permissionsRef(): ShallowRef<any[]> {
+    return this.authentication.permissionsRef;
   }
 
   onSocket(event: string, listener: (...args: any[]) => void) {
@@ -790,14 +810,17 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
     });
 
     this.socket.on('connect', () => {
+      this.socketConnectedRef.value = true;
       this.emit('socket:connect', this.socket?.id);
     });
 
     this.socket.on('disconnect', (reason) => {
+      this.socketConnectedRef.value = false;
       this.emit('socket:disconnect', reason);
     });
 
     this.socket.on('connect_error', (error) => {
+      this.socketConnectedRef.value = false;
       this.emit('socket:error', error);
     });
 
@@ -870,7 +893,8 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
     }
 
     if (forceReconnect && this.socket.connected) {
-      this.socket.disconnect();
+      this.socketConnectedRef.value = false;
+    this.socket.disconnect();
     }
 
     if (!this.socket.connected) {
@@ -883,6 +907,7 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
       return;
     }
 
+    this.socketConnectedRef.value = false;
     this.socket.disconnect();
   }
 
