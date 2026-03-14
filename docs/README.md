@@ -44,8 +44,8 @@ These docs describe the code currently present in this repository:
 - A setup/bootstrap layer for API, defaults, dialogs, and app-shell wiring
 - Class-based screen, form, field, selector, dialog, and menu composition
 - Keyboard-first workflow helpers for menus, selectors, dialogs, forms, and reports
-- Optional `AppMain` header/footer shell scaffolding, structured regions, background layers, and FAB quick actions
+- Optional `AppMain` header/footer shell scaffolding, structured regions, background layers, FAB quick actions, and full-screen utility screens
 - Global dialogs, notifications, and mailbox-style inbox flows
-- Reusable shell widgets such as title blocks, environment tags, status badges, user areas, and mailbox bells
+- Reusable shell widgets such as title blocks, environment tags, status badges, shell action icons, user areas, and mailbox bells
 - Rich messagebox rendering with attachments and incremental history loading
 - Build outputs published under `lib/cjs` and `lib/esm`

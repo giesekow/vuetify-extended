@@ -12,7 +12,7 @@ This repository contains both the source code under `src/` and the published bui
 - A stack-based application shell with `AppMain` and `AppManager`
 - A shared `Api` facade that can target Feathers or axios-backed clients
 - Global runtime helpers for dialogs, notifications, and mailbox-style inbox flows
-- Reusable shell widgets for title blocks, status badges, environment tags, user areas, and mailbox entry points
+- Reusable shell widgets for title blocks, status badges, environment tags, shell action icons, user areas, and mailbox entry points
 - Helpers for printing, export, validation, file handling, charts, maps, HTML editing, and code editing
 
 ## Who This Library Fits Best
@@ -126,15 +126,24 @@ Available options include:
 - `footerStart`, `footerCenter`, `footerEnd`
 - `fabButtons?: (app, item, stackItem) => Button[]`
 
-If neither header nor footer is enabled, `AppMain` renders the same way it did before. When enabled, it wraps the stack content in a Vuetify `VApp` / `VAppBar` / `VMain` / `VFooter` scaffold. The structured header/footer regions make it easier to place shell widgets such as a mailbox bell, user area, environment tag, or status badges without building a custom header row in every app.
+If neither header nor footer is enabled, `AppMain` renders the same way it did before. When enabled, it wraps the stack content in a Vuetify `VApp` / `VAppBar` / `VMain` / `VFooter` scaffold. The structured header/footer regions make it easier to place shell widgets such as a mailbox bell, user area, shell action icon, environment tag, or status badges without building a custom header row in every app.
 
-`UserArea` is now designed as a dropdown account menu. The shell trigger can be just the avatar/icon, while the dropdown header shows the user name, subtitle, email, account ID, and optional avatar image. Custom menu actions are supplied by the host app through an async `buttons()` factory that returns `Button` instances and labeled separator entries.
+`UserArea` is now designed as a dropdown account menu. The shell trigger can be just the avatar/icon, while the dropdown header shows the user name, subtitle, email, account ID, and optional avatar image. Custom menu actions are supplied by the host app through an async `buttons()` factory that returns `Button` instances and labeled separator entries. `ShellIconAction` provides the matching lightweight icon-button shell widget for custom header/footer actions with an optional badge and `onClicked` handler.
 
 ## Starter Template
 
 The repository now also includes a git-based starter app under [`starter-template/`](./starter-template/).
 
 It mirrors the local `test/` playground structure, but imports `vuetify-extended` from the GitHub package instead of `../../src`. The starter template keeps its bootstrap logic in `starter-template/src/bootstrap.ts` so `main.ts` stays focused on app mounting.
+
+## Fullscreen Utilities
+
+The UI layer now also includes two full-screen `UIBase` utilities that can be used directly through `.component` or shown through `AppManager.showUI(...)`:
+
+- `AccessDeniedScreen`
+- `SplashScreen`
+
+These are intended for pre-app or out-of-band states such as blocked access, tenant/role denial, branded app startup, or splash/loading sequences while the host app initializes data.
 
 ## Main Exports
 
@@ -163,6 +172,9 @@ The most commonly used exports are:
 - `Mailbox`
 - `MailboxView`
 - `MailboxBell`
+- `AccessDeniedScreen`
+- `SplashScreen`
+- `ShellIconAction`
 - `Field`
 - `Part`
 - `Form`
@@ -192,6 +204,7 @@ These short aliases are useful when defining UI entirely in TypeScript:
 - `$APP`: `AppMain`
 - `$MAILBOX`: `MailboxView`
 - `$MAILBOX_BELL`: `MailboxBell`
+- `$SIA`: `ShellIconAction`
 
 ## Getting Started
 

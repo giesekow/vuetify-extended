@@ -27,7 +27,7 @@ npm run build
 - `src/bootstrap.ts` for app/bootstrap wiring so `main.ts` stays clean
 - Dialogs and notifications roots mounted from the package
 - In-memory demo API and seeded demo data
-- Demo screens for menus, reports, triggers, mailbox, notifications, and shell widgets
+- Demo screens for menus, reports, triggers, mailbox, notifications, shell widgets, and full-screen utility screens
 
 ## Package Source
 

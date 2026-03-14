@@ -62,9 +62,13 @@ Key exports:
 - `Mailbox`
 - `MailboxView`
 - `MailboxBell`
+- `AccessDeniedScreen`
+- `SplashScreen`
 - `AppTitleBlock`
 - `EnvironmentTag`
 - `StatusBadge`
+- `ShellIconAction`
+  Compact shell action widget for custom header/footer icons with optional badge support and an `onClicked` handler
 - `UserArea`
   Dropdown account-menu shell widget with avatar/image support and host-defined async menu buttons
 - `AppMain`
@@ -172,6 +176,7 @@ The library includes short factory aliases for many classes.
 | `$MN` | `Menu` |
 | `$MI` | `MenuItem` |
 | `$APP` | `AppMain` |
+| `$SIA` | `ShellIconAction` |
 
 The alias style makes large TypeScript-defined screens shorter and easier to read.
 
