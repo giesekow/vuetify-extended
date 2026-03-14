@@ -11,6 +11,7 @@ Most flexible input/display primitive in the library. `Field` covers text inputs
 - `Field` is heavily type-driven: the same class adapts behavior based on `params.type`.
 - Widget rendering is split across `field-rich-widgets.ts` and `field-table-widgets.ts` for heavier types.
 - Common params/options apply across many types, while some are only meaningful for specific families such as messaging, charts, maps, or table widgets.
+- If `itemValue` / `idField` is omitted, `Field` falls back to the global `Master` id field and then `_id` / `id` based on the available items.
 
 ## Supported Types
 
@@ -44,6 +45,7 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
 ### Selection-oriented params
 
 - `options`, `multiple`, `idField`, `itemValue`, `itemTitle`, `returnObject`, `checkbox`
+- selection widgets resolve ids by trying local config first, then the global `Master` default, then `_id`, then `id`
 - `options.selectOptions(field)` to load items dynamically
 
 ### Collection/table params
@@ -207,7 +209,7 @@ new Field(
 )
 
 new Field(
-  { type: 'autocomplete', label: 'Customer', storage: 'customerId', itemTitle: 'name', itemValue: '_id' },
+  { type: 'autocomplete', label: 'Customer', storage: 'customerId', itemTitle: 'name', idField: 'id' },
   {
     selectOptions: async () => apiCustomers,
   },

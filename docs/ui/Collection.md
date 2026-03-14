@@ -52,3 +52,8 @@ export class Collection extends UIBase {
 ## Key Methods
 
 - `render(props: any, context: any)`
+
+## ID Resolution
+
+- `CollectionParams.idField` is still the first choice when supplied.
+- If it is omitted, collection/report handoff now falls back to the global `Master` id field and then `_id` / `id`.

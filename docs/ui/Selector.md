@@ -70,3 +70,8 @@ export class Selector extends UIBase {
 
 - `static setDefault(value: SelectorParams, reset?: boolean)`
 - `render(props: any, context: any)`
+
+## ID Resolution
+
+- `SelectorParams.idField` is used first when you provide it.
+- Otherwise, selector item resolution falls back to `Master.setDefault({ idField: ... })`, then `_id`, then `id`.

@@ -394,6 +394,7 @@ const bootstrap = createVuetifyExtendedApp({
   },
   defaults: {
     field: { variant: 'outlined', clearable: true },
+    master: { idField: 'id' },
     report: { confirmOnCancel: false },
     selector: { persistent: true },
     dialogForm: { persistent: true },
@@ -869,7 +870,7 @@ const personSelector = $SL(
     title: 'Select Person',
     objectType: 'people',
     textField: 'name',
-    idField: '_id',
+    idField: 'id',
     returnObject: true,
   },
   {
@@ -888,6 +889,12 @@ Selector defaults and interaction notes:
 - `Enter` confirms the current selection when possible
 - `Escape` cancels the selector
 - focus is restored to the triggering control after close when used through `AppMain`
+
+Global id-field fallback:
+
+- the runtime first uses an explicit local `idField` or `itemValue` when one is provided
+- otherwise it falls back to `Master.setDefault({ idField: ... })` when configured
+- if neither is available on the current item set, it falls back to `_id`, then `id`
 
 ## Dialog Forms
 

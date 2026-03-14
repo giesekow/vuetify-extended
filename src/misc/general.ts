@@ -3,6 +3,7 @@ import imageCompression from 'browser-image-compression';
 import { Buffer } from "buffer";
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
+import { Master } from '../master';
 
 export function sleep(time: number) {
   return new Promise((resolve: any) => {
@@ -253,14 +254,14 @@ export interface arrayToObjectOptions {
 
 export const arrayToObject = (items: any[], options?: arrayToObjectOptions) => {
   const data: any = {};
-  const key = options?.key || '_id';
+  const key = options?.key || Master.resolveItemValueField(items);
   let select = options?.select || 'name';
 
   const asObject = options?.asObject || (Array.isArray(select) && select.length > 0) || options?.fullObject;
 
   for(let i = 0; i < items.length; i++) {
-    const k = items[i][key];
-    if (k) {
+    const k = Master.getValueByField(items[i], key);
+    if (k || k === 0) {
       if (asObject) {
         if (options?.fullObject) {
           data[k] = items[i];

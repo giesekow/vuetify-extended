@@ -17,6 +17,12 @@ export declare class Master extends EventEmitter {
     private preprocesses;
     constructor(options?: MasterOptions);
     static setDefault(value: MasterOptions, reset?: boolean): void;
+    static getDefaultIdField(): string | undefined;
+    static getIdFieldCandidates(idField?: any): string[];
+    static getValueByField(item: any, field?: string): any;
+    static resolveItemValueField(items?: any[] | any, idField?: any): string;
+    static getItemId(item: any, idField?: any): any;
+    static matchesItemId(item: any, id: any, idField?: any): boolean;
     get $type(): any;
     set $type(value: any);
     get $id(): any;

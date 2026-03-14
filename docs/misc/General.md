@@ -10,6 +10,7 @@ Mixed utility module for dates, numbers, files, dynamic computation helpers, for
 
 - Exports a wide range of helpers used across forms, validators, imports, and formatting.
 - Includes `SimpleDate` / `SimpleTime` plus currency/date/file helper functions.
+- When `arrayToObject(...)` is called without `options.key`, it uses the shared id fallback: global `Master` id field, then `_id`, then `id`.
 
 ## Reference
 

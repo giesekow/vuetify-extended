@@ -48,15 +48,15 @@ const latexPackages = [
 ]
 
 export const fieldTypeOptions = [
-  {name: 'Text', _id: 'text'}, {name: 'Select', _id: 'select'}, {name: 'Autocomplete', _id: 'autocomplete'},
-  {name: 'Label', _id: 'label'}, {name: 'Messaging Box', _id: 'messagingbox'}, {name: 'Chart', _id: 'chart'},
-  {name: 'View Table', _id: 'viewtable'}, {name: 'Map', _id: 'map'}, {name: 'Code', _id: 'code'},
-  {name: 'Color', _id: 'color'}, {name: 'HTML', _id: 'html'}, {name: 'Time', _id: 'time'},
-  {name: 'Date', _id: 'date'}, {name: 'Datetime', _id: 'datetime'}, {name: 'Button', _id: 'button'},
-  {name: 'Image', _id: 'image'}, {name: 'Document', _id: 'document'}, {name: 'Password', _id: 'password'},
-  {name: 'Float', _id: 'float'}, {name: 'Integer', _id: 'integer'}, {name: 'Decimal', _id: 'decimal'},
-  {name: 'Collection', _id: 'collection'}, {name: 'Textarea', _id: 'textarea'}, {name: 'Boolean', _id: 'boolean'},
-  {name: 'Table', _id: 'table'}, {name: 'Report Table', _id: 'reporttable'}, {name: 'Server Table', _id: 'servertable'},
+  {name: 'Text', _id: 'text', id: 'text'}, {name: 'Select', _id: 'select', id: 'select'}, {name: 'Autocomplete', _id: 'autocomplete', id: 'autocomplete'},
+  {name: 'Label', _id: 'label', id: 'label'}, {name: 'Messaging Box', _id: 'messagingbox', id: 'messagingbox'}, {name: 'Chart', _id: 'chart', id: 'chart'},
+  {name: 'View Table', _id: 'viewtable', id: 'viewtable'}, {name: 'Map', _id: 'map', id: 'map'}, {name: 'Code', _id: 'code', id: 'code'},
+  {name: 'Color', _id: 'color', id: 'color'}, {name: 'HTML', _id: 'html', id: 'html'}, {name: 'Time', _id: 'time', id: 'time'},
+  {name: 'Date', _id: 'date', id: 'date'}, {name: 'Datetime', _id: 'datetime', id: 'datetime'}, {name: 'Button', _id: 'button', id: 'button'},
+  {name: 'Image', _id: 'image', id: 'image'}, {name: 'Document', _id: 'document', id: 'document'}, {name: 'Password', _id: 'password', id: 'password'},
+  {name: 'Float', _id: 'float', id: 'float'}, {name: 'Integer', _id: 'integer', id: 'integer'}, {name: 'Decimal', _id: 'decimal', id: 'decimal'},
+  {name: 'Collection', _id: 'collection', id: 'collection'}, {name: 'Textarea', _id: 'textarea', id: 'textarea'}, {name: 'Boolean', _id: 'boolean', id: 'boolean'},
+  {name: 'Table', _id: 'table', id: 'table'}, {name: 'Report Table', _id: 'reporttable', id: 'reporttable'}, {name: 'Server Table', _id: 'servertable', id: 'servertable'},
 ]
 
 export interface FieldParams {
@@ -860,7 +860,7 @@ export class Field extends UIBase {
         color: this.params.value.color || "primary",
         variant: this.params.value.variant || Field.defaultParams?.variant,
         itemTitle: this.params.value.itemTitle || 'name',
-        itemValue: this.params.value.itemValue || '_id',
+        itemValue: Master.resolveItemValueField(this.selectItems.value, this.params.value.itemValue || this.params.value.idField),
         readonly: this.$readonly,
         items: this.selectItems.value,
         multiple: this.params.value.multiple,
@@ -905,7 +905,7 @@ export class Field extends UIBase {
           (item: any) => h(
             VRadio,
             {
-              value: item[this.params.value.itemValue || '_id'],
+              value: Master.getItemId(item, this.params.value.itemValue || this.params.value.idField),
               inline: this.params.value.inline
             },
             {
@@ -946,7 +946,7 @@ export class Field extends UIBase {
         (item: any) => h(
           VCheckboxBtn,
           {
-            value: item[this.params.value.itemValue || '_id'],
+            value: Master.getItemId(item, this.params.value.itemValue || this.params.value.idField),
             ...this.modelBinding(),
             readonly: this.$readonly,
             class: ['vef-check-select'].concat(this.params.value.class || []),
@@ -986,7 +986,7 @@ export class Field extends UIBase {
         color: this.params.value.color || "primary",
         variant: this.params.value.variant || Field.defaultParams?.variant,
         itemTitle: this.params.value.itemTitle || 'name',
-        itemValue: this.params.value.itemValue || '_id',
+        itemValue: Master.resolveItemValueField(this.selectItems.value, this.params.value.itemValue || this.params.value.idField),
         readonly: this.$readonly,
         items: this.selectItems.value,
         autoSelectFirst: true,
@@ -1816,7 +1816,8 @@ export class Field extends UIBase {
       if (fm.$params.mode === 'create') this.$master.$addCollectionObject(this.params.value.storage, value);
 
       if (fm.$params.mode === 'edit')  {
-        this.$master.$setCollectionObject(this.params.value.storage, value._id || value.__index?.toString(), value, value._id ? '_id' : '__index');
+        const valueId = Master.getItemId(value, this.params.value.idField);
+        this.$master.$setCollectionObject(this.params.value.storage, (valueId || valueId === 0) ? valueId : value.__index?.toString(), value, (valueId || valueId === 0) ? Master.resolveItemValueField([value], this.params.value.idField) : '__index');
       }
       this.updateValue();
     }
@@ -1852,7 +1853,10 @@ export class Field extends UIBase {
           canRemove = await this.options.canRemoveItem(this, items[i]);
         }
         
-        if (canRemove) this.$master.$removeCollectionObject(this.params.value.storage, items[i]._id || (items[i].__index || items[i].__index === 0 ? items[i].__index.toString() : items[i].toString()), items[i]._id ? '_id' : '__index');
+        if (canRemove) {
+          const itemId = Master.getItemId(items[i], this.params.value.idField);
+          this.$master.$removeCollectionObject(this.params.value.storage, (itemId || itemId === 0) ? itemId : (items[i].__index || items[i].__index === 0 ? items[i].__index.toString() : items[i].toString()), (itemId || itemId === 0) ? Master.resolveItemValueField([items[i]], this.params.value.idField) : '__index');
+        }
         
       }
 
@@ -1870,7 +1874,8 @@ export class Field extends UIBase {
     if (!canEdit) return;
 
     await this.createCollectionForm();
-    const value = this.currentCollectionItems.filter((i: any) => (i._id && i._id === item._id) || i.__index === item.__index)[0];
+    const itemId = Master.getItemId(item, this.params.value.idField);
+    const value = this.currentCollectionItems.filter((i: any) => Master.matchesItemId(i, itemId, this.params.value.idField) || i.__index === item.__index)[0];
     await this.collectionFormMaster?.$reset(Object.assign({}, value || {}));
     if (this.collectionForm) {
       this.collectionForm.$params.mode = this.$readonly ? 'display': 'edit';

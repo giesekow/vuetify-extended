@@ -11,6 +11,7 @@ import { ExportTemplateInfo } from "./report";
 import { AppManager } from "./appmanager";
 import { $excel, computeFunctionalCodeAsync } from "../misc";
 import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent } from "./shortcut";
+import { Master } from "../master";
 
 export interface TriggerParams {
   ref?: string;
@@ -230,8 +231,8 @@ export class Trigger extends UIBase {
   }
 
   async remove (item: any): Promise<boolean|string> {
-    const itemId = item[this.params.value.idField || "_id"];
-    if (itemId) {
+    const itemId = Master.getItemId(item, this.params.value.idField);
+    if (itemId || itemId === 0) {
       try {
         await this.$app.service(this.params.value.objectType).remove(itemId);
         return true;
@@ -284,9 +285,9 @@ export class Trigger extends UIBase {
           addedQ = await this.searchFieldData.callback(search, this.selectedSearchFields.value, this)
         } else {
 
-          addedQ = this.selectedSearchFields.value.filter((f: any) => f._id).map((f: any) => {
+          addedQ = this.selectedSearchFields.value.map((f: any) => Master.getItemId(f)).filter((fieldId: any) => fieldId || fieldId === 0).map((fieldId: any) => {
             const fq: any = {};
-            fq[f._id] = {$regex: search, $options: 'i'}
+            fq[fieldId] = {$regex: search, $options: 'i'}
             return fq;
           })
 
@@ -566,7 +567,7 @@ export class Trigger extends UIBase {
             },
             multiple: true,
             itemTitle: "name",
-            itemValue: "_id",
+            itemValue: Master.resolveItemValueField(this.searchFieldItems.value),
             returnObject: true,
             appendIcon: 'mdi-filter-cog',
             items: this.searchFieldItems.value
@@ -596,7 +597,7 @@ export class Trigger extends UIBase {
             noDataText: this.currentSearchText || (this.selectedSearchFields.value || []).length > 0
               ? 'No matching records found. Try a different search.'
               : 'Enter a search term and press Enter to load results.',
-            itemValue: this.params.value.idField || "_id",
+            itemValue: Master.resolveItemValueField(this.items.value, this.params.value.idField),
             loading: this.loading.value,
             itemsPerPage: this.tableOptions.value.itemsPerPage,
             page: this.tableOptions.value.page,

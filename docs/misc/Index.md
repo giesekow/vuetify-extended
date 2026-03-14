@@ -4,6 +4,8 @@ The misc layer contains utility helpers for validation, printing, Excel import/e
 
 ## Pages
 
+- [Master](./Master.md)
+  Shared data model and id-resolution utilities used by forms, reports, collections, selectors, and table widgets.
 - [General Utilities](./General.md)
   Mixed utility module for dates, numbers, files, dynamic computation helpers, formatting, and small shared helpers.
 - [Print](./Print.md)

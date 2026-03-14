@@ -106,3 +106,8 @@ export class Trigger extends UIBase {
 
 - `static setDefault(value: TriggerParams, reset?: boolean)`
 - `render(props: any, context: any)`
+
+## ID Resolution
+
+- `TriggerParams.idField` is used first for selected records, result tables, and remove actions.
+- When omitted, trigger result handling falls back to the global `Master` id field and then `_id` / `id`.

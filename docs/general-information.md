@@ -78,7 +78,14 @@ The `master` module exports:
 
 - `Master`
 
-This is the shared data model used by forms and reports.
+This is the shared data model used by forms and reports. It now supports `Master.setDefault(...)`, including a project-wide `idField` default.
+
+The shared id lookup order throughout the runtime is:
+
+- explicit local `idField` or `itemValue`
+- `Master.setDefault({ idField: ... })`
+- `_id`
+- `id`
 
 ## `api`
 

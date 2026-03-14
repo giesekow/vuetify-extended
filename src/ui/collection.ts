@@ -5,6 +5,7 @@ import { Report } from "./report";
 import { Selector } from "./selector";
 import { OnHandler } from "./lib";
 import { VAlert } from "vuetify/components";
+import { Master } from "../master";
 
 export interface CollectionParams {
   ref?: string;
@@ -263,7 +264,7 @@ export class Collection extends UIBase {
       this.currentReport.$params.selected = item;
 
       if (!this.params.value.selectionOnly && item) {
-        this.currentReport.$params.objectId = item[this.params.value.idField || "_id"];
+        this.currentReport.$params.objectId = Master.getItemId(item, this.params.value.idField);
       }
 
       if (this.params.value.mode === "create") this.currentReport.$params.multiple = true;

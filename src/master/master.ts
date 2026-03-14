@@ -1,3 +1,4 @@
+import nestedproperty from "nested-property";
 import { EventEmitter } from "../ui/lib";
 
 export interface MasterOptions {
@@ -28,7 +29,7 @@ export class Master extends EventEmitter {
     this.itemId = resolvedOptions.id;
     this.itemType = resolvedOptions.type;
     this.parent = resolvedOptions.parent;
-    this.idField = resolvedOptions.idField || '_id';
+    this.idField = Master.resolveItemValueField([], resolvedOptions.idField);
   }
 
   static setDefault(value: MasterOptions, reset?: boolean): void {
@@ -41,6 +42,50 @@ export class Master extends EventEmitter {
     if (!Master.defaultOptions.idField) {
       Master.defaultOptions.idField = '_id';
     }
+  }
+
+  static getDefaultIdField(): string | undefined {
+    return Master.defaultOptions.idField;
+  }
+
+  static getIdFieldCandidates(idField?: any): string[] {
+    const candidates = [idField, Master.defaultOptions.idField, '_id', 'id'];
+    return candidates.filter((field, index) => typeof field === 'string' && field !== '' && candidates.indexOf(field) === index) as string[];
+  }
+
+  static getValueByField(item: any, field?: string): any {
+    if (!item || !field) return undefined;
+    return nestedproperty.get(item, field);
+  }
+
+  static resolveItemValueField(items?: any[] | any, idField?: any): string {
+    const candidates = Master.getIdFieldCandidates(idField);
+    const normalized = Array.isArray(items) ? items : (items ? [items] : []);
+
+    for (const field of candidates) {
+      if (normalized.some((item: any) => Master.getValueByField(item, field) !== undefined)) {
+        return field;
+      }
+    }
+
+    return candidates[0] || '_id';
+  }
+
+  static getItemId(item: any, idField?: any): any {
+    for (const field of Master.getIdFieldCandidates(idField)) {
+      const value = Master.getValueByField(item, field);
+      if (value || value === 0) {
+        return value;
+      }
+    }
+
+    return undefined;
+  }
+
+  static matchesItemId(item: any, id: any, idField?: any): boolean {
+    if (!(id || id === 0)) return false;
+    const itemId = Master.getItemId(item, idField);
+    return (itemId || itemId === 0) && itemId.toString() === id.toString();
   }
 
   get $type() {
@@ -163,12 +208,7 @@ export class Master extends EventEmitter {
     if (!id) return null;
     let items: any = this.$has(key) ? this.$get(key) : [];
     if (!Array.isArray(items)) items = [items];
-    const kf: string = idField || "_id";
-    const item = items.filter((i: any) => {
-      const iid = this.$np.get(i, kf);
-      return (iid || iid === 0) && iid.toString() === id.toString();
-    })[0];
-    return item;
+    return items.filter((i: any) => Master.matchesItemId(i, id, idField || this.idField))[0];
   }
 
   $setCollectionObject(key: string, id: any, data: any, idField?: string): boolean {
@@ -184,12 +224,8 @@ export class Master extends EventEmitter {
     }
 
     if (!id) return false;
-    
-    const kf: string = idField || "_id";
-    const item = items.filter((i: any) => {
-      const iid = this.$np.get(i, kf);
-      return (iid || iid === 0) && iid.toString() === id.toString();
-    })[0];
+
+    const item = items.filter((i: any) => Master.matchesItemId(i, id, idField || this.idField))[0];
 
     if (item) {
       const index = items.indexOf(item);
@@ -217,12 +253,8 @@ export class Master extends EventEmitter {
       }
 
       if (!id) return false;
-      const kf: string = idField || "_id";
-      
-      const item = items.filter((i: any) => {
-        const iid = this.$np.get(i, kf);
-        return (iid || iid === 0) && iid.toString() === id.toString();
-      })[0];
+
+      const item = items.filter((i: any) => Master.matchesItemId(i, id, idField || this.idField))[0];
   
       if (item) {
         const index = items.indexOf(item);
@@ -243,13 +275,8 @@ export class Master extends EventEmitter {
           }
         }
         if (!id) continue;
-        
-        const kf: string = idField || "_id";
-        
-        const item = items.filter((i: any) => {
-          const iid = this.$np.get(i, kf);
-          return iid && iid.toString() === id.toString();
-        })[0];
+
+        const item = items.filter((i: any) => Master.matchesItemId(i, id, idField || this.idField))[0];
     
         if (item) {
           const index = items.indexOf(item);

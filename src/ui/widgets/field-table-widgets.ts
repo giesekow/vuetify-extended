@@ -2,6 +2,7 @@ import { Ref, VNode } from "vue";
 import { VCard, VCol, VRow } from 'vuetify/components';
 import { VDataTable, VDataTableFooter, VDataTableServer, VDataTableVirtual } from 'vuetify/components';
 import nestedProperty from 'nested-property';
+import { Master } from '../../master';
 
 export interface TableWidgetContext {
   $h: any;
@@ -42,7 +43,7 @@ export function buildTableWidget(field: TableWidgetContext): VNode {
     items: field.getCurrentCollectionItems(),
     class: [...(field.params.value.class || []), 'dense-table', ...(field.params.value.bordered ? ['bordered-table'] : [])],
     showSelect: !field.$readonly,
-    itemValue: field.params.value.idField || '_id',
+    itemValue: Master.resolveItemValueField(field.getCurrentCollectionItems(), field.params.value.idField),
     itemsPerPage: field.params.value.itemsPerPage || 10,
     returnObject: true,
     fixedHeader: true,
@@ -69,7 +70,7 @@ export function buildServerTableWidget(field: TableWidgetContext): VNode {
     items: field.tableItems.value,
     class: [...(field.params.value.class || []), 'dense-table', ...(field.params.value.bordered ? ['bordered-table'] : [])],
     showSelect: !field.$readonly,
-    itemValue: field.params.value.idField || '_id',
+    itemValue: Master.resolveItemValueField(field.getCurrentCollectionItems(), field.params.value.idField),
     returnObject: true,
     fixedHeader: true,
     fixedFooter: true,
@@ -103,7 +104,7 @@ export function buildViewTableWidget(field: TableWidgetContext): VNode {
     items: field.tableItems.value,
     class: [...(field.params.value.class || []), 'dense-table', ...(field.params.value.bordered ? ['bordered-table'] : [])],
     showSelect: !field.$readonly,
-    itemValue: field.params.value.idField || '_id',
+    itemValue: Master.resolveItemValueField(field.getCurrentCollectionItems(), field.params.value.idField),
     itemsPerPage: field.params.value.itemsPerPage || 10,
     returnObject: true,
     fixedHeader: true,

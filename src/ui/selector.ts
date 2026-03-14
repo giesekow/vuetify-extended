@@ -2,6 +2,7 @@ import { VNode, Ref, nextTick } from "vue";
 import { UIBase } from "./base";
 import { VDivider, VRow, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VCardSubtitle, VCol, VDialog, VAutocomplete } from 'vuetify/components';
 import { Button, ButtonParams } from "./button";
+import { Master } from "../master";
 import { OnHandler } from "./lib";
 
 export interface SelectorParams {
@@ -303,7 +304,7 @@ export class Selector extends UIBase {
             multiple: this.params.value.multiple,
             items: this.items.value,
             itemTitle: this.params.value.textField || "name",
-            itemValue: this.params.value.idField || "_id",
+            itemValue: Master.resolveItemValueField(this.items.value, this.params.value.idField),
             returnObject: this.params.value.returnObject,
             onKeyup: (ev: KeyboardEvent) => this.onSelectorKeyup(ev),
           },

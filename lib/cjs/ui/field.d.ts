@@ -11,6 +11,7 @@ export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagin
 export declare const fieldTypeOptions: {
     name: string;
     _id: string;
+    id: string;
 }[];
 export interface FieldParams {
     ref?: string;
