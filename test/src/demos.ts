@@ -22,6 +22,7 @@ import {
   EnvironmentTag,
   StatusBadge,
   UserArea,
+  MailboxView,
 } from '../../src';
 import {
   createSeedStore,
@@ -991,7 +992,39 @@ export function createDemoApp() {
       ],
       headerEnd: () => [
         h(new MailboxBell({ color: 'primary', badgeColor: 'error', title: 'Open Team Mailbox', viewWidth: 980 }).component),
-        h(new UserArea({ name: 'Alex Builder', subtitle: 'UI Engineer', avatarColor: 'primary' }).component),
+        h(new UserArea(
+          {
+            name: 'Administrator User',
+            subtitle: 'UI Engineer',
+            email: 'administrator@prequizer.com',
+            accountId: 'C6L2-0Z2D-XW49-AB11',
+            avatarColor: 'primary',
+            avatarSrc: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+            avatarAlt: 'Administrator profile picture',
+          },
+          {
+            buttons: async () => [
+              new Button(
+                { text: 'Mailbox', icon: 'mdi-email-outline', variant: 'text', block: true },
+                { onClicked: () => { AppManager.showUI(new MailboxView({ title: Mailbox.$title, width: 980 })); } },
+              ),
+              new Button(
+                { text: 'Profile', icon: 'mdi-cog', variant: 'text', block: true },
+                { onClicked: () => { Notifications.$info('Profile action triggered from UserArea.', { title: 'User Area' }); } },
+              ),
+              { type: 'separator', label: 'Session' },
+              new Button(
+                { text: 'Logout', icon: 'mdi-lock-outline', variant: 'text', block: true },
+                { onClicked: async () => {
+                  const confirmed = await Dialogs.$confirm('Sign out from the demo user area?');
+                  if (confirmed) {
+                    Notifications.$success('Logout action triggered.', { title: 'User Area' });
+                  }
+                } },
+              ),
+            ],
+          },
+        ).component),
       ],
       footerStart: () => [
         h(new StatusBadge({ text: 'Vuetify Extended Test App', icon: 'mdi-flask-outline', color: 'primary', variant: 'outlined' }).component),

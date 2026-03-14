@@ -1,5 +1,6 @@
 import { VNode } from "vue";
 import { UIBase } from "./base";
+import { Button } from "./button";
 export interface AppTitleBlockParams {
     title?: string;
     subtitle?: string;
@@ -48,18 +49,48 @@ export declare class StatusBadge extends UIBase {
 export interface UserAreaParams {
     name?: string;
     subtitle?: string;
+    email?: string;
+    accountId?: string;
     initials?: string;
     icon?: string;
+    avatarSrc?: string;
+    avatarAlt?: string;
     avatarColor?: string;
     align?: 'left' | 'right';
+    menuWidth?: string | number;
+    copyIcon?: string;
+    copiedIcon?: string;
+    copiedDuration?: number;
+}
+export interface UserAreaSeparatorEntry {
+    type: 'separator';
+    label?: string;
+    divider?: boolean;
+}
+export type UserAreaMenuEntry = Button | UserAreaSeparatorEntry;
+export interface UserAreaOptions {
+    buttons?: (userArea: UserArea) => Promise<UserAreaMenuEntry[]> | UserAreaMenuEntry[];
 }
 export declare class UserArea extends UIBase {
     private params;
+    private options;
+    private menuOpen;
+    private menuEntries;
+    private menuLoading;
+    private copyConfirmed;
+    private copyResetTimer?;
     private static defaultParams;
-    constructor(params?: UserAreaParams);
+    constructor(params?: UserAreaParams, options?: UserAreaOptions);
     static setDefault(value: UserAreaParams, reset?: boolean): void;
     get $params(): UserAreaParams;
     render(): VNode | undefined;
+    private buildActivator;
+    private buildMenuHeader;
+    private buildMenuActions;
+    private buildButtonEntry;
+    private buildSeparator;
+    private ensureMenuEntries;
+    private copyAccountId;
     private initialsFromName;
 }
 export declare const $ATB: (params?: AppTitleBlockParams) => AppTitleBlock;

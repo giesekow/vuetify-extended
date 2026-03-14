@@ -1,6 +1,7 @@
-import { Ref, VNode } from "vue";
+import { Ref, VNode, markRaw } from "vue";
 import { UIBase } from "./base";
-import { VAvatar, VChip, VIcon } from 'vuetify/components';
+import { Button } from "./button";
+import { VAvatar, VBtn, VCard, VCardText, VDivider, VIcon, VList, VListItem, VListItemTitle, VMenu, VChip } from 'vuetify/components';
 
 export interface AppTitleBlockParams {
   title?: string;
@@ -150,22 +151,57 @@ export class StatusBadge extends UIBase {
 export interface UserAreaParams {
   name?: string;
   subtitle?: string;
+  email?: string;
+  accountId?: string;
   initials?: string;
   icon?: string;
+  avatarSrc?: string;
+  avatarAlt?: string;
   avatarColor?: string;
   align?: 'left'|'right';
+  menuWidth?: string | number;
+  copyIcon?: string;
+  copiedIcon?: string;
+  copiedDuration?: number;
+}
+
+export interface UserAreaSeparatorEntry {
+  type: 'separator';
+  label?: string;
+  divider?: boolean;
+}
+
+export type UserAreaMenuEntry = Button | UserAreaSeparatorEntry;
+
+export interface UserAreaOptions {
+  buttons?: (userArea: UserArea) => Promise<UserAreaMenuEntry[]> | UserAreaMenuEntry[];
 }
 
 export class UserArea extends UIBase {
   private params: Ref<UserAreaParams>;
+  private options: UserAreaOptions;
+  private menuOpen: Ref<boolean>;
+  private menuEntries: Ref<UserAreaMenuEntry[]>;
+  private menuLoading: Ref<boolean>;
+  private copyConfirmed: Ref<boolean>;
+  private copyResetTimer?: ReturnType<typeof setTimeout>;
   private static defaultParams: UserAreaParams = {
     avatarColor: 'secondary',
     align: 'right',
+    menuWidth: 320,
+    copyIcon: 'mdi-content-copy',
+    copiedIcon: 'mdi-check',
+    copiedDuration: 2200,
   };
 
-  constructor(params?: UserAreaParams) {
+  constructor(params?: UserAreaParams, options?: UserAreaOptions) {
     super();
     this.params = this.$makeRef({ ...UserArea.defaultParams, ...(params || {}) });
+    this.options = options || {};
+    this.menuOpen = this.$makeRef(false);
+    this.menuEntries = this.$makeRef([]);
+    this.menuLoading = this.$makeRef(false);
+    this.copyConfirmed = this.$makeRef(false);
   }
 
   static setDefault(value: UserAreaParams, reset?: boolean) {
@@ -182,33 +218,214 @@ export class UserArea extends UIBase {
     }
 
     const h = this.$h;
-    const reverse = this.$params.align !== 'left';
-    const avatar = h(VAvatar, {
+
+    return h(VMenu, {
+      modelValue: this.menuOpen.value,
+      'onUpdate:modelValue': (value: boolean) => {
+        this.menuOpen.value = value;
+        if (value) {
+          void this.ensureMenuEntries();
+        }
+      },
+      location: this.$params.align === 'left' ? 'bottom start' : 'bottom end',
+      origin: this.$params.align === 'left' ? 'top start' : 'top end',
+      offset: 10,
+      closeOnClick: true,
+      closeOnContentClick: true,
+      closeOnBack: true,
+    }, {
+      activator: ({ props: activatorProps }: any) => h(VBtn, {
+        ...activatorProps,
+        variant: 'text',
+        style: {
+          height: 'auto',
+          paddingInline: '4px',
+          paddingBlock: '4px',
+          textTransform: 'none',
+          borderRadius: '999px',
+          minWidth: '0',
+        },
+        'aria-label': this.$params.name || 'Open user menu',
+      }, () => this.buildActivator()),
+      default: () => h(VCard, {
+        elevation: 10,
+        rounded: 'lg',
+        style: {
+          width: typeof this.$params.menuWidth === 'number' ? `${this.$params.menuWidth}px` : (this.$params.menuWidth || '320px'),
+          maxWidth: 'calc(100vw - 24px)',
+          overflow: 'hidden',
+        },
+      }, () => {
+        const content: VNode[] = [this.buildMenuHeader()];
+        const actionSection = this.buildMenuActions();
+        if (actionSection) {
+          content.push(h(VDivider));
+          content.push(actionSection);
+        }
+        return content;
+      }),
+    });
+  }
+
+  private buildActivator() {
+    const h = this.$h;
+    const avatarProps: Record<string, any> = {
       color: this.$params.avatarColor,
       variant: 'tonal',
       size: 38,
-    }, () => this.$params.icon ? h(VIcon, {}, () => this.$params.icon || '') : (this.$params.initials || this.initialsFromName()));
+      'aria-label': this.$params.avatarAlt || this.$params.name || 'User avatar',
+    };
 
-    const text = h('div', {
-      style: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '2px',
-        textAlign: reverse ? 'right' : 'left',
+    if (this.$params.avatarSrc) {
+      avatarProps.image = this.$params.avatarSrc;
+      avatarProps.alt = this.$params.avatarAlt || this.$params.name || 'User avatar';
+      return h(VAvatar, avatarProps);
+    }
+
+    return h(VAvatar, avatarProps, () => this.$params.icon ? h(VIcon, {}, () => this.$params.icon || '') : (this.$params.initials || this.initialsFromName()));
+  }
+
+  private buildMenuHeader() {
+    const h = this.$h;
+    const infoRows: VNode[] = [
+      h('div', { style: { fontSize: '1.05rem', fontWeight: '700', lineHeight: '1.2' } }, this.$params.name || ''),
+      ...(this.$params.subtitle ? [h('div', { style: { fontSize: '0.92rem', opacity: '0.78', lineHeight: '1.2', marginTop: '2px' } }, this.$params.subtitle)] : []),
+      ...(this.$params.email ? [h('div', { style: { fontSize: '0.9rem', opacity: '0.72', lineHeight: '1.2', marginTop: this.$params.subtitle ? '2px' : '4px' } }, this.$params.email)] : []),
+    ];
+
+    if (this.$params.accountId) {
+      infoRows.push(
+        h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '14px' } }, [
+          h('div', { style: { flex: '1 1 auto', minWidth: 0 } }, [
+            h('div', { style: { fontSize: '1rem', fontWeight: '600', lineHeight: '1.2', letterSpacing: '0.02em' } }, this.$params.accountId),
+            h('div', { style: { fontSize: '0.82rem', opacity: '0.72', lineHeight: '1.2', marginTop: '4px' } }, 'Account ID'),
+          ]),
+          h(VBtn, {
+            icon: this.copyConfirmed.value ? (this.$params.copiedIcon || 'mdi-check') : this.$params.copyIcon,
+            variant: 'text',
+            size: 'small',
+            color: this.copyConfirmed.value ? 'success' : undefined,
+            title: this.copyConfirmed.value ? 'Copied' : 'Copy account ID',
+            'aria-label': this.copyConfirmed.value ? 'Account ID copied' : 'Copy account ID',
+            onClick: async (ev: Event) => {
+              ev.stopPropagation();
+              await this.copyAccountId();
+            },
+          }),
+        ])
+      );
+    }
+
+    return h(VCardText, { style: { padding: '16px 18px' } }, () => infoRows);
+  }
+
+  private buildMenuActions() {
+    const h = this.$h;
+    if (this.menuLoading.value) {
+      return h(VList, { density: 'comfortable', nav: true, style: { paddingTop: '4px', paddingBottom: '8px' } }, () => [
+        h(VListItem, { style: { minHeight: '52px' } }, {
+          default: () => h(VListItemTitle, { style: { fontSize: '0.92rem', opacity: '0.72' } }, () => 'Loading...'),
+        }),
+      ]);
+    }
+
+    if (!this.menuEntries.value.length) {
+      return undefined;
+    }
+
+    const rows: VNode[] = [];
+    for (const entry of this.menuEntries.value) {
+      if (entry instanceof Button) {
+        rows.push(this.buildButtonEntry(entry));
+        continue;
+      }
+
+      rows.push(this.buildSeparator(entry));
+    }
+
+    return h(VList, { density: 'comfortable', nav: true, style: { paddingTop: '4px', paddingBottom: '8px' } }, () => rows);
+  }
+
+  private buildButtonEntry(entry: Button) {
+    const h = this.$h;
+    const params = entry.$params;
+    return h(VListItem, {
+      onClick: () => {
+        this.menuOpen.value = false;
+        entry.triggerShortcut();
       },
-    }, [
-      h('div', { style: { fontSize: '0.92rem', fontWeight: '600' } }, this.$params.name || ''),
-      ...(this.$params.subtitle ? [h('div', { style: { fontSize: '0.76rem', opacity: '0.72' } }, this.$params.subtitle)] : []),
-    ]);
+      style: { minHeight: '52px', cursor: 'pointer' },
+      title: params.tooltip,
+      'aria-label': params.tooltip || params.text || 'User menu action',
+    }, {
+      prepend: () => params.icon ? h(VIcon, { size: 22, style: { opacity: '0.72' } }, () => params.icon || '') : undefined,
+      default: () => h(VListItemTitle, { style: { fontSize: '0.96rem', fontWeight: '500' } }, () => params.text || ''),
+    });
+  }
 
+  private buildSeparator(entry: UserAreaSeparatorEntry) {
+    const h = this.$h;
     return h('div', {
       style: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        justifyContent: reverse ? 'flex-end' : 'flex-start',
+        padding: entry.label ? '8px 18px 6px 18px' : '0',
       },
-    }, reverse ? [text, avatar] : [avatar, text]);
+    }, [
+      ...(entry.label ? [h('div', {
+        style: {
+          fontSize: '0.74rem',
+          fontWeight: '700',
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          opacity: '0.58',
+          marginBottom: entry.divider === false ? '0' : '8px',
+        },
+      }, entry.label)] : []),
+      ...(entry.divider === false ? [] : [h(VDivider)]),
+    ]);
+  }
+
+  private async ensureMenuEntries() {
+    if (!this.options.buttons) {
+      this.menuEntries.value = [];
+      return;
+    }
+
+    this.menuLoading.value = true;
+    try {
+      const entries = await this.options.buttons(this);
+      const normalized = (entries || []).filter(Boolean).map((entry) => {
+        if (entry instanceof Button) {
+          entry.setParent(this);
+          return markRaw(entry);
+        }
+
+        return entry;
+      });
+      this.menuEntries.value = normalized;
+    } finally {
+      this.menuLoading.value = false;
+    }
+  }
+
+  private async copyAccountId() {
+    const value = this.$params.accountId;
+    if (!value || typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(value);
+      this.copyConfirmed.value = true;
+      if (this.copyResetTimer) {
+        clearTimeout(this.copyResetTimer);
+      }
+      this.copyResetTimer = setTimeout(() => {
+        this.copyConfirmed.value = false;
+        this.copyResetTimer = undefined;
+      }, Number(this.$params.copiedDuration || 2200));
+    } catch (error) {
+      // Ignore clipboard write failures in unsupported contexts.
+    }
   }
 
   private initialsFromName() {
