@@ -6,6 +6,7 @@ export interface MasterOptions {
     parent?: Master;
 }
 export declare class Master extends EventEmitter {
+    private static defaultOptions;
     private data;
     private itemId?;
     private itemType?;
@@ -15,10 +16,13 @@ export declare class Master extends EventEmitter {
     private postprocesses;
     private preprocesses;
     constructor(options?: MasterOptions);
+    static setDefault(value: MasterOptions, reset?: boolean): void;
     get $type(): any;
     set $type(value: any);
     get $id(): any;
     set $id(value: any);
+    get $idField(): any;
+    set $idField(value: any);
     set $data(data: any);
     get $data(): any;
     get $hasParent(): boolean;

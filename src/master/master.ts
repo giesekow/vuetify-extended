@@ -9,6 +9,10 @@ export interface MasterOptions {
 }
 
 export class Master extends EventEmitter {
+  private static defaultOptions: MasterOptions = {
+    idField: '_id',
+  };
+
   private data: any = {}
   private itemId?: any;
   private itemType?: any;
@@ -20,10 +24,23 @@ export class Master extends EventEmitter {
 
   constructor(options?: MasterOptions) {
     super();
-    this.itemId = options?.id;
-    this.itemType = options?.type;
-    this.parent = options?.parent;
-    this.idField = options?.idField || "_id";
+    const resolvedOptions = { ...Master.defaultOptions, ...(options || {}) };
+    this.itemId = resolvedOptions.id;
+    this.itemType = resolvedOptions.type;
+    this.parent = resolvedOptions.parent;
+    this.idField = resolvedOptions.idField || '_id';
+  }
+
+  static setDefault(value: MasterOptions, reset?: boolean): void {
+    if (reset) {
+      Master.defaultOptions = { ...value };
+    } else {
+      Master.defaultOptions = { ...Master.defaultOptions, ...value };
+    }
+
+    if (!Master.defaultOptions.idField) {
+      Master.defaultOptions.idField = '_id';
+    }
   }
 
   get $type() {
@@ -40,6 +57,14 @@ export class Master extends EventEmitter {
 
   set $id(value: any) {
     this.itemId = value;
+  }
+
+  get $idField() {
+    return this.idField;
+  }
+
+  set $idField(value: any) {
+    this.idField = value;
   }
 
   set $data(data: any) {
