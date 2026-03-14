@@ -99,6 +99,7 @@ export declare class AppMain extends UIBase {
     menu(): Promise<Menu | undefined>;
     render(props: any, context: any): VNode | VNode[] | undefined;
     private renderStackContent;
+    private wrapStackItemContent;
     private wrapWithFab;
     private getActiveStackItem;
     private resolveFabConfig;

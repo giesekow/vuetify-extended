@@ -1,6 +1,6 @@
 import { VNode, Ref, nextTick } from "vue";
 import { ReportMode, UIBase } from "./base";
-import { VAvatar, VBtn, VCard, VCardTitle, VCol, VContainer, VIcon, VLayout, VListItem, VRow } from 'vuetify/components';
+import { VAvatar, VBtn, VCard, VCardTitle, VCol, VContainer, VIcon, VListItem, VRow } from 'vuetify/components';
 import { EventEmitter, OnHandler } from "./lib";
 import { Report } from "./report";
 import { Collection } from "./collection";
@@ -106,19 +106,27 @@ export class Menu extends UIBase {
     const h = this.$h;
 
     return h(
-      VContainer,
+      'div',
       {
-        class: ['fill-height'],
-      },
-      () => h(
-        VLayout,
-        {
-          fullHeight: true
+        style: {
+          height: 'calc(100vh - var(--v-layout-top, 0px) - var(--v-layout-bottom, 0px))',
+          width: '100%',
+          boxSizing: 'border-box',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflowY: 'auto',
+          overflowX: 'hidden',
         },
-        () => h(
-          VRow,
+      },
+      [
+        h(
+          VContainer,
           {
-            alignContent: "center",
+            class: ['py-4'],
+            style: {
+              width: '100%',
+            },
           },
           () => h(
             VCol,
@@ -135,8 +143,8 @@ export class Menu extends UIBase {
             },
             () => this.build(props, context)
           )
-        ),
-      )
+        )
+      ]
     );
   }
 

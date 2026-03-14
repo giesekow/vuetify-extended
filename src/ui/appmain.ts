@@ -270,14 +270,15 @@ export class AppMain extends UIBase {
 
     if (this.index.value >= 0 && this.index.value < this.stack.length) {
       const item = this.stack[this.index.value].item;
+      const itemNode = this.wrapStackItemContent(item, h(item.component));
       if (this.selectorCount.value > 0 || this.dialogCount.value > 0) {
         return [
-          h(item.component),
+          itemNode,
           ...this.selectors.map((s) => h(s.component)),
           ...this.dialogs.map((d) => h(d.component))
         ];
       }
-      return h(item.component);
+      return itemNode;
     }
 
     if (this.selectorCount.value > 0 || this.dialogCount.value > 0) {
@@ -288,6 +289,23 @@ export class AppMain extends UIBase {
     }
 
     return undefined;
+  }
+
+  private wrapStackItemContent(item: UIBase, node: VNode) {
+    const h = this.$h;
+
+    if (item instanceof Menu) {
+      return h('div', {
+        style: {
+          minHeight: '100%',
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+        },
+      }, [node]);
+    }
+
+    return node;
   }
 
   private wrapWithFab(content: VNode | VNode[] | undefined, showFooter: boolean = false) {
@@ -629,10 +647,13 @@ export class AppMain extends UIBase {
   }
 
   private mainShellContentStyle(showFooter: boolean) {
+    const activeItem = this.getActiveStackItem()?.item;
+    const reserveFooterSpace = showFooter && !(activeItem instanceof Menu);
+
     return {
       position: 'relative',
       minHeight: '100%',
-      paddingBottom: showFooter ? '72px' : undefined,
+      paddingBottom: reserveFooterSpace ? '72px' : undefined,
     };
   }
 

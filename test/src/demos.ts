@@ -669,6 +669,8 @@ function buildNestedMenu() {
             subText: 'Exercises the shared notification stack.',
             icon: 'mdi-check-circle',
             color: 'success',
+            shortcut: 'CTRL+F',
+            shortcutDisplay: 'compact'
           },
           {
             callback: async () => {

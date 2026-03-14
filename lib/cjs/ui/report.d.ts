@@ -79,6 +79,7 @@ export declare class Report extends UIBase {
     private sideButtonInstances;
     private currentForm;
     private currentIndex;
+    private currentFormRenderKey;
     private currentStepRefState;
     private hasNext;
     private hasPrev;
