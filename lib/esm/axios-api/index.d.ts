@@ -1,5 +1,5 @@
 import { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { ManagerOptions, SocketOptions } from 'socket.io-client';
+import { Socket, ManagerOptions, SocketOptions } from 'socket.io-client';
 import Keycloak, { KeycloakConfig, KeycloakInitOptions, KeycloakLoginOptions } from 'keycloak-js';
 import type { Application, Service } from '../declarations';
 type EventListener = (data?: any) => void;
@@ -101,7 +101,7 @@ export declare class AxiosApplication extends SimpleEventEmitter implements Appl
     private readonly socketEvent;
     private readonly socketOptions?;
     private readonly socketAuthMode;
-    private socket?;
+    socket?: Socket;
     authenticate: AxiosKeycloakClient['login'];
     login: AxiosKeycloakClient['login'];
     logout: AxiosKeycloakClient['logout'];
@@ -116,6 +116,9 @@ export declare class AxiosApplication extends SimpleEventEmitter implements Appl
     loadUserProfile: Keycloak['loadUserProfile'];
     get user(): any;
     get token(): string | undefined;
+    onSocket(event: string, listener: (...args: any[]) => void): this;
+    offSocket(event: string, listener?: (...args: any[]) => void): this;
+    emitSocket(event: string, ...args: any[]): this;
     constructor(apiURL: any, keycloakConfig: AxiosKeycloakClientConfig, options?: AxiosApiOptions);
     private configureInterceptors;
     private configureSocket;

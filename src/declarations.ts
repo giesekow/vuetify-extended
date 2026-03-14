@@ -5,6 +5,7 @@ import type {
   ServiceAddons as FeathersServiceAddons
 } from '@feathersjs/feathers'
 import type Keycloak from 'keycloak-js'
+import type { Socket } from 'socket.io-client'
 import type { KeycloakClient as FeathersKeycloakClient } from 'feathers-keycloak-connect-client'
 
 export interface Service<T = any> {
@@ -29,6 +30,7 @@ export interface Application {
   service<T = any>(path: string): Service<T>;
   authentication?: any;
   keycloak?: Keycloak;
+  socket?: Socket | undefined;
   user?: any;
   token?: string | undefined;
   authenticated?: (...args: any[]) => any;
@@ -43,6 +45,9 @@ export interface Application {
   loadUserInfo?: (...args: any[]) => any;
   loadUserProfile?: (...args: any[]) => any;
   hasPermission?: (...args: any[]) => any;
+  onSocket?: (event: string, listener: (...args: any[]) => void) => any;
+  offSocket?: (event: string, listener?: (...args: any[]) => void) => any;
+  emitSocket?: (event: string, ...args: any[]) => any;
 }
 
 /**
@@ -67,6 +72,7 @@ export interface FeathersApplication extends BaseFeathersApplication {
   service<T = any>(path: string): FeathersService<T> & FeathersServiceAddons;
   authentication: FeathersKeycloakClient;
   keycloak: Keycloak;
+  socket: Socket | undefined;
   user: any;
   token: string | undefined;
   authenticated: FeathersKeycloakClient['authenticated'];
@@ -81,6 +87,9 @@ export interface FeathersApplication extends BaseFeathersApplication {
   loadUserInfo: Keycloak['loadUserInfo'];
   loadUserProfile: Keycloak['loadUserProfile'];
   hasPermission: FeathersKeycloakClient['hasPermission'];
+  onSocket: (event: string, listener: (...args: any[]) => void) => any;
+  offSocket: (event: string, listener?: (...args: any[]) => void) => any;
+  emitSocket: (event: string, ...args: any[]) => any;
 }
 
 export type PatchedApplication = FeathersApplication

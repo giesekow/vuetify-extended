@@ -25,8 +25,10 @@ export class FeathersApi {
     const appCreator: any = feathers;
     const client: any = appCreator();
 
+    let socket: any = undefined;
+
     if (soptions?.useSocket) {
-      const socket = io(apiURL, { transports: soptions?.transports || ['websocket'], timeout: soptions?.timeout || 6 * 1000 });
+      socket = io(apiURL, { transports: soptions?.transports || ['websocket'], timeout: soptions?.timeout || 6 * 1000 });
       client.configure(socketio(socket));
     } else {
       const restClient = rest(apiURL);
@@ -50,6 +52,38 @@ export class FeathersApi {
       enumerable: true,
       configurable: true,
     });
+
+    Object.defineProperty(client, 'socket', {
+      get() {
+        return socket;
+      },
+      enumerable: true,
+      configurable: true,
+    });
+
+    client.onSocket = (event: string, listener: (...args: any[]) => void) => {
+      socket?.on(event, listener);
+      return client;
+    };
+
+    client.offSocket = (event: string, listener?: (...args: any[]) => void) => {
+      if (!socket) {
+        return client;
+      }
+
+      if (listener) {
+        socket.off(event, listener);
+      } else {
+        socket.off(event);
+      }
+
+      return client;
+    };
+
+    client.emitSocket = (event: string, ...args: any[]) => {
+      socket?.emit(event, ...args);
+      return client;
+    };
     client.configure(findOne());
     client.configure(findAll());
     client.configure(count());

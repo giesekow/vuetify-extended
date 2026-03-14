@@ -630,7 +630,7 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
   private readonly socketEvent: string;
   private readonly socketOptions?: Partial<ManagerOptions & SocketOptions>;
   private readonly socketAuthMode: 'auth' | 'query';
-  private socket?: Socket;
+  socket?: Socket;
 
   authenticate: AxiosKeycloakClient['login'];
   login: AxiosKeycloakClient['login'];
@@ -651,6 +651,30 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
 
   get token(): string | undefined {
     return this.authentication.token;
+  }
+
+  onSocket(event: string, listener: (...args: any[]) => void) {
+    this.socket?.on(event, listener);
+    return this;
+  }
+
+  offSocket(event: string, listener?: (...args: any[]) => void) {
+    if (!this.socket) {
+      return this;
+    }
+
+    if (listener) {
+      this.socket.off(event, listener);
+    } else {
+      this.socket.off(event);
+    }
+
+    return this;
+  }
+
+  emitSocket(event: string, ...args: any[]) {
+    this.socket?.emit(event, ...args);
+    return this;
   }
 
   constructor(apiURL: any, keycloakConfig: AxiosKeycloakClientConfig, options?: AxiosApiOptions) {
