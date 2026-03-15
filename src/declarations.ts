@@ -32,6 +32,9 @@ export interface Application {
   authentication?: any;
   keycloak?: Keycloak;
   socket?: Socket | undefined;
+  apiURL?: string | undefined;
+  apiURLRef?: ShallowRef<string | undefined>;
+  setApiURL?: (url: string) => any;
   user?: any;
   userRef?: ShallowRef<any>;
   token?: string | undefined;
@@ -79,6 +82,9 @@ export interface FeathersApplication extends BaseFeathersApplication {
   authentication: FeathersKeycloakClient;
   keycloak: Keycloak;
   socket: Socket | undefined;
+  apiURL: string | undefined;
+  apiURLRef: ShallowRef<string | undefined>;
+  setApiURL: (url: string) => FeathersApplication;
   user: any;
   userRef: ShallowRef<any>;
   token: string | undefined;

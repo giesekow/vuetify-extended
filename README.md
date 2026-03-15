@@ -11,6 +11,7 @@ This repository contains both the source code under `src/` and the published bui
 - High-level screen primitives such as `Form`, `Report`, `Collection`, and `Selector`
 - A stack-based application shell with `AppMain` and `AppManager`
 - A shared `Api` facade that can target Feathers or axios-backed clients
+- Reactive API URL state and runtime API base switching through `Api.instance.apiURLRef` and `Api.instance.setApiURL(...)`
 - Global runtime helpers for dialogs, notifications, and mailbox-style inbox flows
 - Reusable shell widgets for title blocks, status badges, environment tags, shell action icons, user areas, and mailbox entry points
 - Helpers for printing, export, validation, file handling, charts, maps, HTML editing, and code editing

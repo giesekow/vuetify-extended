@@ -655,6 +655,8 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
   private readonly socketOptions?: Partial<ManagerOptions & SocketOptions>;
   private readonly socketAuthMode: 'auth' | 'query';
   readonly socketConnectedRef: ShallowRef<boolean> = shallowRef(false);
+  readonly apiURLRef: ShallowRef<string | undefined> = shallowRef(undefined);
+  private readonly socketListeners: Map<string, Set<(...args: any[]) => void>> = new Map();
   socket?: Socket;
 
   authenticate: AxiosKeycloakClient['login'];
@@ -694,12 +696,45 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
     return this.authentication.permissionsRef;
   }
 
+  get apiURL(): string | undefined {
+    return this.apiURLRef.value;
+  }
+
+  setApiURL(url: string) {
+    const nextURL = typeof url === 'string' ? url.trim() : '';
+    this.client.defaults.baseURL = nextURL || undefined;
+    this.apiURLRef.value = nextURL || undefined;
+
+    if (this.socketEnabled && !this.socketURL) {
+      this.replaceSocket(this.resolveSocketURL());
+      void this.connectSocket();
+    }
+
+    return this;
+  }
+
   onSocket(event: string, listener: (...args: any[]) => void) {
+    if (!this.socketListeners.has(event)) {
+      this.socketListeners.set(event, new Set());
+    }
+
+    this.socketListeners.get(event)?.add(listener);
     this.socket?.on(event, listener);
     return this;
   }
 
   offSocket(event: string, listener?: (...args: any[]) => void) {
+    const listeners = this.socketListeners.get(event);
+
+    if (listener) {
+      listeners?.delete(listener);
+      if (listeners && listeners.size === 0) {
+        this.socketListeners.delete(event);
+      }
+    } else {
+      this.socketListeners.delete(event);
+    }
+
     if (!this.socket) {
       return this;
     }
@@ -738,6 +773,10 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
       baseURL: apiURL,
       ...(options?.axiosConfig || {}),
     });
+
+    this.apiURLRef.value = typeof this.client.defaults.baseURL === 'string' && this.client.defaults.baseURL.length > 0
+      ? this.client.defaults.baseURL
+      : undefined;
 
     this.authentication = new AxiosKeycloakClient(this, keycloakConfig);
     this.keycloak = this.authentication.keycloak;
@@ -798,43 +837,90 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
     );
   }
 
-  private configureSocket() {
-    if (!this.socketEnabled) {
-      return;
+  private attachCustomSocketListeners(socket: Socket) {
+    for (const [event, listeners] of this.socketListeners.entries()) {
+      for (const listener of listeners) {
+        socket.on(event, listener);
+      }
     }
+  }
 
-    const socketTarget = this.resolveSocketURL();
-    this.socket = io(socketTarget, {
-      autoConnect: false,
-      ...(this.socketOptions || {}),
-    });
+  private bindSocketEvents(socket: Socket) {
+    socket.on('connect', () => {
+      if (this.socket !== socket) {
+        return;
+      }
 
-    this.socket.on('connect', () => {
       this.socketConnectedRef.value = true;
-      this.emit('socket:connect', this.socket?.id);
+      this.emit('socket:connect', socket.id);
     });
 
-    this.socket.on('disconnect', (reason) => {
+    socket.on('disconnect', (reason) => {
+      if (this.socket !== socket) {
+        return;
+      }
+
       this.socketConnectedRef.value = false;
       this.emit('socket:disconnect', reason);
     });
 
-    this.socket.on('connect_error', (error) => {
+    socket.on('connect_error', (error) => {
+      if (this.socket !== socket) {
+        return;
+      }
+
       this.socketConnectedRef.value = false;
       this.emit('socket:error', error);
     });
 
-    this.socket.on(this.socketEvent, (payload: AxiosSocketEnvelope) => {
+    socket.on(this.socketEvent, (payload: AxiosSocketEnvelope) => {
+      if (this.socket !== socket) {
+        return;
+      }
+
       this.dispatchSocketMessage(this.socketEvent, payload);
     });
 
-    this.socket.onAny((eventName: string, payload: any) => {
-      if (eventName === this.socketEvent) {
+    socket.onAny((eventName: string, payload: any) => {
+      if (this.socket !== socket || eventName === this.socketEvent) {
         return;
       }
 
       this.dispatchSocketMessage(eventName, payload);
     });
+
+    this.attachCustomSocketListeners(socket);
+  }
+
+  private replaceSocket(target?: string) {
+    const previousSocket = this.socket;
+    if (previousSocket) {
+      previousSocket.removeAllListeners();
+      previousSocket.disconnect();
+    }
+
+    this.socketConnectedRef.value = false;
+
+    if (!target) {
+      this.socket = undefined;
+      return;
+    }
+
+    const socket = io(target, {
+      autoConnect: false,
+      ...(this.socketOptions || {}),
+    });
+
+    this.socket = socket;
+    this.bindSocketEvents(socket);
+  }
+
+  private configureSocket() {
+    if (!this.socketEnabled) {
+      return;
+    }
+
+    this.replaceSocket(this.resolveSocketURL());
 
     this.on('authSuccess', () => {
       void this.connectSocket();

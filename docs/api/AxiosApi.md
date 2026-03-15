@@ -11,7 +11,7 @@ Axios-based Keycloak client with service-style CRUD wrappers, optional Socket.IO
 - Supports host-configurable auth sync endpoints, including `GET` endpoints like `auth/me`.
 - Can route Socket.IO envelopes into `service(path).on(...)` events.
 - Mirrors `params.query` into normal URL query params even when `queryMode` is `rawquery-header`, while still preserving the legacy rawquery header.
-- Exposes `user`, `token`, `userRef`, `tokenRef`, `authenticatedRef`, `permissionsRef`, and `socketConnectedRef` on the application instance.
+- Exposes `apiURL`, `apiURLRef`, `setApiURL(...)`, `user`, `token`, `userRef`, `tokenRef`, `authenticatedRef`, `permissionsRef`, and `socketConnectedRef` on the application instance.
 
 ## Reference
 
@@ -66,3 +66,12 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
 ## Key Methods
 
 - `static setup(apiURL: any, keycloakConfig: AxiosKeycloakClientConfig, soptions?: AxiosApiOptions)`
+- `instance.setApiURL(newURL: string)`
+
+## Runtime URL Switching
+
+`setApiURL(newURL)` updates `client.defaults.baseURL`, updates `apiURLRef`, and makes future axios service calls use the new base URL immediately.
+
+If Socket.IO is enabled and `socketURL` was not configured explicitly, the socket endpoint is treated as derived from the API URL. In that case `setApiURL(...)` replaces the socket connection and reconnects it against the new base URL. Custom listeners registered through `onSocket(...)` are reattached to the replacement socket automatically.
+
+If `socketURL` was configured explicitly, `setApiURL(...)` only changes the HTTP API base. The socket target remains unchanged.

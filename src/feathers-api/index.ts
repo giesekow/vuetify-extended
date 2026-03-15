@@ -25,36 +25,133 @@ export class FeathersApi {
   static setup(apiURL: any, keycloakConfig: KeycloakClientConfig, soptions?: SocketIOOptions): FeathersApplication {
     const appCreator: any = feathers;
     const client: any = appCreator();
-
+    const usesSocket = soptions?.useSocket === true;
     let socket: any = undefined;
+    const socketListeners = new Map<string, Set<(...args: any[]) => void>>();
 
-    if (soptions?.useSocket) {
-      socket = io(apiURL, { transports: soptions?.transports || ['websocket'], timeout: soptions?.timeout || 6 * 1000 });
-      client.configure(socketio(socket));
-    } else {
-      const restClient = rest(apiURL);
-      client.configure(restClient.axios(axios));
-    }
-    
+    const normalizeApiURL = (value: any) => (typeof value === 'string' && value.length > 0 ? value : undefined);
+    const buildServiceBase = (baseURL: string | undefined, serviceName: string) => {
+      const normalizedName = String(serviceName).replace(/^\/+/, '');
+      if (!baseURL) {
+        return `/${normalizedName}`;
+      }
+
+      return `${baseURL.replace(/\/+$/, '')}/${normalizedName}`;
+    };
+
+    const apiURLRef = shallowRef<string | undefined>(normalizeApiURL(apiURL));
+    const userRef = shallowRef<any>(null);
+    const tokenRef = shallowRef<string | undefined>(undefined);
+    const authenticatedRef = shallowRef<boolean | undefined>(undefined);
+    const permissionsRef = shallowRef<any[]>([]);
+    const socketConnectedRef = shallowRef<boolean>(false);
+
+    const attachCustomSocketListeners = (currentSocket: any) => {
+      if (!currentSocket) {
+        return;
+      }
+
+      for (const [event, listeners] of socketListeners.entries()) {
+        for (const listener of listeners) {
+          currentSocket.on(event, listener);
+        }
+      }
+    };
+
+    const bindSocketState = (currentSocket: any) => {
+      if (!currentSocket) {
+        return;
+      }
+
+      currentSocket.on('connect', () => {
+        if (socket !== currentSocket) {
+          return;
+        }
+
+        socketConnectedRef.value = true;
+      });
+
+      currentSocket.on('disconnect', () => {
+        if (socket !== currentSocket) {
+          return;
+        }
+
+        socketConnectedRef.value = false;
+      });
+
+      currentSocket.on('connect_error', () => {
+        if (socket !== currentSocket) {
+          return;
+        }
+
+        socketConnectedRef.value = false;
+      });
+
+      attachCustomSocketListeners(currentSocket);
+    };
+
+    const replaceSocket = (nextApiURL: string | undefined) => {
+      const previousSocket = socket;
+      if (previousSocket) {
+        previousSocket.removeAllListeners?.();
+        previousSocket.disconnect();
+      }
+
+      socketConnectedRef.value = false;
+
+      if (!nextApiURL) {
+        socket = undefined;
+        return;
+      }
+
+      socket = io(nextApiURL, {
+        transports: soptions?.transports || ['websocket'],
+        timeout: soptions?.timeout || 6 * 1000,
+      });
+
+      bindSocketState(socket);
+    };
+
+    const updateExistingServices = (nextApiURL: string | undefined) => {
+      for (const [serviceName, service] of Object.entries(client.services || {})) {
+        if (!service || typeof service !== 'object') {
+          continue;
+        }
+
+        const mutableService = service as any;
+        if (usesSocket) {
+          mutableService.connection = socket;
+        } else {
+          mutableService.base = buildServiceBase(nextApiURL, serviceName);
+        }
+      }
+    };
+
+    const configureTransport = (nextApiURL: any) => {
+      const normalizedURL = normalizeApiURL(nextApiURL);
+      apiURLRef.value = normalizedURL;
+
+      if (usesSocket) {
+        replaceSocket(normalizedURL);
+        if (socket) {
+          client.configure(socketio(socket));
+        }
+      } else {
+        const restClient = rest(normalizedURL);
+        client.configure(restClient.axios(axios));
+      }
+
+      updateExistingServices(normalizedURL);
+    };
+
+    configureTransport(apiURL);
     client.configure(AuthConfigure(keycloakConfig));
 
-    const userRef = shallowRef(client.authentication?.user ?? null);
-    const tokenRef = shallowRef<string | undefined>(client.keycloak?.token);
-    const authenticatedRef = shallowRef<boolean | undefined>(client.keycloak?.authenticated);
-    const permissionsRef = shallowRef<any[]>(client.authentication?.user?.permissions || []);
-    const socketConnectedRef = shallowRef<boolean>(!!socket?.connected);
-
-    socket?.on('connect', () => {
-      socketConnectedRef.value = true;
-    });
-
-    socket?.on('disconnect', () => {
-      socketConnectedRef.value = false;
-    });
-
-    socket?.on('connect_error', () => {
-      socketConnectedRef.value = false;
-    });
+    userRef.value = client.authentication?.user ?? null;
+    tokenRef.value = client.keycloak?.token;
+    authenticatedRef.value = client.keycloak?.authenticated;
+    permissionsRef.value = client.authentication?.user?.permissions || [];
+    socketConnectedRef.value = !!socket?.connected;
 
     client.on('authSuccess', (payload: any) => {
       userRef.value = payload?.user ?? client.authentication?.user ?? null;
@@ -142,12 +239,48 @@ export class FeathersApi {
       configurable: true,
     });
 
+    Object.defineProperty(client, 'apiURL', {
+      get() {
+        return apiURLRef.value;
+      },
+      enumerable: true,
+      configurable: true,
+    });
+
+    Object.defineProperty(client, 'apiURLRef', {
+      get() {
+        return apiURLRef;
+      },
+      enumerable: true,
+      configurable: true,
+    });
+
+    client.setApiURL = (nextApiURL: string) => {
+      configureTransport(nextApiURL);
+      return client;
+    };
+
     client.onSocket = (event: string, listener: (...args: any[]) => void) => {
+      if (!socketListeners.has(event)) {
+        socketListeners.set(event, new Set());
+      }
+
+      socketListeners.get(event)?.add(listener);
       socket?.on(event, listener);
       return client;
     };
 
     client.offSocket = (event: string, listener?: (...args: any[]) => void) => {
+      const listeners = socketListeners.get(event);
+      if (listener) {
+        listeners?.delete(listener);
+        if (listeners && listeners.size === 0) {
+          socketListeners.delete(event);
+        }
+      } else {
+        socketListeners.delete(event);
+      }
+
       if (!socket) {
         return client;
       }
@@ -169,7 +302,7 @@ export class FeathersApi {
     client.configure(findAll());
     client.configure(count());
 
-    if (!soptions?.useSocket) {
+    if (!usesSocket) {
       client.hooks({
         before: {
           all: [

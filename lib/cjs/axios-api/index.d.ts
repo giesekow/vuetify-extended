@@ -110,6 +110,8 @@ export declare class AxiosApplication extends SimpleEventEmitter implements Appl
     private readonly socketOptions?;
     private readonly socketAuthMode;
     readonly socketConnectedRef: ShallowRef<boolean>;
+    readonly apiURLRef: ShallowRef<string | undefined>;
+    private readonly socketListeners;
     socket?: Socket;
     authenticate: AxiosKeycloakClient['login'];
     login: AxiosKeycloakClient['login'];
@@ -129,11 +131,16 @@ export declare class AxiosApplication extends SimpleEventEmitter implements Appl
     get tokenRef(): ShallowRef<string | undefined>;
     get authenticatedRef(): ShallowRef<boolean | undefined>;
     get permissionsRef(): ShallowRef<any[]>;
+    get apiURL(): string | undefined;
+    setApiURL(url: string): this;
     onSocket(event: string, listener: (...args: any[]) => void): this;
     offSocket(event: string, listener?: (...args: any[]) => void): this;
     emitSocket(event: string, ...args: any[]): this;
     constructor(apiURL: any, keycloakConfig: AxiosKeycloakClientConfig, options?: AxiosApiOptions);
     private configureInterceptors;
+    private attachCustomSocketListeners;
+    private bindSocketEvents;
+    private replaceSocket;
     private configureSocket;
     private resolveSocketURL;
     private buildSocketAuth;
