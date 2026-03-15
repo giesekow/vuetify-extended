@@ -262,6 +262,8 @@ Shared id resolution and map widgets have also been expanded:
 
 - global id fallback can now be configured with `Master.setDefault({ idField: ... })` or bootstrap `defaults.master`
 - `Field` map widgets now support single-point maps, multi-marker maps with `multiple: true`, GeoJSON `map-line`, editable `map-circle`, editable `map-rectangle`, and GeoJSON polygon maps with `type: 'map-polygon'`
+- the geometry widgets also render helpful text summaries under the map, such as reverse-geocoded points/corners and circle radius in kilometers
+- `mapTextPageSize` can page long point/vertex lists, and `hideMapText` suppresses the summary and skips geocoding work
 
 ### Axios backend
 

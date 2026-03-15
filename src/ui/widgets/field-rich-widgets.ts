@@ -640,6 +640,7 @@ interface MapWidgetState {
   locationPending?: Record<string, boolean>;
   draftPolygonPaths: Ref<Array<{ lat: number; lng: number }>>;
   draftLinePaths: Ref<Array<{ lat: number; lng: number }>>;
+  locationPage: Ref<number>;
   mapComponentRef: Ref<any>;
   watchersAttached?: boolean;
   boundPolygonMap?: any;
@@ -671,6 +672,7 @@ function getMapWidgetState(field: RichWidgetContext): MapWidgetState {
     locationEntries: field.$makeRef([]),
     draftPolygonPaths: field.$makeRef([]),
     draftLinePaths: field.$makeRef([]),
+    locationPage: field.$makeRef(0),
     mapComponentRef: shallowRef(),
     locationCache: {},
     locationPending: {},
@@ -1707,6 +1709,18 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
   );
 
   const circleValueForText = isCircleMap(field) ? normalizeCircleValue(field.modelValue.value) : undefined;
+  const locationPageSize = Math.max(1, Number(field.params.value.mapTextPageSize) || 5);
+  const totalLocationPages = Math.max(1, Math.ceil(state.locationEntries.value.length / locationPageSize));
+  if (state.locationPage.value >= totalLocationPages) {
+    state.locationPage.value = totalLocationPages - 1;
+  }
+  if (state.locationPage.value < 0) {
+    state.locationPage.value = 0;
+  }
+  const pagedLocationEntries = state.locationEntries.value.slice(
+    state.locationPage.value * locationPageSize,
+    (state.locationPage.value + 1) * locationPageSize,
+  );
   const showLocationSheet = (!field.params.value.hideMapText && (state.locationEntries.value.length > 0 || !!circleValueForText));
   const locationSheet = showLocationSheet
     ? h(
@@ -1719,23 +1733,69 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
           style: { width: '100%', maxWidth: field.maxWidth.value },
         },
         () => [
-          ...(state.locationEntries.value.map((entry, index) =>
-            h(
+          ...(pagedLocationEntries.map((entry, index) => {
+            const absoluteIndex = state.locationPage.value * locationPageSize + index;
+            return h(
               'div',
               {
                 key: entry.key,
                 class: ['text-body-2', ...(index > 0 ? ['mt-2'] : [])],
               },
-              `${getMapTextLabel(field, index, state.locationEntries.value.length)}: ${entry.text}`
-            )
-          )),
+              `${getMapTextLabel(field, absoluteIndex, state.locationEntries.value.length)}: ${entry.text}`
+            );
+          })),
           ...(circleValueForText ? [
             h(
               'div',
               {
-                class: ['text-body-2', ...(state.locationEntries.value.length ? ['mt-2'] : [])],
+                class: ['text-body-2', ...(pagedLocationEntries.length ? ['mt-2'] : [])],
               },
               `Radius: ${(circleValueForText.radius / 1000).toFixed(2)} km`
+            )
+          ] : []),
+          ...(state.locationEntries.value.length > locationPageSize ? [
+            h(
+              'div',
+              {
+                class: ['d-flex', 'align-center', 'justify-space-between', 'mt-3'],
+              },
+              [
+                h(
+                  VBtn,
+                  {
+                    size: 'small',
+                    variant: 'text',
+                    disabled: state.locationPage.value <= 0,
+                    onClick: () => {
+                      if (state.locationPage.value > 0) {
+                        state.locationPage.value -= 1;
+                      }
+                    },
+                  },
+                  () => 'Previous'
+                ),
+                h(
+                  'div',
+                  {
+                    class: ['text-caption'],
+                  },
+                  `Points ${state.locationPage.value * locationPageSize + 1}-${Math.min((state.locationPage.value + 1) * locationPageSize, state.locationEntries.value.length)} of ${state.locationEntries.value.length}`
+                ),
+                h(
+                  VBtn,
+                  {
+                    size: 'small',
+                    variant: 'text',
+                    disabled: state.locationPage.value >= totalLocationPages - 1,
+                    onClick: () => {
+                      if (state.locationPage.value < totalLocationPages - 1) {
+                        state.locationPage.value += 1;
+                      }
+                    },
+                  },
+                  () => 'Next'
+                ),
+              ]
             )
           ] : []),
         ]

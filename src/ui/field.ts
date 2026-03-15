@@ -101,6 +101,7 @@ export interface FieldParams {
   mapOptions?: any;
   mapZoom?: number;
   hideMapText?: boolean;
+  mapTextPageSize?: number;
   fileAccepts?: any;
   fileMaxSize?: number; // In KB
   messageInitialCount?: number;

@@ -80,9 +80,10 @@ Most of the main UI classes also now expose `setDefault(...)` so a host app can 
 
 - single-point `type: 'map'`
 - multi-marker `type: 'map'` with `multiple: true`, stored as `Array<{ lat, lng }>`
-- GeoJSON `type: 'map-line'` for routes/paths
-- `type: 'map-circle'` for center/radius geometry
-- `type: 'map-rectangle'` for editable bounds geometry
+- GeoJSON `type: 'map-line'` for routes/paths, with reverse-geocoded point summaries
+- `type: 'map-circle'` for center/radius geometry, with center geocoding and radius text
+- `type: 'map-rectangle'` for editable bounds geometry, with reverse-geocoded corner summaries
+- large geo-reference lists can be paged locally with `mapTextPageSize`, and `hideMapText` now skips geocoding work completely
 - GeoJSON polygon `type: 'map-polygon'`
 
 ## `master`

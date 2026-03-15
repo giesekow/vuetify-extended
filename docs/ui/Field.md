@@ -58,14 +58,19 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
 
 - `lang`, `codeTheme` for code/html fields
 - `chartType`, `options.chartData(...)`, `options.chartOptions(...)` for charts
-- `mapApiKey`, `mapOptions`, `mapZoom`, `hideMapText`, `multiple` for maps
+- `mapApiKey`, `mapOptions`, `mapZoom`, `hideMapText`, `mapTextPageSize`, `multiple` for maps and geometry widgets
 - `map` stores/edits a point and can optionally render reverse-geocoded location text below the map
+- `hideMapText: true` suppresses the geo-reference block and skips the geocoding work entirely
+- `mapTextPageSize` limits how many geo-reference rows are shown at once before local previous/next paging is used
 - `map` with `multiple: true` is intended for route stops, waypoints, and other multi-location entry use cases
 - `map` with `multiple: true` stores `Array<{ lat, lng }>` and renders one reverse-geocoded address row per marker
 - multi-marker maps support click-to-add, drag-to-move, and right-click removal when the field is editable
 - `map-line` stores/edits GeoJSON `LineString` values and supports click-to-add plus vertex editing
+- `map-line` also renders reverse-geocoded text for each line point below the map
 - `map-circle` stores `{ center, radius }` and supports drag/resize editing
+- `map-circle` renders the reverse-geocoded center plus the radius in kilometers below the map
 - `map-rectangle` stores `{ north, south, east, west }` bounds and supports drag/resize editing
+- `map-rectangle` renders reverse-geocoded corner labels (`North-West`, `North-East`, `South-East`, `South-West`) below the map
 - `map-polygon` renders and edits GeoJSON polygon values
 - `messageInitialCount`, `messagePageSize`, `options.messageFormat(...)` for messagingbox
 - `fileAccepts`, `fileMaxSize` for image/document uploads or previews
@@ -122,6 +127,7 @@ export interface FieldParams {
   mapOptions?: any;
   mapZoom?: number;
   hideMapText?: boolean;
+  mapTextPageSize?: number;
   fileAccepts?: any;
   fileMaxSize?: number; // In KB
   messageInitialCount?: number;
