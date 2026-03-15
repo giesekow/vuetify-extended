@@ -46,6 +46,7 @@ export interface FormOptions {
     validate?: (form: Form) => Promise<string | true | undefined | void> | string | true | undefined | void;
     saved?: (form: Form) => Promise<void> | void;
     afterSaved?: (form: Form) => Promise<void> | void;
+    onError?: (form: Form, error: any) => Promise<void> | void;
     cancel?: () => Promise<void> | void;
     canCancel?: (form: Form) => Promise<boolean | undefined> | boolean | undefined;
     access?: (form: Form, mode: any) => Promise<boolean> | boolean;

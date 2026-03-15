@@ -52,6 +52,7 @@ export interface FormOptions {
   validate?: (form: Form) => Promise<string|true|undefined|void>|string|true|undefined|void;
   saved?: (form: Form) => Promise<void>|void;
   afterSaved?: (form: Form) => Promise<void>|void;
+  onError?: (form: Form, error: any) => Promise<void>|void;
   cancel?: () => Promise<void>|void;
   canCancel?: (form: Form) => Promise<boolean|undefined>|boolean|undefined
   access?: (form: Form, mode: any) => Promise<boolean>|boolean;
@@ -835,24 +836,34 @@ export class Form extends UIBase {
           const saved = await this.$master.$save(this.params.value.mode);
           if (saved !== true) {
             Dialogs.$error(saved || 'Unable to save data!');
+            if (this.options.onError) {
+              await this.options.onError(this, saved);
+            }
             this.handleOn('error', saved);
           } else {
             if (!this.params.value.auto) Dialogs.$success('Data successfully saved!');
+            if (this.options.afterSaved) {
+              await this.options.afterSaved(this);
+            } else {
+              await this.afterSaved();
+            }
             this.handleOn('saved', this);
           }
         } else {
           this.handleOn('saved', this);
         }
       } else {
+
+        if (this.options.afterSaved) {
+          await this.options.afterSaved(this);
+        } else {
+          await this.afterSaved();
+        }
+
         this.handleOn('saved', this);
       }
 
       this.handleOn('after-saved', this)
-      if (this.options.afterSaved) {
-        await this.options.afterSaved(this);
-      } else {
-        await this.afterSaved();
-      }
 
     }
   }
