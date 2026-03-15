@@ -77,6 +77,61 @@ const DEMO_RECTANGLE_LOCATION = {
   east: 10.9038,
   west: 10.8852,
 };
+const DEMO_HEATMAP_LOCATION = [
+  { location: { lat: 48.366512, lng: 10.894446 }, weight: 4 },
+  { location: { lat: 48.368812, lng: 10.898122 }, weight: 7 },
+  { location: { lat: 48.364942, lng: 10.889212 }, weight: 5 },
+  { location: { lat: 48.371124, lng: 10.901931 }, weight: 6 },
+  { location: { lat: 48.360921, lng: 10.886742 }, weight: 3 },
+];
+const DEMO_CLUSTER_LOCATIONS = [
+  { lat: 48.366512, lng: 10.894446 },
+  { lat: 48.366842, lng: 10.894912 },
+  { lat: 48.367141, lng: 10.895104 },
+  { lat: 48.367412, lng: 10.895422 },
+  { lat: 48.367731, lng: 10.895731 },
+  { lat: 48.368021, lng: 10.896045 },
+  { lat: 48.361924, lng: 10.887601 },
+  { lat: 48.362114, lng: 10.887923 },
+  { lat: 48.362344, lng: 10.888212 },
+  { lat: 48.371481, lng: 10.898222 },
+];
+const DEMO_GEOJSON_LOCATION = {
+  type: 'FeatureCollection',
+  features: [
+    {
+      type: 'Feature',
+      properties: { name: 'Warehouse' },
+      geometry: { type: 'Point', coordinates: [10.894446, 48.366512] },
+    },
+    {
+      type: 'Feature',
+      properties: { name: 'Route' },
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [10.8892, 48.3648],
+          [10.8944, 48.3665],
+          [10.9011, 48.3681],
+        ],
+      },
+    },
+    {
+      type: 'Feature',
+      properties: { name: 'Coverage Area' },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [10.8875, 48.3702],
+          [10.9028, 48.3702],
+          [10.9028, 48.3609],
+          [10.8875, 48.3609],
+          [10.8875, 48.3702],
+        ]],
+      },
+    },
+  ],
+};
 const DEMO_POLYGON_LOCATION = {
   type: 'Polygon',
   coordinates: [[
@@ -351,7 +406,7 @@ function buildMapsForm() {
           { cols: 12, dense: true },
           {
             children: () => [
-              buildInfoLabel('Map coverage: point, multi-marker, line, circle, rectangle, and polygon editing examples.'),
+              buildInfoLabel('Map coverage: editable point/multi-point/line/circle/rectangle/polygon widgets plus display-only heatmap, clustered markers, and mixed GeoJSON examples.'),
               new Field({
                 label: 'Office Location',
                 storage: 'officeLocation',
@@ -418,6 +473,39 @@ function buildMapsForm() {
                 mapZoom: 13,
                 default: DEMO_POLYGON_LOCATION,
                 hint: DEMO_MAP_API_KEY ? 'GeoJSON polygon example. Click to add points and drag vertices to edit.' : 'Set VITE_GOOGLE_MAPS_API_KEY in the test app to enable the polygon demo.',
+              }),
+              new Field({
+                label: 'Demand Heatmap',
+                storage: 'demandHeatmap',
+                type: 'map-heatmap',
+                cols: 4,
+                height: 260,
+                mapApiKey: DEMO_MAP_API_KEY,
+                mapZoom: 13,
+                default: DEMO_HEATMAP_LOCATION,
+                hint: DEMO_MAP_API_KEY ? 'Display-only heatmap example using weighted points.' : 'Set VITE_GOOGLE_MAPS_API_KEY in the test app to enable the heatmap demo.',
+              }),
+              new Field({
+                label: 'Depot Clusters',
+                storage: 'depotClusters',
+                type: 'map-cluster',
+                cols: 4,
+                height: 260,
+                mapApiKey: DEMO_MAP_API_KEY,
+                mapZoom: 13,
+                default: DEMO_CLUSTER_LOCATIONS,
+                hint: DEMO_MAP_API_KEY ? 'Display-only clustered marker example for dense point sets.' : 'Set VITE_GOOGLE_MAPS_API_KEY in the test app to enable the cluster demo.',
+              }),
+              new Field({
+                label: 'Mixed GeoJSON',
+                storage: 'mixedGeoJson',
+                type: 'map-geojson',
+                cols: 4,
+                height: 260,
+                mapApiKey: DEMO_MAP_API_KEY,
+                mapZoom: 13,
+                default: DEMO_GEOJSON_LOCATION,
+                hint: DEMO_MAP_API_KEY ? 'Display-only mixed GeoJSON example with point, line, and polygon features.' : 'Set VITE_GOOGLE_MAPS_API_KEY in the test app to enable the GeoJSON demo.',
               }),
             ],
           },

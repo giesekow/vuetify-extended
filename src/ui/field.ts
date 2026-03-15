@@ -23,7 +23,7 @@ import 'katex/dist/katex.min.css';
 
 export type FieldType = 'text'|'select'|'autocomplete'|'label'|
                         'messagingbox'|'chart'| 'viewtable'|
-                        'map'|'map-line'|'map-circle'|'map-rectangle'|'map-polygon'|'code'|'color'|'html'|'htmlview'|'listselect'|
+                        'map'|'map-line'|'map-circle'|'map-rectangle'|'map-polygon'|'map-heatmap'|'map-cluster'|'map-geojson'|'code'|'color'|'html'|'htmlview'|'listselect'|
                         'time'|'date'|'datetime'|'button'|'image'|
                         'document'|'password'|'float'|'integer'|'decimal'|
                         'collection'|'textarea'|'boolean'|'table'|'reporttable'|'servertable';
@@ -50,7 +50,7 @@ const latexPackages = [
 export const fieldTypeOptions = [
   {name: 'Text', _id: 'text', id: 'text'}, {name: 'Select', _id: 'select', id: 'select'}, {name: 'Autocomplete', _id: 'autocomplete', id: 'autocomplete'},
   {name: 'Label', _id: 'label', id: 'label'}, {name: 'Messaging Box', _id: 'messagingbox', id: 'messagingbox'}, {name: 'Chart', _id: 'chart', id: 'chart'},
-  {name: 'View Table', _id: 'viewtable', id: 'viewtable'}, {name: 'Map', _id: 'map', id: 'map'}, {name: 'Map Line', _id: 'map-line', id: 'map-line'}, {name: 'Map Circle', _id: 'map-circle', id: 'map-circle'}, {name: 'Map Rectangle', _id: 'map-rectangle', id: 'map-rectangle'}, {name: 'Map Polygon', _id: 'map-polygon', id: 'map-polygon'}, {name: 'Code', _id: 'code', id: 'code'},
+  {name: 'View Table', _id: 'viewtable', id: 'viewtable'}, {name: 'Map', _id: 'map', id: 'map'}, {name: 'Map Line', _id: 'map-line', id: 'map-line'}, {name: 'Map Circle', _id: 'map-circle', id: 'map-circle'}, {name: 'Map Rectangle', _id: 'map-rectangle', id: 'map-rectangle'}, {name: 'Map Polygon', _id: 'map-polygon', id: 'map-polygon'}, {name: 'Map Heatmap', _id: 'map-heatmap', id: 'map-heatmap'}, {name: 'Map Cluster', _id: 'map-cluster', id: 'map-cluster'}, {name: 'Map GeoJSON', _id: 'map-geojson', id: 'map-geojson'}, {name: 'Code', _id: 'code', id: 'code'},
   {name: 'Color', _id: 'color', id: 'color'}, {name: 'HTML', _id: 'html', id: 'html'}, {name: 'Time', _id: 'time', id: 'time'},
   {name: 'Date', _id: 'date', id: 'date'}, {name: 'Datetime', _id: 'datetime', id: 'datetime'}, {name: 'Button', _id: 'button', id: 'button'},
   {name: 'Image', _id: 'image', id: 'image'}, {name: 'Document', _id: 'document', id: 'document'}, {name: 'Password', _id: 'password', id: 'password'},
@@ -736,6 +736,9 @@ export class Field extends UIBase {
       case 'map-circle':
       case 'map-rectangle':
       case 'map-polygon':
+      case 'map-heatmap':
+      case 'map-cluster':
+      case 'map-geojson':
         return this.buildMap(props, context);
       case 'html':
         return this.buildHTML(props, context);

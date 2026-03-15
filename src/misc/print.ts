@@ -1,4 +1,4 @@
-import ejs from "ejs";
+import ejs from "ejs/ejs.min.js";
 import nestedProperty from "nested-property";
 import { print } from "./html-to-printer";
 

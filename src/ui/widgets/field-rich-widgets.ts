@@ -1,14 +1,24 @@
-import { Ref, VNode, markRaw, nextTick, shallowRef } from "vue";
+import { Ref, VNode, defineComponent, h as vueH, markRaw, nextTick, onBeforeUnmount, onMounted, shallowRef } from "vue";
 import { VBtn, VCard, VCol, VIcon, VImg, VRow, VSheet } from 'vuetify/components';
 import { VAceEditor } from 'vue3-ace-editor';
 import * as ace from 'ace-builds';
+import 'ace-builds/src-noconflict/mode-text';
+import 'ace-builds/src-noconflict/mode-json';
+import 'ace-builds/src-noconflict/mode-javascript';
+import 'ace-builds/src-noconflict/mode-html';
+import 'ace-builds/src-noconflict/mode-python';
+import 'ace-builds/src-noconflict/mode-ejs';
+import 'ace-builds/src-noconflict/mode-latex';
+import 'ace-builds/src-noconflict/theme-chrome';
+import 'ace-builds/src-noconflict/theme-xcode';
+import 'ace-builds/src-noconflict/worker-json';
+import 'ace-builds/src-noconflict/worker-javascript';
+import 'ace-builds/src-noconflict/worker-html';
 import VueApexCharts from 'vue3-apexcharts';
-import { GoogleMap, Marker, Polygon, Polyline, Circle, Rectangle } from "vue3-google-map";
+import { GoogleMap, Marker, Polygon, Polyline, Circle, Rectangle, MarkerCluster, CustomMarker } from "vue3-google-map";
 import VueEditor from '@tinymce/tinymce-vue';
 import { fileToBase64, selectFile } from "../../misc";
 import { Dialogs } from "../dialogs";
-
-ace.config.set("basePath", "https://cdn.jsdelivr.net/npm/ace-builds@" + ace.version + "/src-noconflict/");
 
 export interface RichWidgetContext {
   $h: any;
@@ -35,6 +45,151 @@ export interface RichWidgetContext {
   loadEarlierMessages: (total: number) => void | Promise<void>;
   setMessageScrollContainer: (el: Element | any) => void;
 }
+
+const googleMapsPromiseCache = new Map<string, Promise<any>>();
+
+function getGoogleMapsApiPromise(options: {
+  apiKey: string;
+  libraries?: string[];
+  language?: string;
+  region?: string;
+  version?: string;
+}) {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('Google Maps requires a browser environment.'));
+  }
+
+  const existingGoogle = (window as any).google;
+  if (existingGoogle?.maps) {
+    return Promise.resolve(existingGoogle);
+  }
+
+  const libraries = [...new Set((options.libraries || []).filter(Boolean))].sort();
+  const cacheKey = JSON.stringify({
+    apiKey: options.apiKey,
+    language: options.language || '',
+    region: options.region || '',
+    version: options.version || 'weekly',
+    libraries,
+  });
+
+  const cached = googleMapsPromiseCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const promise = new Promise<any>((resolve, reject) => {
+    const callbackName = '__vuetifyExtendedGoogleMapsCallback';
+    const scriptId = '__vuetifyExtendedGoogleMapsScript';
+    const params = new URLSearchParams();
+    params.set('callback', callbackName);
+    params.set('loading', 'async');
+    params.set('key', options.apiKey);
+    params.set('v', options.version || 'weekly');
+    if (libraries.length) {
+      params.set('libraries', libraries.join(','));
+    }
+    if (options.language) {
+      params.set('language', options.language);
+    }
+    if (options.region) {
+      params.set('region', options.region);
+    }
+
+    const cleanup = () => {
+      try {
+        delete (window as any)[callbackName];
+      } catch (_error) {
+        (window as any)[callbackName] = undefined;
+      }
+    };
+
+    (window as any)[callbackName] = () => {
+      cleanup();
+      resolve((window as any).google);
+    };
+
+    const existingScript = document.getElementById(scriptId) as HTMLScriptElement | null;
+    if (existingScript) {
+      if ((window as any).google?.maps) {
+        cleanup();
+        resolve((window as any).google);
+        return;
+      }
+
+      existingScript.addEventListener('error', () => {
+        cleanup();
+        googleMapsPromiseCache.delete(cacheKey);
+        reject(new Error('Failed to load Google Maps JavaScript API.'));
+      }, { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.async = true;
+    script.defer = true;
+    script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
+    script.onerror = () => {
+      cleanup();
+      googleMapsPromiseCache.delete(cacheKey);
+      reject(new Error('Failed to load Google Maps JavaScript API.'));
+    };
+    document.head.appendChild(script);
+  });
+
+  googleMapsPromiseCache.set(cacheKey, promise);
+  return promise;
+}
+
+const SafeGoogleMap = defineComponent({
+  name: 'VuetifyExtendedSafeGoogleMap',
+  inheritAttrs: false,
+  props: {
+    apiPromise: {
+      type: Object,
+      required: true,
+    },
+    mapProps: {
+      type: Object,
+      required: true,
+    },
+  },
+  setup(props, { slots }) {
+    let active = true;
+    const renderReady = shallowRef(false);
+    const guardedPromise = new Promise<any>((resolve, reject) => {
+      (props.apiPromise as Promise<any>)
+        .then((google) => {
+          if (active) {
+            resolve(google);
+          }
+        })
+        .catch((error) => {
+          if (active) {
+            reject(error);
+          }
+        });
+    });
+
+    onMounted(async () => {
+      await nextTick();
+      if (active) {
+        renderReady.value = true;
+      }
+    });
+
+    onBeforeUnmount(() => {
+      active = false;
+      renderReady.value = false;
+    });
+
+    return () => renderReady.value ? vueH(GoogleMap as any, {
+      ...(props.mapProps as any),
+      apiPromise: guardedPromise,
+    }, slots) : null;
+  },
+});
 
 export function buildHTMLWidget(field: RichWidgetContext): VNode {
   const h = field.$h;
@@ -137,7 +292,9 @@ export function buildCodeWidget(field: RichWidgetContext): VNode[] {
       class: field.params.value.class || [],
       style: {"font-size": "12pt", ...(field.params.value.style || {}), height: field.params.value.height || "300px", "max-width": field.maxWidth.value},
       onInit: (e: any) => {
-        e.setOptions({useWorker: ['json', 'javascript', 'html'].includes(field.params.value.lang || 'text')});
+        // Keep Ace workers off in the library widgets so bundlers do not need
+        // extra worker asset wiring for dynamic form remounts.
+        e.setOptions({ useWorker: false });
       },
       "onUpdate:value": (v: any) => {
         field.modelValue.value = v;
@@ -665,7 +822,9 @@ interface MapWidgetState {
   circleListeners?: any[];
   boundRectangle?: any;
   rectangleListeners?: any[];
+  geoJsonSignature?: string;
 }
+
 
 function getMapWidgetState(field: RichWidgetContext): MapWidgetState {
   return field.getState('__ve_map_widget_state', () => ({
@@ -697,6 +856,18 @@ function isRectangleMap(field: RichWidgetContext) {
 
 function isMultiPointMap(field: RichWidgetContext) {
   return field.params.value.type === 'map' && !!field.params.value.multiple;
+}
+
+function isHeatmapMap(field: RichWidgetContext) {
+  return field.params.value.type === 'map-heatmap';
+}
+
+function isClusterMap(field: RichWidgetContext) {
+  return field.params.value.type === 'map-cluster';
+}
+
+function isGeoJsonMap(field: RichWidgetContext) {
+  return field.params.value.type === 'map-geojson';
 }
 
 function normalizePoint(value: any): { lat: number; lng: number } | undefined {
@@ -849,6 +1020,140 @@ function normalizeCircleValue(value: any): { center: { lat: number; lng: number 
   }
 
   return { center, radius };
+}
+
+function normalizeHeatmapPoints(value: any): Array<{ location: { lat: number; lng: number }; weight?: number }> {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item: any) => {
+      const point = normalizePoint(item?.location || item);
+      if (!point) {
+        return undefined;
+      }
+
+      const weight = item && item.weight !== undefined ? Number(item.weight) : undefined;
+      return {
+        location: point,
+        ...(weight !== undefined && !Number.isNaN(weight) ? { weight } : {}),
+      };
+    })
+    .filter((item: any): item is { location: { lat: number; lng: number }; weight?: number } => !!item);
+}
+
+function normalizeGeoJsonSource(value: any): any | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  if (value.type === 'FeatureCollection' || value.type === 'Feature') {
+    return value;
+  }
+
+  if (typeof value.type === 'string') {
+    return {
+      type: 'FeatureCollection',
+      features: [{ type: 'Feature', geometry: value, properties: {} }],
+    };
+  }
+
+  return undefined;
+}
+
+function extractGeoJsonPoints(value: any): Array<{ lat: number; lng: number }> {
+  const source = normalizeGeoJsonSource(value);
+  if (!source) {
+    return [];
+  }
+
+  const result: Array<{ lat: number; lng: number }> = [];
+
+  const collectGeometry = (geometry: any) => {
+    if (!geometry || typeof geometry.type !== 'string') {
+      return;
+    }
+
+    switch (geometry.type) {
+      case 'Point':
+        if (Array.isArray(geometry.coordinates) && geometry.coordinates.length >= 2) {
+          result.push({ lat: Number(geometry.coordinates[1]), lng: Number(geometry.coordinates[0]) });
+        }
+        break;
+      case 'MultiPoint':
+      case 'LineString':
+        (geometry.coordinates || []).forEach((item: any) => {
+          if (Array.isArray(item) && item.length >= 2) {
+            result.push({ lat: Number(item[1]), lng: Number(item[0]) });
+          }
+        });
+        break;
+      case 'MultiLineString':
+      case 'Polygon':
+        (geometry.coordinates || []).forEach((segment: any) => {
+          (segment || []).forEach((item: any) => {
+            if (Array.isArray(item) && item.length >= 2) {
+              result.push({ lat: Number(item[1]), lng: Number(item[0]) });
+            }
+          });
+        });
+        break;
+      case 'MultiPolygon':
+        (geometry.coordinates || []).forEach((polygon: any) => {
+          (polygon || []).forEach((segment: any) => {
+            (segment || []).forEach((item: any) => {
+              if (Array.isArray(item) && item.length >= 2) {
+                result.push({ lat: Number(item[1]), lng: Number(item[0]) });
+              }
+            });
+          });
+        });
+        break;
+      case 'GeometryCollection':
+        (geometry.geometries || []).forEach((item: any) => collectGeometry(item));
+        break;
+    }
+  };
+
+  if (source.type === 'FeatureCollection') {
+    (source.features || []).forEach((feature: any) => collectGeometry(feature?.geometry));
+  } else if (source.type === 'Feature') {
+    collectGeometry(source.geometry);
+  }
+
+  return result.filter((item) => !Number.isNaN(item.lat) && !Number.isNaN(item.lng));
+}
+
+function syncGeoJsonDisplay(field: RichWidgetContext, state: MapWidgetState, map: any) {
+  if (!map?.data) {
+    return;
+  }
+
+  const source = isGeoJsonMap(field) ? normalizeGeoJsonSource(field.modelValue.value) : undefined;
+  const style = field.params.value.mapOptions?.geoJsonStyle || field.params.value.mapOptions?.style || {
+    fillColor: '#146eb4',
+    fillOpacity: 0.18,
+    strokeColor: '#146eb4',
+    strokeOpacity: 0.9,
+    strokeWeight: 2,
+    clickable: false,
+  };
+  const signature = JSON.stringify(source || null) + JSON.stringify(style || null);
+  if (state.geoJsonSignature === signature) {
+    return;
+  }
+
+  state.geoJsonSignature = signature;
+  const existing: any[] = [];
+  map.data.forEach((feature: any) => existing.push(feature));
+  existing.forEach((feature) => map.data.remove(feature));
+
+  if (source) {
+    map.data.addGeoJson(source);
+  }
+
+  map.data.setStyle(style);
 }
 
 function normalizeRectangleValue(value: any): { north: number; south: number; east: number; west: number } | undefined {
@@ -1258,6 +1563,18 @@ function currentMapPoints(field: RichWidgetContext, state: MapWidgetState) {
     return rectangle ? rectangleToPoints(rectangle) : [];
   }
 
+  if (isHeatmapMap(field)) {
+    return normalizeHeatmapPoints(field.modelValue.value).map((item) => item.location);
+  }
+
+  if (isClusterMap(field)) {
+    return normalizePointList(field.modelValue.value);
+  }
+
+  if (isGeoJsonMap(field)) {
+    return extractGeoJsonPoints(field.modelValue.value);
+  }
+
   if (isMultiPointMap(field)) {
     return normalizePointList(field.modelValue.value);
   }
@@ -1284,6 +1601,7 @@ function syncMapRuntime(field: RichWidgetContext, state: MapWidgetState) {
   syncPolygonMapClick(field, state, ref.api, ref.map);
   syncCircleMapClick(field, state, ref.api, ref.map);
   syncRectangleMapClick(field, state, ref.api, ref.map);
+  syncGeoJsonDisplay(field, state, ref.map);
 
   nextTick(() => {
     refreshGoogleMap(ref.api, ref.map, center, points);
@@ -1363,6 +1681,18 @@ function getMapTextPoints(field: RichWidgetContext, state: MapWidgetState) {
   if (isRectangleMap(field)) {
     const rectangle = normalizeRectangleValue(field.modelValue.value);
     return rectangle ? rectangleToPoints(rectangle) : [];
+  }
+
+  if (isHeatmapMap(field)) {
+    return normalizeHeatmapPoints(field.modelValue.value).map((item) => item.location);
+  }
+
+  if (isClusterMap(field)) {
+    return normalizePointList(field.modelValue.value);
+  }
+
+  if (isGeoJsonMap(field)) {
+    return extractGeoJsonPoints(field.modelValue.value);
   }
 
   if (isMultiPointMap(field)) {
@@ -1452,6 +1782,38 @@ function getMapTextLabel(field: RichWidgetContext, index: number, total: number)
   return total > 1 ? `Point ${index + 1}` : 'Location';
 }
 
+function buildStaticMapMarker(field: RichWidgetContext, point: { lat: number; lng: number }, key: string, color: string = '#146eb4') {
+  const h = field.$h;
+  return h(
+    CustomMarker as any,
+    {
+      key,
+      options: {
+        position: point,
+        anchorPoint: 'BOTTOM_CENTER',
+      },
+    },
+    {
+      default: () => h('div', {
+        style: {
+          width: '14px',
+          height: '14px',
+          borderRadius: '999px',
+          background: color,
+          border: '2px solid #ffffff',
+          boxShadow: '0 2px 6px rgba(20, 110, 180, 0.35)',
+        },
+      }),
+    }
+  );
+}
+
+function getHeatCircleRadius(field: RichWidgetContext, weight?: number) {
+  const baseRadius = Number(field.params.value.mapOptions?.heatRadius) || 2500;
+  const normalizedWeight = weight === undefined || Number.isNaN(Number(weight)) ? 1 : Math.max(0.25, Number(weight));
+  return baseRadius * normalizedWeight;
+}
+
 export function buildMapWidget(field: RichWidgetContext): VNode[] {
   const h = field.$h;
   const state = getMapWidgetState(field);
@@ -1470,6 +1832,8 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
       })();
   const circleValue = normalizeCircleValue(field.modelValue.value);
   const rectangleValue = normalizeRectangleValue(field.modelValue.value);
+  const heatmapValues = normalizeHeatmapPoints(field.modelValue.value);
+  const clusterValues = normalizePointList(field.modelValue.value);
 
   if (polygonPathsFromModel.length && state.draftPolygonPaths.value.length) {
     state.draftPolygonPaths.value = [];
@@ -1512,7 +1876,7 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
       );
     } else {
       polygonPaths.forEach((item) => {
-        mapChildren.push(h(Marker, { key: `${pointKey(item)}-draft-polygon`, options: { position: item, draggable: false } }));
+        mapChildren.push(buildStaticMapMarker(field, item, `${pointKey(item)}-draft-polygon`));
       });
     }
   } else if (isLineMap(field)) {
@@ -1543,7 +1907,7 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
     }
 
     linePaths.forEach((item) => {
-      mapChildren.push(h(Marker, { key: `${pointKey(item)}-line`, options: { position: item, draggable: false } }));
+      mapChildren.push(buildStaticMapMarker(field, item, `${pointKey(item)}-line`));
     });
   } else if (isCircleMap(field)) {
     if (circleValue) {
@@ -1602,18 +1966,59 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
         })
       );
     }
+  } else if (isHeatmapMap(field)) {
+    heatmapValues.forEach((item, index) => {
+      mapChildren.push(
+        h(Circle as any, {
+          key: `${pointKey(item.location)}-heat-${index}`,
+          options: {
+            center: item.location,
+            radius: getHeatCircleRadius(field, item.weight),
+            clickable: false,
+            draggable: false,
+            editable: false,
+            strokeColor: field.params.value.mapOptions?.heatStrokeColor || '#d84315',
+            strokeOpacity: Number(field.params.value.mapOptions?.heatStrokeOpacity ?? 0.08),
+            strokeWeight: Number(field.params.value.mapOptions?.heatStrokeWeight ?? 1),
+            fillColor: field.params.value.mapOptions?.heatColor || '#ef6c00',
+            fillOpacity: Math.min(0.45, 0.12 + (Math.max(1, Number(item.weight || 1)) - 1) * 0.06),
+          },
+        })
+      );
+    });
+  } else if (isClusterMap(field)) {
+    if (clusterValues.length) {
+      mapChildren.push(
+        h(
+          MarkerCluster as any,
+          {
+            options: field.params.value.mapOptions?.clusterOptions || field.params.value.mapOptions || {},
+          },
+          {
+            default: () => clusterValues.map((item, index) => buildStaticMapMarker(field, item, `${pointKey(item)}-cluster-${index}`, '#455a64')),
+          }
+        )
+      );
+    }
+  } else if (isGeoJsonMap(field)) {
+    // GeoJSON display is managed through the Google Maps data layer in syncMapRuntime.
   } else if (isMultiPointMap(field)) {
     pointValues.forEach((item, index) => {
+      if (field.$readonly) {
+        mapChildren.push(buildStaticMapMarker(field, item, `${pointKey(item)}-readonly-${index}`));
+        return;
+      }
+
       mapChildren.push(
         h(Marker, {
           key: pointKey(item),
           options: {
             ...(field.params.value.mapOptions || {}),
             position: item,
-            draggable: !field.$readonly,
+            draggable: true,
           },
           title: `${field.params.value.label || 'Location'} ${index + 1}`,
-          draggable: !field.$readonly,
+          draggable: true,
           onDragend: (event: any) => {
             if (!event?.latLng) {
               return;
@@ -1630,10 +2035,6 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
             });
           },
           onRightclick: () => {
-            if (field.$readonly) {
-              return;
-            }
-
             const currentKey = pointKey(item);
             let removed = false;
             field.modelValue.value = normalizePointList(field.modelValue.value).filter((point) => {
@@ -1648,24 +2049,28 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
       );
     });
   } else if (pointValues[0]) {
-    mapChildren.push(
-      h(Marker, {
-        options: {
-          ...(field.params.value.mapOptions || {}),
-          position: pointValues[0],
-          draggable: !field.$readonly,
-        },
-        title: field.params.value.label,
-        draggable: !field.$readonly,
-        onDragend: (event: any) => {
-          if (!event?.latLng) {
-            return;
-          }
+    if (field.$readonly) {
+      mapChildren.push(buildStaticMapMarker(field, pointValues[0], `${pointKey(pointValues[0])}-readonly`));
+    } else {
+      mapChildren.push(
+        h(Marker, {
+          options: {
+            ...(field.params.value.mapOptions || {}),
+            position: pointValues[0],
+            draggable: true,
+          },
+          title: field.params.value.label,
+          draggable: true,
+          onDragend: (event: any) => {
+            if (!event?.latLng) {
+              return;
+            }
 
-          field.modelValue.value = { lat: event.latLng.lat(), lng: event.latLng.lng() };
-        },
-      })
-    );
+            field.modelValue.value = { lat: event.latLng.lat(), lng: event.latLng.lng() };
+          },
+        })
+      );
+    }
   }
 
   const mapNode = h(
@@ -1691,18 +2096,26 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
           'Google Maps is not configured. Set VITE_GOOGLE_MAPS_API_KEY in test/.env (or the repo root .env) to enable this widget.'
         )
       : h(
-          GoogleMap,
+          SafeGoogleMap as any,
           {
-            ref: (el: any) => {
-              state.mapComponentRef.value = el ? markRaw(el) : el;
+            apiPromise: getGoogleMapsApiPromise({
+              apiKey: mapApiKey,
+              language: field.params.value.mapOptions?.language,
+              region: field.params.value.mapOptions?.region,
+              version: field.params.value.mapOptions?.version,
+              libraries: [],
+            }),
+            mapProps: {
+              ref: (el: any) => {
+                state.mapComponentRef.value = el ? markRaw(el) : el;
+              },
+              style: {
+                height: typeof mapHeight === 'number' ? `${mapHeight}px` : mapHeight,
+                width: '100%',
+              },
+              center: mapCenter,
+              zoom: field.params.value.mapZoom || 5,
             },
-            apiKey: mapApiKey,
-            style: {
-              height: typeof mapHeight === 'number' ? `${mapHeight}px` : mapHeight,
-              width: '100%',
-            },
-            center: mapCenter,
-            zoom: field.params.value.mapZoom || 5,
           },
           { default: () => mapChildren }
         )

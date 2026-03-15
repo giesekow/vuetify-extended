@@ -18,7 +18,7 @@ Most flexible input/display primitive in the library. `Field` covers text inputs
 ```ts
 export type FieldType = 'text'|'select'|'autocomplete'|'label'|
                         'messagingbox'|'chart'| 'viewtable'|
-                        'map'|'map-line'|'map-circle'|'map-rectangle'|'map-polygon'|'code'|'color'|'html'|'htmlview'|'listselect'|
+                        'map'|'map-line'|'map-circle'|'map-rectangle'|'map-polygon'|'map-heatmap'|'map-cluster'|'map-geojson'|'code'|'color'|'html'|'htmlview'|'listselect'|
                         'time'|'date'|'datetime'|'button'|'image'|
                         'document'|'password'|'float'|'integer'|'decimal'|
                         'collection'|'textarea'|'boolean'|'table'|'reporttable'|'servertable';
@@ -30,7 +30,7 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
 - **Selection and lookup:** `select`, `autocomplete`, `listselect`, `collection`
 - **Date and time:** `date`, `time`, `datetime`
 - **Numeric:** `float`, `integer`, `decimal`, `color`
-- **Rich content and media:** `html`, `htmlview`, `code`, `image`, `document`, `messagingbox`, `chart`, `map`, `map-line`, `map-circle`, `map-rectangle`, `map-polygon`
+- **Rich content and media:** `html`, `htmlview`, `code`, `image`, `document`, `messagingbox`, `chart`, `map`, `map-line`, `map-circle`, `map-rectangle`, `map-polygon`, `map-heatmap`, `map-cluster`, `map-geojson`
 - **Table-oriented widgets:** `table`, `viewtable`, `reporttable`, `servertable`
 
 ## Param Relevance by Type Family
@@ -72,6 +72,9 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
 - `map-rectangle` stores `{ north, south, east, west }` bounds and supports drag/resize editing
 - `map-rectangle` renders reverse-geocoded corner labels (`North-West`, `North-East`, `South-East`, `South-West`) below the map
 - `map-polygon` renders and edits GeoJSON polygon values
+- `map-heatmap` is a display-only weighted heatmap for point-density visualization
+- `map-cluster` is a display-only clustered-marker view for dense point sets
+- `map-geojson` is a display-only mixed-geometry renderer for `Feature` / `FeatureCollection` GeoJSON data
 - `messageInitialCount`, `messagePageSize`, `options.messageFormat(...)` for messagingbox
 - `fileAccepts`, `fileMaxSize` for image/document uploads or previews
 

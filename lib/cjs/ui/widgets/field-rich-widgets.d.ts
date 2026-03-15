@@ -1,4 +1,16 @@
 import { Ref, VNode } from "vue";
+import 'ace-builds/src-noconflict/mode-text';
+import 'ace-builds/src-noconflict/mode-json';
+import 'ace-builds/src-noconflict/mode-javascript';
+import 'ace-builds/src-noconflict/mode-html';
+import 'ace-builds/src-noconflict/mode-python';
+import 'ace-builds/src-noconflict/mode-ejs';
+import 'ace-builds/src-noconflict/mode-latex';
+import 'ace-builds/src-noconflict/theme-chrome';
+import 'ace-builds/src-noconflict/theme-xcode';
+import 'ace-builds/src-noconflict/worker-json';
+import 'ace-builds/src-noconflict/worker-javascript';
+import 'ace-builds/src-noconflict/worker-html';
 export interface RichWidgetContext {
     $h: any;
     $readonly: boolean;
