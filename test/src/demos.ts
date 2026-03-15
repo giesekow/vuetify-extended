@@ -59,6 +59,24 @@ const DEMO_MULTI_POINT_LOCATIONS = [
   { lat: 48.371481, lng: 10.898222 },
   { lat: 48.361924, lng: 10.887601 },
 ];
+const DEMO_LINE_LOCATION = {
+  type: 'LineString',
+  coordinates: [
+    [10.8842, 48.3651],
+    [10.8931, 48.3682],
+    [10.9048, 48.3634],
+  ],
+};
+const DEMO_CIRCLE_LOCATION = {
+  center: { lat: 48.366512, lng: 10.894446 },
+  radius: 850,
+};
+const DEMO_RECTANGLE_LOCATION = {
+  north: 48.3720,
+  south: 48.3616,
+  east: 10.9038,
+  west: 10.8852,
+};
 const DEMO_POLYGON_LOCATION = {
   type: 'Polygon',
   coordinates: [[
@@ -310,6 +328,30 @@ function buildRichWidgetsForm() {
                     })),
                 },
               ),
+              new Field({ label: 'Avatar Upload', storage: 'avatar', type: 'image', cols: 6, hint: 'Select an image file to test upload handling.' }),
+              new Field({ label: 'Resume Upload', storage: 'resume', type: 'document', cols: 6, hint: 'Select a PDF or document to test file conversion.' }),
+            ],
+          },
+        ),
+      ],
+    },
+  );
+}
+
+function buildMapsForm() {
+  return new Form(
+    {
+      title: 'Maps',
+      width: 1120,
+      defaultButtonPosition: 'both',
+    },
+    {
+      children: () => [
+        new Part(
+          { cols: 12, dense: true },
+          {
+            children: () => [
+              buildInfoLabel('Map coverage: point, multi-marker, line, circle, rectangle, and polygon editing examples.'),
               new Field({
                 label: 'Office Location',
                 storage: 'officeLocation',
@@ -334,6 +376,39 @@ function buildRichWidgetsForm() {
                 hint: DEMO_MAP_API_KEY ? 'Multi-marker example. Click to add more stops, drag to adjust, and right-click a marker to remove it.' : 'Set VITE_GOOGLE_MAPS_API_KEY in the test app to enable the multi-marker demo.',
               }),
               new Field({
+                label: 'Courier Route',
+                storage: 'courierRoute',
+                type: 'map-line',
+                cols: 4,
+                height: 260,
+                mapApiKey: DEMO_MAP_API_KEY,
+                mapZoom: 13,
+                default: DEMO_LINE_LOCATION,
+                hint: DEMO_MAP_API_KEY ? 'GeoJSON line example. Click to add points and drag vertices to edit the route.' : 'Set VITE_GOOGLE_MAPS_API_KEY in the test app to enable the line demo.',
+              }),
+              new Field({
+                label: 'Pickup Radius',
+                storage: 'pickupRadius',
+                type: 'map-circle',
+                cols: 4,
+                height: 260,
+                mapApiKey: DEMO_MAP_API_KEY,
+                mapZoom: 13,
+                default: DEMO_CIRCLE_LOCATION,
+                hint: DEMO_MAP_API_KEY ? 'Circle example. Drag or resize the circle to adjust the radius.' : 'Set VITE_GOOGLE_MAPS_API_KEY in the test app to enable the circle demo.',
+              }),
+              new Field({
+                label: 'Selection Bounds',
+                storage: 'selectionBounds',
+                type: 'map-rectangle',
+                cols: 4,
+                height: 260,
+                mapApiKey: DEMO_MAP_API_KEY,
+                mapZoom: 13,
+                default: DEMO_RECTANGLE_LOCATION,
+                hint: DEMO_MAP_API_KEY ? 'Rectangle example. Drag or resize the bounds to edit the area.' : 'Set VITE_GOOGLE_MAPS_API_KEY in the test app to enable the rectangle demo.',
+              }),
+              new Field({
                 label: 'Service Area',
                 storage: 'serviceArea',
                 type: 'map-polygon',
@@ -344,8 +419,6 @@ function buildRichWidgetsForm() {
                 default: DEMO_POLYGON_LOCATION,
                 hint: DEMO_MAP_API_KEY ? 'GeoJSON polygon example. Click to add points and drag vertices to edit.' : 'Set VITE_GOOGLE_MAPS_API_KEY in the test app to enable the polygon demo.',
               }),
-              new Field({ label: 'Avatar Upload', storage: 'avatar', type: 'image', cols: 6, hint: 'Select an image file to test upload handling.' }),
-              new Field({ label: 'Resume Upload', storage: 'resume', type: 'document', cols: 6, hint: 'Select a PDF or document to test file conversion.' }),
             ],
           },
         ),
@@ -484,7 +557,7 @@ function buildFullReport(params?: { objectId?: string; mode?: 'create' | 'edit' 
       title: params?.title || 'Person Workspace',
       objectType: 'people',
       objectId: params?.objectId,
-      forms: 3,
+      forms: 4,
       mode: params?.mode || 'edit',
       horizontalAlign: 'center',
       verticalAlign: 'center',
@@ -500,6 +573,9 @@ function buildFullReport(params?: { objectId?: string; mode?: 'create' | 'edit' 
           return buildRichWidgetsForm();
         }
         if (index === 2) {
+          return buildMapsForm();
+        }
+        if (index === 3) {
           return buildTablesForm();
         }
         return undefined;

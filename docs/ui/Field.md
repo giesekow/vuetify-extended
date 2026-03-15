@@ -18,7 +18,7 @@ Most flexible input/display primitive in the library. `Field` covers text inputs
 ```ts
 export type FieldType = 'text'|'select'|'autocomplete'|'label'|
                         'messagingbox'|'chart'| 'viewtable'|
-                        'map'|'map-polygon'|'code'|'color'|'html'|'htmlview'|'listselect'|
+                        'map'|'map-line'|'map-circle'|'map-rectangle'|'map-polygon'|'code'|'color'|'html'|'htmlview'|'listselect'|
                         'time'|'date'|'datetime'|'button'|'image'|
                         'document'|'password'|'float'|'integer'|'decimal'|
                         'collection'|'textarea'|'boolean'|'table'|'reporttable'|'servertable';
@@ -30,7 +30,7 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
 - **Selection and lookup:** `select`, `autocomplete`, `listselect`, `collection`
 - **Date and time:** `date`, `time`, `datetime`
 - **Numeric:** `float`, `integer`, `decimal`, `color`
-- **Rich content and media:** `html`, `htmlview`, `code`, `image`, `document`, `messagingbox`, `chart`, `map`, `map-polygon`
+- **Rich content and media:** `html`, `htmlview`, `code`, `image`, `document`, `messagingbox`, `chart`, `map`, `map-line`, `map-circle`, `map-rectangle`, `map-polygon`
 - **Table-oriented widgets:** `table`, `viewtable`, `reporttable`, `servertable`
 
 ## Param Relevance by Type Family
@@ -63,6 +63,9 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
 - `map` with `multiple: true` is intended for route stops, waypoints, and other multi-location entry use cases
 - `map` with `multiple: true` stores `Array<{ lat, lng }>` and renders one reverse-geocoded address row per marker
 - multi-marker maps support click-to-add, drag-to-move, and right-click removal when the field is editable
+- `map-line` stores/edits GeoJSON `LineString` values and supports click-to-add plus vertex editing
+- `map-circle` stores `{ center, radius }` and supports drag/resize editing
+- `map-rectangle` stores `{ north, south, east, west }` bounds and supports drag/resize editing
 - `map-polygon` renders and edits GeoJSON polygon values
 - `messageInitialCount`, `messagePageSize`, `options.messageFormat(...)` for messagingbox
 - `fileAccepts`, `fileMaxSize` for image/document uploads or previews

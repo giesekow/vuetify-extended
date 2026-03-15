@@ -3,7 +3,7 @@ import { VBtn, VCard, VCol, VIcon, VImg, VRow, VSheet } from 'vuetify/components
 import { VAceEditor } from 'vue3-ace-editor';
 import * as ace from 'ace-builds';
 import VueApexCharts from 'vue3-apexcharts';
-import { GoogleMap, Marker, Polygon } from "vue3-google-map";
+import { GoogleMap, Marker, Polygon, Polyline, Circle, Rectangle } from "vue3-google-map";
 import VueEditor from '@tinymce/tinymce-vue';
 import { fileToBase64, selectFile } from "../../misc";
 import { Dialogs } from "../dialogs";
@@ -639,22 +639,38 @@ interface MapWidgetState {
   locationCache?: Record<string, string>;
   locationPending?: Record<string, boolean>;
   draftPolygonPaths: Ref<Array<{ lat: number; lng: number }>>;
+  draftLinePaths: Ref<Array<{ lat: number; lng: number }>>;
   mapComponentRef: Ref<any>;
   watchersAttached?: boolean;
   boundPolygonMap?: any;
   polygonMapClickListener?: any;
+  boundLineMap?: any;
+  lineMapClickListener?: any;
   boundPointMap?: any;
   pointMapClickListener?: any;
+  boundCircleMap?: any;
+  circleMapClickListener?: any;
+  boundRectangleMap?: any;
+  rectangleMapClickListener?: any;
   boundPolygon?: any;
   polygonListeners?: any[];
-  boundPath?: any;
-  pathListeners?: any[];
+  boundPolygonPath?: any;
+  polygonPathListeners?: any[];
+  boundLine?: any;
+  lineListeners?: any[];
+  boundLinePath?: any;
+  linePathListeners?: any[];
+  boundCircle?: any;
+  circleListeners?: any[];
+  boundRectangle?: any;
+  rectangleListeners?: any[];
 }
 
 function getMapWidgetState(field: RichWidgetContext): MapWidgetState {
   return field.getState('__ve_map_widget_state', () => ({
     locationEntries: field.$makeRef([]),
     draftPolygonPaths: field.$makeRef([]),
+    draftLinePaths: field.$makeRef([]),
     mapComponentRef: shallowRef(),
     locationCache: {},
     locationPending: {},
@@ -663,6 +679,18 @@ function getMapWidgetState(field: RichWidgetContext): MapWidgetState {
 
 function isPolygonMap(field: RichWidgetContext) {
   return field.params.value.type === 'map-polygon';
+}
+
+function isLineMap(field: RichWidgetContext) {
+  return field.params.value.type === 'map-line';
+}
+
+function isCircleMap(field: RichWidgetContext) {
+  return field.params.value.type === 'map-circle';
+}
+
+function isRectangleMap(field: RichWidgetContext) {
+  return field.params.value.type === 'map-rectangle';
 }
 
 function isMultiPointMap(field: RichWidgetContext) {
@@ -721,21 +749,23 @@ function pointKey(point: { lat: number; lng: number }) {
   return `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`;
 }
 
-function normalizePolygonCoordinates(value: any): Array<{ lat: number; lng: number }> {
+function normalizePathCoordinates(value: any, geometryType: 'LineString' | 'Polygon'): Array<{ lat: number; lng: number }> {
   if (!value) {
     return [];
   }
 
   const geometry = value.type === 'Feature' ? value.geometry : value;
 
-  let ring: any[] = [];
-  if (geometry?.type === 'Polygon' && Array.isArray(geometry.coordinates?.[0])) {
-    ring = geometry.coordinates[0];
+  let raw: any[] = [];
+  if (geometryType === 'LineString' && geometry?.type === 'LineString' && Array.isArray(geometry.coordinates)) {
+    raw = geometry.coordinates;
+  } else if (geometryType === 'Polygon' && geometry?.type === 'Polygon' && Array.isArray(geometry.coordinates?.[0])) {
+    raw = geometry.coordinates[0];
   } else if (Array.isArray(value)) {
-    ring = value;
+    raw = value;
   }
 
-  const points = ring
+  const points = raw
     .map((item: any) => {
       if (Array.isArray(item) && item.length >= 2) {
         return { lat: Number(item[1]), lng: Number(item[0]) };
@@ -749,7 +779,7 @@ function normalizePolygonCoordinates(value: any): Array<{ lat: number; lng: numb
     })
     .filter((item: any): item is { lat: number; lng: number } => !!item && !Number.isNaN(item.lat) && !Number.isNaN(item.lng));
 
-  if (points.length > 1) {
+  if (geometryType === 'Polygon' && points.length > 1) {
     const first = points[0]!;
     const last = points[points.length - 1]!;
     if (first.lat === last.lat && first.lng === last.lng) {
@@ -758,6 +788,29 @@ function normalizePolygonCoordinates(value: any): Array<{ lat: number; lng: numb
   }
 
   return points;
+}
+
+function normalizeLineCoordinates(value: any) {
+  return normalizePathCoordinates(value, 'LineString');
+}
+
+function normalizePolygonCoordinates(value: any) {
+  return normalizePathCoordinates(value, 'Polygon');
+}
+
+function toGeoJsonLineString(paths: Array<{ lat: number; lng: number }>) {
+  const normalized = paths
+    .map((item) => ({ lat: Number(item.lat), lng: Number(item.lng) }))
+    .filter((item) => !Number.isNaN(item.lat) && !Number.isNaN(item.lng));
+
+  if (normalized.length < 2) {
+    return undefined;
+  }
+
+  return {
+    type: 'LineString',
+    coordinates: normalized.map((item) => [item.lng, item.lat]),
+  };
 }
 
 function toGeoJsonPolygon(paths: Array<{ lat: number; lng: number }>) {
@@ -780,6 +833,70 @@ function toGeoJsonPolygon(paths: Array<{ lat: number; lng: number }>) {
     type: 'Polygon',
     coordinates: [closed.map((item) => [item.lng, item.lat])],
   };
+}
+
+function normalizeCircleValue(value: any): { center: { lat: number; lng: number }; radius: number } | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const center = normalizePoint(value.center || value.position || value);
+  const radius = Number(value.radius);
+  if (!center || Number.isNaN(radius) || radius <= 0) {
+    return undefined;
+  }
+
+  return { center, radius };
+}
+
+function normalizeRectangleValue(value: any): { north: number; south: number; east: number; west: number } | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const source = value.bounds || value;
+  const north = Number(source.north);
+  const south = Number(source.south);
+  const east = Number(source.east);
+  const west = Number(source.west);
+
+  if ([north, south, east, west].some((item) => Number.isNaN(item))) {
+    return undefined;
+  }
+
+  return { north, south, east, west };
+}
+
+function rectangleFromCenter(point: { lat: number; lng: number }, radiusMeters: number = 500) {
+  const latDelta = radiusMeters / 111320;
+  const lngDelta = radiusMeters / (111320 * Math.max(Math.cos(point.lat * Math.PI / 180), 0.1));
+  return {
+    north: point.lat + latDelta,
+    south: point.lat - latDelta,
+    east: point.lng + lngDelta,
+    west: point.lng - lngDelta,
+  };
+}
+
+function rectangleToPoints(bounds: { north: number; south: number; east: number; west: number }): Array<{ lat: number; lng: number }> {
+  return [
+    { lat: bounds.north, lng: bounds.west },
+    { lat: bounds.north, lng: bounds.east },
+    { lat: bounds.south, lng: bounds.east },
+    { lat: bounds.south, lng: bounds.west },
+  ];
+}
+
+function circleToPoints(circle: { center: { lat: number; lng: number }; radius: number }): Array<{ lat: number; lng: number }> {
+  const latDelta = circle.radius / 111320;
+  const lngDelta = circle.radius / (111320 * Math.max(Math.cos(circle.center.lat * Math.PI / 180), 0.1));
+  return [
+    circle.center,
+    { lat: circle.center.lat + latDelta, lng: circle.center.lng },
+    { lat: circle.center.lat - latDelta, lng: circle.center.lng },
+    { lat: circle.center.lat, lng: circle.center.lng + lngDelta },
+    { lat: circle.center.lat, lng: circle.center.lng - lngDelta },
+  ];
 }
 
 function pointsCenter(paths: Array<{ lat: number; lng: number }>, fallback: { lat: number; lng: number }) {
@@ -812,7 +929,7 @@ function clearMapListeners(listeners?: any[]) {
   });
 }
 
-function polygonPathToArray(path: any) {
+function overlayPathToArray(path: any) {
   const result: Array<{ lat: number; lng: number }> = [];
   if (!path) {
     return result;
@@ -827,8 +944,7 @@ function polygonPathToArray(path: any) {
 }
 
 function syncPolygonModel(field: RichWidgetContext, state: MapWidgetState, polygon: any) {
-  const path = polygon?.getPath?.();
-  const points = polygonPathToArray(path);
+  const points = overlayPathToArray(polygon?.getPath?.());
   const nextValue = toGeoJsonPolygon(points);
 
   if (nextValue) {
@@ -840,50 +956,159 @@ function syncPolygonModel(field: RichWidgetContext, state: MapWidgetState, polyg
   }
 }
 
-function syncPolygonListeners(field: RichWidgetContext, state: MapWidgetState, api: any, polygon: any) {
-  if (!api?.event || !polygon) {
-    return;
-  }
+function syncLineModel(field: RichWidgetContext, state: MapWidgetState, line: any) {
+  const points = overlayPathToArray(line?.getPath?.());
+  const nextValue = toGeoJsonLineString(points);
 
-  if (state.boundPolygon === polygon) {
+  if (nextValue) {
+    state.draftLinePaths.value = [];
+    field.modelValue.value = nextValue;
+  } else {
+    state.draftLinePaths.value = points;
+    field.modelValue.value = undefined;
+  }
+}
+
+function syncPolygonListeners(field: RichWidgetContext, state: MapWidgetState, api: any, polygon: any) {
+  if (!api?.event || !polygon || state.boundPolygon === polygon) {
     return;
   }
 
   clearMapListeners(state.polygonListeners);
-  clearMapListeners(state.pathListeners);
+  clearMapListeners(state.polygonPathListeners);
 
   state.boundPolygon = polygon;
-  state.boundPath = polygon.getPath?.();
+  state.boundPolygonPath = polygon.getPath?.();
   state.polygonListeners = [
     api.event.addListener(polygon, 'rightclick', (event: any) => {
-      if (field.$readonly) {
-        return;
-      }
-
-      if (typeof event?.vertex === 'number') {
+      if (!field.$readonly && typeof event?.vertex === 'number') {
         polygon.getPath().removeAt(event.vertex);
         syncPolygonModel(field, state, polygon);
       }
     }),
     api.event.addListener(polygon, 'mouseup', () => {
-      if (!field.$readonly) {
-        syncPolygonModel(field, state, polygon);
-      }
+      if (!field.$readonly) syncPolygonModel(field, state, polygon);
     }),
     api.event.addListener(polygon, 'dragend', () => {
-      if (!field.$readonly) {
-        syncPolygonModel(field, state, polygon);
-      }
+      if (!field.$readonly) syncPolygonModel(field, state, polygon);
     }),
   ];
 
-  if (state.boundPath) {
-    state.pathListeners = [
-      api.event.addListener(state.boundPath, 'insert_at', () => syncPolygonModel(field, state, polygon)),
-      api.event.addListener(state.boundPath, 'set_at', () => syncPolygonModel(field, state, polygon)),
-      api.event.addListener(state.boundPath, 'remove_at', () => syncPolygonModel(field, state, polygon)),
+  if (state.boundPolygonPath) {
+    state.polygonPathListeners = [
+      api.event.addListener(state.boundPolygonPath, 'insert_at', () => syncPolygonModel(field, state, polygon)),
+      api.event.addListener(state.boundPolygonPath, 'set_at', () => syncPolygonModel(field, state, polygon)),
+      api.event.addListener(state.boundPolygonPath, 'remove_at', () => syncPolygonModel(field, state, polygon)),
     ];
   }
+}
+
+function syncLineListeners(field: RichWidgetContext, state: MapWidgetState, api: any, line: any) {
+  if (!api?.event || !line || state.boundLine === line) {
+    return;
+  }
+
+  clearMapListeners(state.lineListeners);
+  clearMapListeners(state.linePathListeners);
+
+  state.boundLine = line;
+  state.boundLinePath = line.getPath?.();
+  state.lineListeners = [
+    api.event.addListener(line, 'rightclick', (event: any) => {
+      if (!field.$readonly && typeof event?.vertex === 'number') {
+        line.getPath().removeAt(event.vertex);
+        syncLineModel(field, state, line);
+      }
+    }),
+    api.event.addListener(line, 'mouseup', () => {
+      if (!field.$readonly) syncLineModel(field, state, line);
+    }),
+    api.event.addListener(line, 'dragend', () => {
+      if (!field.$readonly) syncLineModel(field, state, line);
+    }),
+  ];
+
+  if (state.boundLinePath) {
+    state.linePathListeners = [
+      api.event.addListener(state.boundLinePath, 'insert_at', () => syncLineModel(field, state, line)),
+      api.event.addListener(state.boundLinePath, 'set_at', () => syncLineModel(field, state, line)),
+      api.event.addListener(state.boundLinePath, 'remove_at', () => syncLineModel(field, state, line)),
+    ];
+  }
+}
+
+function syncCircleModel(field: RichWidgetContext, circle: any) {
+  const center = circle?.getCenter?.();
+  const radius = Number(circle?.getRadius?.());
+  if (!center || Number.isNaN(radius) || radius <= 0) {
+    field.modelValue.value = undefined;
+    return;
+  }
+
+  field.modelValue.value = {
+    center: { lat: center.lat(), lng: center.lng() },
+    radius,
+  };
+}
+
+function syncCircleListeners(field: RichWidgetContext, state: MapWidgetState, api: any, circle: any) {
+  if (!api?.event || !circle || state.boundCircle === circle) {
+    return;
+  }
+
+  clearMapListeners(state.circleListeners);
+  state.boundCircle = circle;
+  state.circleListeners = [
+    api.event.addListener(circle, 'center_changed', () => {
+      if (!field.$readonly) syncCircleModel(field, circle);
+    }),
+    api.event.addListener(circle, 'radius_changed', () => {
+      if (!field.$readonly) syncCircleModel(field, circle);
+    }),
+    api.event.addListener(circle, 'dragend', () => {
+      if (!field.$readonly) syncCircleModel(field, circle);
+    }),
+    api.event.addListener(circle, 'mouseup', () => {
+      if (!field.$readonly) syncCircleModel(field, circle);
+    }),
+  ];
+}
+
+function syncRectangleModel(field: RichWidgetContext, rectangle: any) {
+  const bounds = rectangle?.getBounds?.();
+  const northEast = bounds?.getNorthEast?.();
+  const southWest = bounds?.getSouthWest?.();
+  if (!northEast || !southWest) {
+    field.modelValue.value = undefined;
+    return;
+  }
+
+  field.modelValue.value = {
+    north: northEast.lat(),
+    south: southWest.lat(),
+    east: northEast.lng(),
+    west: southWest.lng(),
+  };
+}
+
+function syncRectangleListeners(field: RichWidgetContext, state: MapWidgetState, api: any, rectangle: any) {
+  if (!api?.event || !rectangle || state.boundRectangle === rectangle) {
+    return;
+  }
+
+  clearMapListeners(state.rectangleListeners);
+  state.boundRectangle = rectangle;
+  state.rectangleListeners = [
+    api.event.addListener(rectangle, 'bounds_changed', () => {
+      if (!field.$readonly) syncRectangleModel(field, rectangle);
+    }),
+    api.event.addListener(rectangle, 'dragend', () => {
+      if (!field.$readonly) syncRectangleModel(field, rectangle);
+    }),
+    api.event.addListener(rectangle, 'mouseup', () => {
+      if (!field.$readonly) syncRectangleModel(field, rectangle);
+    }),
+  ];
 }
 
 function syncPolygonMapClick(field: RichWidgetContext, state: MapWidgetState, api: any, map: any) {
@@ -907,11 +1132,39 @@ function syncPolygonMapClick(field: RichWidgetContext, state: MapWidgetState, ap
     const nextPaths = [...base, { lat: event.latLng.lat(), lng: event.latLng.lng() }];
 
     if (nextPaths.length >= 3) {
-      const nextValue = toGeoJsonPolygon(nextPaths);
       state.draftPolygonPaths.value = [];
-      field.modelValue.value = nextValue;
+      field.modelValue.value = toGeoJsonPolygon(nextPaths);
     } else {
       state.draftPolygonPaths.value = nextPaths;
+    }
+  });
+}
+
+function syncLineMapClick(field: RichWidgetContext, state: MapWidgetState, api: any, map: any) {
+  if (!isLineMap(field) || field.$readonly || !api?.event || !map) {
+    return;
+  }
+
+  if (state.boundLineMap === map && state.lineMapClickListener) {
+    return;
+  }
+
+  clearMapListeners(state.lineMapClickListener ? [state.lineMapClickListener] : []);
+  state.boundLineMap = map;
+  state.lineMapClickListener = api.event.addListener(map, 'click', (event: any) => {
+    if (!event?.latLng) {
+      return;
+    }
+
+    const existing = normalizeLineCoordinates(field.modelValue.value);
+    const base = existing.length ? existing : [...state.draftLinePaths.value];
+    const nextPaths = [...base, { lat: event.latLng.lat(), lng: event.latLng.lng() }];
+
+    if (nextPaths.length >= 2) {
+      state.draftLinePaths.value = [];
+      field.modelValue.value = toGeoJsonLineString(nextPaths);
+    } else {
+      state.draftLinePaths.value = nextPaths;
     }
   });
 }
@@ -932,12 +1185,53 @@ function syncPointMapClick(field: RichWidgetContext, state: MapWidgetState, api:
       return;
     }
 
-    const nextPoints = [
+    field.modelValue.value = [
       ...normalizePointList(field.modelValue.value),
       { lat: event.latLng.lat(), lng: event.latLng.lng() },
     ];
+  });
+}
 
-    field.modelValue.value = nextPoints;
+function syncCircleMapClick(field: RichWidgetContext, state: MapWidgetState, api: any, map: any) {
+  if (!isCircleMap(field) || field.$readonly || !api?.event || !map) {
+    return;
+  }
+
+  if (state.boundCircleMap === map && state.circleMapClickListener) {
+    return;
+  }
+
+  clearMapListeners(state.circleMapClickListener ? [state.circleMapClickListener] : []);
+  state.boundCircleMap = map;
+  state.circleMapClickListener = api.event.addListener(map, 'click', (event: any) => {
+    if (!event?.latLng || normalizeCircleValue(field.modelValue.value)) {
+      return;
+    }
+
+    field.modelValue.value = {
+      center: { lat: event.latLng.lat(), lng: event.latLng.lng() },
+      radius: Number(field.params.value.mapOptions?.radius) || 500,
+    };
+  });
+}
+
+function syncRectangleMapClick(field: RichWidgetContext, state: MapWidgetState, api: any, map: any) {
+  if (!isRectangleMap(field) || field.$readonly || !api?.event || !map) {
+    return;
+  }
+
+  if (state.boundRectangleMap === map && state.rectangleMapClickListener) {
+    return;
+  }
+
+  clearMapListeners(state.rectangleMapClickListener ? [state.rectangleMapClickListener] : []);
+  state.boundRectangleMap = map;
+  state.rectangleMapClickListener = api.event.addListener(map, 'click', (event: any) => {
+    if (!event?.latLng || normalizeRectangleValue(field.modelValue.value)) {
+      return;
+    }
+
+    field.modelValue.value = rectangleFromCenter({ lat: event.latLng.lat(), lng: event.latLng.lng() });
   });
 }
 
@@ -945,6 +1239,21 @@ function currentMapPoints(field: RichWidgetContext, state: MapWidgetState) {
   if (isPolygonMap(field)) {
     const fromModel = normalizePolygonCoordinates(field.modelValue.value);
     return fromModel.length ? fromModel : state.draftPolygonPaths.value;
+  }
+
+  if (isLineMap(field)) {
+    const fromModel = normalizeLineCoordinates(field.modelValue.value);
+    return fromModel.length ? fromModel : state.draftLinePaths.value;
+  }
+
+  if (isCircleMap(field)) {
+    const circle = normalizeCircleValue(field.modelValue.value);
+    return circle ? circleToPoints(circle) : [];
+  }
+
+  if (isRectangleMap(field)) {
+    const rectangle = normalizeRectangleValue(field.modelValue.value);
+    return rectangle ? rectangleToPoints(rectangle) : [];
   }
 
   if (isMultiPointMap(field)) {
@@ -956,8 +1265,7 @@ function currentMapPoints(field: RichWidgetContext, state: MapWidgetState) {
 }
 
 function currentMapCenter(field: RichWidgetContext, state: MapWidgetState) {
-  const center = { lat: 0, lng: 0 };
-  return pointsCenter(currentMapPoints(field, state), center);
+  return pointsCenter(currentMapPoints(field, state), { lat: 0, lng: 0 });
 }
 
 function syncMapRuntime(field: RichWidgetContext, state: MapWidgetState) {
@@ -970,7 +1278,10 @@ function syncMapRuntime(field: RichWidgetContext, state: MapWidgetState) {
   const points = currentMapPoints(field, state);
   syncMapLocationText(field, state, ref.api);
   syncPointMapClick(field, state, ref.api, ref.map);
+  syncLineMapClick(field, state, ref.api, ref.map);
   syncPolygonMapClick(field, state, ref.api, ref.map);
+  syncCircleMapClick(field, state, ref.api, ref.map);
+  syncRectangleMapClick(field, state, ref.api, ref.map);
 
   nextTick(() => {
     refreshGoogleMap(ref.api, ref.map, center, points);
@@ -984,23 +1295,13 @@ function ensureMapWatchers(field: RichWidgetContext, state: MapWidgetState) {
 
   state.watchersAttached = true;
 
-  field.$watch(() => state.mapComponentRef.value, () => {
-    syncMapRuntime(field, state);
-  }, { immediate: true });
-
+  field.$watch(() => state.mapComponentRef.value, () => syncMapRuntime(field, state), { immediate: true });
   field.$watch(() => state.mapComponentRef.value?.ready, (ready: boolean) => {
-    if (ready) {
-      syncMapRuntime(field, state);
-    }
+    if (ready) syncMapRuntime(field, state);
   }, { immediate: true });
-
-  field.$watch(() => field.modelValue.value, () => {
-    syncMapRuntime(field, state);
-  }, { deep: true });
-
-  field.$watch(() => state.draftPolygonPaths.value, () => {
-    syncMapRuntime(field, state);
-  }, { deep: true });
+  field.$watch(() => field.modelValue.value, () => syncMapRuntime(field, state), { deep: true });
+  field.$watch(() => state.draftPolygonPaths.value, () => syncMapRuntime(field, state), { deep: true });
+  field.$watch(() => state.draftLinePaths.value, () => syncMapRuntime(field, state), { deep: true });
 }
 
 function refreshGoogleMap(api: any, map: any, center: { lat: number; lng: number }, points: Array<{ lat: number; lng: number }>) {
@@ -1037,18 +1338,45 @@ function refreshGoogleMap(api: any, map: any, center: { lat: number; lng: number
   setTimeout(refresh, 180);
 }
 
-function syncMapLocationText(field: RichWidgetContext, state: MapWidgetState, api: any) {
-  if (isPolygonMap(field) || field.params.value.hideMapText) {
-    state.locationEntries.value = [];
-    return;
+function getMapTextPoints(field: RichWidgetContext, state: MapWidgetState) {
+  if (field.params.value.hideMapText) {
+    return [] as Array<{ lat: number; lng: number }>;
   }
 
-  const points = isMultiPointMap(field)
-    ? normalizePointList(field.modelValue.value)
-    : (() => {
-        const point = normalizePoint(field.modelValue.value);
-        return point ? [point] : [];
-      })();
+  if (isPolygonMap(field)) {
+    const fromModel = normalizePolygonCoordinates(field.modelValue.value);
+    return fromModel.length ? fromModel : state.draftPolygonPaths.value;
+  }
+
+  if (isLineMap(field)) {
+    const fromModel = normalizeLineCoordinates(field.modelValue.value);
+    return fromModel.length ? fromModel : state.draftLinePaths.value;
+  }
+
+  if (isCircleMap(field)) {
+    const circle = normalizeCircleValue(field.modelValue.value);
+    return circle ? [circle.center] : [];
+  }
+
+  if (isRectangleMap(field)) {
+    const rectangle = normalizeRectangleValue(field.modelValue.value);
+    return rectangle ? rectangleToPoints(rectangle) : [];
+  }
+
+  if (isMultiPointMap(field)) {
+    return normalizePointList(field.modelValue.value);
+  }
+
+  if (field.params.value.type === 'map') {
+    const point = normalizePoint(field.modelValue.value);
+    return point ? [point] : [];
+  }
+
+  return [] as Array<{ lat: number; lng: number }>;
+}
+
+function syncMapLocationText(field: RichWidgetContext, state: MapWidgetState, api: any) {
+  const points = getMapTextPoints(field, state);
 
   if (!points.length) {
     state.locationEntries.value = [];
@@ -1098,46 +1426,75 @@ function syncMapLocationText(field: RichWidgetContext, state: MapWidgetState, ap
   });
 }
 
+function getMapTextLabel(field: RichWidgetContext, index: number, total: number) {
+  if (isCircleMap(field)) {
+    return 'Center';
+  }
+
+  if (isRectangleMap(field)) {
+    return ['North-West', 'North-East', 'South-East', 'South-West'][index] || `Corner ${index + 1}`;
+  }
+
+  if (isLineMap(field)) {
+    return `Point ${index + 1}`;
+  }
+
+  if (isPolygonMap(field)) {
+    return `Vertex ${index + 1}`;
+  }
+
+  if (isMultiPointMap(field)) {
+    return `Marker ${index + 1}`;
+  }
+
+  return total > 1 ? `Point ${index + 1}` : 'Location';
+}
+
 export function buildMapWidget(field: RichWidgetContext): VNode[] {
   const h = field.$h;
-  const center = { lat: 0, lng: 0 };
   const state = getMapWidgetState(field);
   ensureMapWatchers(field, state);
 
   const mapApiKey = field.params.value.mapApiKey;
   const polygonPathsFromModel = normalizePolygonCoordinates(field.modelValue.value);
   const polygonPaths = polygonPathsFromModel.length ? polygonPathsFromModel : state.draftPolygonPaths.value;
+  const linePathsFromModel = normalizeLineCoordinates(field.modelValue.value);
+  const linePaths = linePathsFromModel.length ? linePathsFromModel : state.draftLinePaths.value;
   const pointValues = isMultiPointMap(field)
     ? normalizePointList(field.modelValue.value)
     : (() => {
         const point = normalizePoint(field.modelValue.value);
         return point ? [point] : [];
       })();
+  const circleValue = normalizeCircleValue(field.modelValue.value);
+  const rectangleValue = normalizeRectangleValue(field.modelValue.value);
 
   if (polygonPathsFromModel.length && state.draftPolygonPaths.value.length) {
     state.draftPolygonPaths.value = [];
   }
 
-  const mapCenter = isPolygonMap(field)
-    ? pointsCenter(polygonPaths, center)
-    : pointsCenter(pointValues, center);
-  const polygonOptions: any = {
-    strokeColor: '#146eb4',
-    strokeOpacity: 0.9,
-    strokeWeight: 2,
-    fillColor: '#146eb4',
-    fillOpacity: 0.24,
-    editable: !field.$readonly,
-    draggable: !field.$readonly,
-    clickable: true,
-    paths: polygonPaths,
-    ...(field.params.value.mapOptions || {}),
-  };
+  if (linePathsFromModel.length && state.draftLinePaths.value.length) {
+    state.draftLinePaths.value = [];
+  }
 
+  const mapCenter = currentMapCenter(field, state);
   const mapHeight = field.params.value.height || '300px';
   const mapChildren: VNode[] = [];
 
   if (isPolygonMap(field)) {
+    const polygonOptions: any = {
+      ...(field.params.value.mapOptions || {}),
+      strokeColor: '#146eb4',
+      strokeOpacity: 0.9,
+      strokeWeight: 2,
+      fillColor: '#146eb4',
+      fillOpacity: 0.24,
+      editable: !field.$readonly,
+      draggable: !field.$readonly,
+      clickable: true,
+      paths: polygonPaths,
+    };
+
     if (polygonPaths.length >= 3) {
       mapChildren.push(
         h(Polygon as any, {
@@ -1151,20 +1508,97 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
           options: polygonOptions,
         })
       );
+    } else {
+      polygonPaths.forEach((item) => {
+        mapChildren.push(h(Marker, { key: `${pointKey(item)}-draft-polygon`, options: { position: item, draggable: false } }));
+      });
+    }
+  } else if (isLineMap(field)) {
+    const lineOptions: any = {
+      ...(field.params.value.mapOptions || {}),
+      strokeColor: '#146eb4',
+      strokeOpacity: 0.9,
+      strokeWeight: 3,
+      editable: !field.$readonly,
+      draggable: !field.$readonly,
+      clickable: true,
+      path: linePaths,
+    };
+
+    if (linePaths.length >= 2) {
+      mapChildren.push(
+        h(Polyline as any, {
+          ref: (el: any) => {
+            const line = el?.polyline;
+            const ref = state.mapComponentRef.value;
+            if (line && ref?.ready && ref.api) {
+              syncLineListeners(field, state, ref.api, line);
+            }
+          },
+          options: lineOptions,
+        })
+      );
     }
 
-    if (polygonPaths.length < 3) {
-      polygonPaths.forEach((item, index) => {
-        mapChildren.push(
-          h(Marker, {
-            key: `${pointKey(item)}-draft`,
-            options: {
-              position: item,
-              draggable: false,
-            },
-          })
-        );
-      });
+    linePaths.forEach((item) => {
+      mapChildren.push(h(Marker, { key: `${pointKey(item)}-line`, options: { position: item, draggable: false } }));
+    });
+  } else if (isCircleMap(field)) {
+    if (circleValue) {
+      const circleOptions: any = {
+        ...(field.params.value.mapOptions || {}),
+        center: circleValue.center,
+        radius: circleValue.radius,
+        editable: !field.$readonly,
+        draggable: !field.$readonly,
+        clickable: true,
+        strokeColor: '#146eb4',
+        strokeOpacity: 0.9,
+        strokeWeight: 2,
+        fillColor: '#146eb4',
+        fillOpacity: 0.18,
+      };
+
+      mapChildren.push(
+        h(Circle as any, {
+          ref: (el: any) => {
+            const circle = el?.circle;
+            const ref = state.mapComponentRef.value;
+            if (circle && ref?.ready && ref.api) {
+              syncCircleListeners(field, state, ref.api, circle);
+            }
+          },
+          options: circleOptions,
+        })
+      );
+    }
+  } else if (isRectangleMap(field)) {
+    if (rectangleValue) {
+      const rectangleOptions: any = {
+        ...(field.params.value.mapOptions || {}),
+        bounds: rectangleValue,
+        editable: !field.$readonly,
+        draggable: !field.$readonly,
+        clickable: true,
+        strokeColor: '#146eb4',
+        strokeOpacity: 0.9,
+        strokeWeight: 2,
+        fillColor: '#146eb4',
+        fillOpacity: 0.18,
+      };
+
+      mapChildren.push(
+        h(Rectangle as any, {
+          ref: (el: any) => {
+            const rectangle = el?.rectangle;
+            const ref = state.mapComponentRef.value;
+            if (rectangle && ref?.ready && ref.api) {
+              syncRectangleListeners(field, state, ref.api, rectangle);
+            }
+          },
+          options: rectangleOptions,
+        })
+      );
     }
   } else if (isMultiPointMap(field)) {
     pointValues.forEach((item, index) => {
@@ -1185,14 +1619,13 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
 
             const currentKey = pointKey(item);
             let replaced = false;
-            const nextPoints = normalizePointList(field.modelValue.value).map((point) => {
+            field.modelValue.value = normalizePointList(field.modelValue.value).map((point) => {
               if (!replaced && pointKey(point) === currentKey) {
                 replaced = true;
                 return { lat: event.latLng.lat(), lng: event.latLng.lng() };
               }
               return point;
             });
-            field.modelValue.value = nextPoints;
           },
           onRightclick: () => {
             if (field.$readonly) {
@@ -1201,14 +1634,13 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
 
             const currentKey = pointKey(item);
             let removed = false;
-            const nextPoints = normalizePointList(field.modelValue.value).filter((point) => {
+            field.modelValue.value = normalizePointList(field.modelValue.value).filter((point) => {
               if (!removed && pointKey(point) === currentKey) {
                 removed = true;
                 return false;
               }
               return true;
             });
-            field.modelValue.value = nextPoints;
           },
         })
       );
@@ -1252,9 +1684,7 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
           'div',
           {
             class: ['d-flex', 'align-center', 'justify-center', 'text-center', 'px-4', 'py-6', 'text-body-2'],
-            style: {
-              height: '100%',
-            },
+            style: { height: '100%' },
           },
           'Google Maps is not configured. Set VITE_GOOGLE_MAPS_API_KEY in test/.env (or the repo root .env) to enable this widget.'
         )
@@ -1272,13 +1702,13 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
             center: mapCenter,
             zoom: field.params.value.mapZoom || 5,
           },
-          {
-            default: () => mapChildren,
-          }
+          { default: () => mapChildren }
         )
   );
 
-  const locationSheet = !isPolygonMap(field) && !field.params.value.hideMapText && state.locationEntries.value.length
+  const circleValueForText = isCircleMap(field) ? normalizeCircleValue(field.modelValue.value) : undefined;
+  const showLocationSheet = (!field.params.value.hideMapText && (state.locationEntries.value.length > 0 || !!circleValueForText));
+  const locationSheet = showLocationSheet
     ? h(
         VSheet,
         {
@@ -1286,70 +1716,56 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
           variant: 'tonal',
           color: 'primary',
           class: ['mt-3', 'px-3', 'py-2'],
-          style: {
-            width: '100%',
-            maxWidth: field.maxWidth.value,
-          },
+          style: { width: '100%', maxWidth: field.maxWidth.value },
         },
-        () => state.locationEntries.value.length === 1
-          ? h(
+        () => [
+          ...(state.locationEntries.value.map((entry, index) =>
+            h(
               'div',
               {
-                class: ['text-body-2'],
+                key: entry.key,
+                class: ['text-body-2', ...(index > 0 ? ['mt-2'] : [])],
               },
-              state.locationEntries.value[0]?.text || ''
+              `${getMapTextLabel(field, index, state.locationEntries.value.length)}: ${entry.text}`
             )
-          : state.locationEntries.value.map((entry, index) =>
-              h(
-                'div',
-                {
-                  key: entry.key,
-                  class: ['text-body-2', ...(index > 0 ? ['mt-2'] : [])],
-                },
-                `${index + 1}. ${entry.text}`
-              )
+          )),
+          ...(circleValueForText ? [
+            h(
+              'div',
+              {
+                class: ['text-body-2', ...(state.locationEntries.value.length ? ['mt-2'] : [])],
+              },
+              `Radius: ${(circleValueForText.radius / 1000).toFixed(2)} km`
             )
+          ] : []),
+        ]
       )
     : undefined;
 
+  const instructionText = isMultiPointMap(field)
+    ? 'Click on the map to add markers. Drag markers to adjust them. Right-click a marker to remove it.'
+    : isLineMap(field)
+      ? (linePaths.length >= 2 ? 'Drag line vertices to edit. Right-click a vertex to remove it.' : 'Click on the map to add line points.')
+      : isPolygonMap(field)
+        ? (polygonPaths.length >= 3 ? 'Drag polygon vertices to edit. Right-click a vertex to remove it.' : 'Click on the map to add polygon points.')
+        : isCircleMap(field)
+          ? (circleValue ? 'Drag or resize the circle to edit it.' : 'Click on the map to place a circle.')
+          : isRectangleMap(field)
+            ? (rectangleValue ? 'Drag or resize the rectangle to edit it.' : 'Click on the map to place a rectangle.')
+            : '';
+
   return [
-    h(
-      'div',
-      {
-        class: ['ml-2', 'mb-4'],
-      },
-      field.params.value.label
-    ),
-    h(
-      'div',
-      {},
-      mapNode
-    ),
+    h('div', { class: ['ml-2', 'mb-4'] }, field.params.value.label),
+    h('div', {}, mapNode),
     ...(locationSheet ? [locationSheet] : []),
-    ...(isMultiPointMap(field) && !field.$readonly ? [
+    ...((instructionText && !field.$readonly) ? [
       h(
         'div',
         {
           class: ['text-caption', 'mt-2'],
-          style: {
-            maxWidth: field.maxWidth.value,
-            opacity: '0.72',
-          },
+          style: { maxWidth: field.maxWidth.value, opacity: '0.72' },
         },
-        'Click on the map to add markers. Drag markers to adjust them. Right-click a marker to remove it.'
-      ),
-    ] : []),
-    ...(isPolygonMap(field) && !field.$readonly ? [
-      h(
-        'div',
-        {
-          class: ['text-caption', 'mt-2'],
-          style: {
-            maxWidth: field.maxWidth.value,
-            opacity: '0.72',
-          },
-        },
-        polygonPaths.length >= 3 ? 'Drag polygon vertices to edit. Right-click a vertex to remove it.' : 'Click on the map to add polygon points.'
+        instructionText
       ),
     ] : []),
   ];

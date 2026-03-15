@@ -261,7 +261,7 @@ Both backends now expose the same high-level auth and socket state surface on `A
 Shared id resolution and map widgets have also been expanded:
 
 - global id fallback can now be configured with `Master.setDefault({ idField: ... })` or bootstrap `defaults.master`
-- `Field` map widgets now support single-point maps, multi-marker maps with `multiple: true`, and GeoJSON polygon maps with `type: 'map-polygon'`
+- `Field` map widgets now support single-point maps, multi-marker maps with `multiple: true`, GeoJSON `map-line`, editable `map-circle`, editable `map-rectangle`, and GeoJSON polygon maps with `type: 'map-polygon'`
 
 ### Axios backend
 
