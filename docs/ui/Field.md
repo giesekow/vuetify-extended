@@ -33,6 +33,107 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
 - **Rich content and media:** `html`, `htmlview`, `code`, `image`, `document`, `messagingbox`, `chart`, `map`, `map-line`, `map-circle`, `map-rectangle`, `map-polygon`, `map-heatmap`, `map-cluster`, `map-geojson`
 - **Table-oriented widgets:** `table`, `viewtable`, `reporttable`, `servertable`
 
+## Value Format by Field Type
+
+This section describes the value shape a field normally reads from and writes back to `modelValue` / `Master` storage.
+
+### Basic entry and display
+
+- `text`: `string`; with `multiple: true`, typically `string[]`
+- `textarea`: `string`
+- `password`: `string`
+- `label`: no bound value is required; it is display-only and usually driven by `label`
+- `button`: no bound value is required; the action usually comes from `options.button(...)`
+- `boolean`: `boolean`
+
+### Selection and lookup
+
+- `select`: a single option value by default; with `multiple: true`, an array of option values
+- `autocomplete`: same as `select`; with `returnObject: true`, the value becomes the selected object or an array of selected objects
+- `listselect`: a single option value, or an array of option values when `multiple: true`
+- `collection`: `any[]`; each entry is a row/item object edited through the collection form flow
+
+### Date, time, and numeric
+
+- `date`: a single date-like value in the UI; the stored value is normalized to a numeric `SimpleDate` representation. With `multiple: true`, the value becomes `number[]`
+- `time`: a single time-like value in the UI; the stored value is normalized to a numeric `SimpleTime` representation. With `multiple: true`, the value becomes `number[]`
+- `datetime`: usually a `Date`; it may also be a `string` or `number` depending on the configured datepicker behavior
+- `float`: `number`
+- `integer`: `number`
+- `decimal`: typically `{ $numberDecimal: string }` in the stored model; numeric/string UI input is normalized into that shape
+- `color`: color string such as `'#146eb4'`, `'rgb(...)'`, or any CSS-valid color token
+
+### Rich text, media, and message widgets
+
+- `html`: HTML string
+- `htmlview`: HTML string, rendered as display-only content
+- `code`: code/text string
+- `image`: a base64/data URL string for a single image, or `string[]` when `multiple: true`; remote URLs also render when they are valid image/document sources
+- `document`: a base64/data URL string for a single document, or `string[]` when `multiple: true`
+- `messagingbox`: `any[]` raw message records; `options.messageFormat(...)` maps them into the display structure
+- `chart`: no strict built-in model shape; chart data is usually supplied by `options.chartData(...)` and chart options by `options.chartOptions(...)`
+
+### Table-oriented widgets
+
+- `table`: usually `any[]` row objects; can also be populated through `options.items(...)`
+- `viewtable`: usually `any[]` row objects for readonly display
+- `reporttable`: usually `any[]` row objects formatted for report-style display
+- `servertable`: typically driven by `options.items(...)`, which normally returns a paginated result such as `{ data: any[]; total: number; limit: number }`
+
+### Maps and geometry
+
+- `map`: `{ lat: number; lng: number }`
+- `map` with `multiple: true`: `Array<{ lat: number; lng: number }>`
+- `map-line`: GeoJSON `LineString`
+  ```ts
+  {
+    type: 'LineString',
+    coordinates: [[lng, lat], [lng, lat]]
+  }
+  ```
+- `map-circle`:
+  ```ts
+  {
+    center: { lat: number, lng: number },
+    radius: number // meters
+  }
+  ```
+- `map-rectangle`:
+  ```ts
+  {
+    north: number, // latitude
+    south: number, // latitude
+    east: number,  // longitude
+    west: number   // longitude
+  }
+  ```
+  This is a bounds object, not corner-point objects of shape `{ lat, lng }`.
+- `map-polygon`: GeoJSON `Polygon`
+  ```ts
+  {
+    type: 'Polygon',
+    coordinates: [
+      [[lng, lat], [lng, lat], [lng, lat], [lng, lat]]
+    ]
+  }
+  ```
+- `map-heatmap`: display-only array of weighted points
+  ```ts
+  [
+    { location: { lat: number, lng: number }, weight?: number }
+  ]
+  ```
+  Raw point objects like `{ lat, lng, weight }` are also normalized automatically
+- `map-cluster`: display-only array of point-like objects, usually `Array<{ lat: number; lng: number }>`
+- `map-geojson`: display-only GeoJSON `Feature`, `FeatureCollection`, or a single geometry object such as `Point`, `LineString`, or `Polygon`
+
+### Practical rules
+
+- `multiple: true` changes the value shape for many entry widgets from a scalar to an array
+- selection widgets resolve ids using `itemValue`, `idField`, the global `Master` default id field, then `_id`, then `id`
+- some display-oriented types such as `label`, `button`, and `chart` do not require a meaningful stored value if their content comes from params or options
+- map display-only types still accept raw values through the field model, but they are not editable through the built-in widget UI
+
 ## Param Relevance by Type Family
 
 ### Common params used by many field types
