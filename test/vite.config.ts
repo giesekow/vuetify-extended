@@ -1,13 +1,18 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig({
-  root: currentDir,
-  server: {
-    port: 4174,
+export default defineConfig(({ mode }) => {
+  const rootEnv = loadEnv(mode, resolve(currentDir, '..'), '');
+  const testEnv = loadEnv(mode, currentDir, '');
+  Object.assign(process.env, rootEnv, testEnv);
+
+  return {
+    root: currentDir,
+    server: {
+    port: 4176,
     fs: {
       allow: [resolve(currentDir, '..')],
     },
@@ -27,4 +32,5 @@ export default defineConfig({
       '@test': resolve(currentDir, 'src'),
     },
   },
+  };
 });

@@ -43,4 +43,4 @@ The Vite dev server defaults to `http://localhost:4174`.
 - The test app imports the local library source from `../src`.
 - It uses the high-level setup helper plus `Dialogs.rootComponent()` instead of wiring every dialog component manually.
 - It intentionally does not change the package build or publish flow.
-- A few field types with external runtime requirements, such as Google Maps, are easy to add later but are not forced in this first playground.
+- Map and polygon-map demos are included. To enable them, set `VITE_GOOGLE_MAPS_API_KEY` in `test/.env`. A repo-root `.env` is also accepted as a fallback.

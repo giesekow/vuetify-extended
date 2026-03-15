@@ -23,7 +23,7 @@ import 'katex/dist/katex.min.css';
 
 export type FieldType = 'text'|'select'|'autocomplete'|'label'|
                         'messagingbox'|'chart'| 'viewtable'|
-                        'map'|'code'|'color'|'html'|'htmlview'|'listselect'|
+                        'map'|'map-polygon'|'code'|'color'|'html'|'htmlview'|'listselect'|
                         'time'|'date'|'datetime'|'button'|'image'|
                         'document'|'password'|'float'|'integer'|'decimal'|
                         'collection'|'textarea'|'boolean'|'table'|'reporttable'|'servertable';
@@ -50,7 +50,7 @@ const latexPackages = [
 export const fieldTypeOptions = [
   {name: 'Text', _id: 'text', id: 'text'}, {name: 'Select', _id: 'select', id: 'select'}, {name: 'Autocomplete', _id: 'autocomplete', id: 'autocomplete'},
   {name: 'Label', _id: 'label', id: 'label'}, {name: 'Messaging Box', _id: 'messagingbox', id: 'messagingbox'}, {name: 'Chart', _id: 'chart', id: 'chart'},
-  {name: 'View Table', _id: 'viewtable', id: 'viewtable'}, {name: 'Map', _id: 'map', id: 'map'}, {name: 'Code', _id: 'code', id: 'code'},
+  {name: 'View Table', _id: 'viewtable', id: 'viewtable'}, {name: 'Map', _id: 'map', id: 'map'}, {name: 'Map Polygon', _id: 'map-polygon', id: 'map-polygon'}, {name: 'Code', _id: 'code', id: 'code'},
   {name: 'Color', _id: 'color', id: 'color'}, {name: 'HTML', _id: 'html', id: 'html'}, {name: 'Time', _id: 'time', id: 'time'},
   {name: 'Date', _id: 'date', id: 'date'}, {name: 'Datetime', _id: 'datetime', id: 'datetime'}, {name: 'Button', _id: 'button', id: 'button'},
   {name: 'Image', _id: 'image', id: 'image'}, {name: 'Document', _id: 'document', id: 'document'}, {name: 'Password', _id: 'password', id: 'password'},
@@ -100,6 +100,7 @@ export interface FieldParams {
   mapApiKey?: any;
   mapOptions?: any;
   mapZoom?: number;
+  hideMapText?: boolean;
   fileAccepts?: any;
   fileMaxSize?: number; // In KB
   messageInitialCount?: number;
@@ -730,6 +731,7 @@ export class Field extends UIBase {
       case 'decimal':
         return this.buildText(props, context, 'number');
       case 'map':
+      case 'map-polygon':
         return this.buildMap(props, context);
       case 'html':
         return this.buildHTML(props, context);
@@ -1007,6 +1009,18 @@ export class Field extends UIBase {
       params: this.params,
       modelValue: this.modelValue,
       maxWidth: this.maxWidth,
+      $makeRef: this.$makeRef,
+      $watch: this.$watch,
+      getState: <T>(key: string, init: () => T): T => {
+        const existing = this.$get(key);
+        if (existing !== null && existing !== undefined) {
+          return existing as T;
+        }
+
+        const value = init();
+        this.$set(key, value);
+        return value;
+      },
       codePreview: this.codePreview,
       chartLoaded: this.chartLoaded,
       chartOpts: this.chartOpts,

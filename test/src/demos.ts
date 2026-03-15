@@ -52,6 +52,19 @@ function totalLineItems(items: any[]) {
   return items.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
 }
 
+const DEMO_MAP_API_KEY = (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY || '';
+const DEMO_POINT_LOCATION = { lat: 48.366512, lng: 10.894446 };
+const DEMO_POLYGON_LOCATION = {
+  type: 'Polygon',
+  coordinates: [[
+    [10.8842, 48.3701],
+    [10.9048, 48.3701],
+    [10.9048, 48.3598],
+    [10.8842, 48.3598],
+    [10.8842, 48.3701],
+  ]],
+};
+
 async function loadPeople(query?: any) {
   return Api.instance.service('people').findAll({ query: { ...(query || {}), $paginate: false } });
 }
@@ -292,6 +305,28 @@ function buildRichWidgetsForm() {
                     })),
                 },
               ),
+              new Field({
+                label: 'Office Location',
+                storage: 'officeLocation',
+                type: 'map',
+                cols: 6,
+                height: 260,
+                mapApiKey: DEMO_MAP_API_KEY,
+                mapZoom: 13,
+                default: DEMO_POINT_LOCATION,
+                hint: DEMO_MAP_API_KEY ? 'Point map with reverse-geocoded text below the map.' : 'Set VITE_GOOGLE_MAPS_API_KEY in the test app to enable the map demos.',
+              }),
+              new Field({
+                label: 'Service Area',
+                storage: 'serviceArea',
+                type: 'map-polygon',
+                cols: 6,
+                height: 260,
+                mapApiKey: DEMO_MAP_API_KEY,
+                mapZoom: 13,
+                default: DEMO_POLYGON_LOCATION,
+                hint: DEMO_MAP_API_KEY ? 'GeoJSON polygon example. Click to add points and drag vertices to edit.' : 'Set VITE_GOOGLE_MAPS_API_KEY in the test app to enable the polygon demo.',
+              }),
               new Field({ label: 'Avatar Upload', storage: 'avatar', type: 'image', cols: 6, hint: 'Select an image file to test upload handling.' }),
               new Field({ label: 'Resume Upload', storage: 'resume', type: 'document', cols: 6, hint: 'Select a PDF or document to test file conversion.' }),
             ],

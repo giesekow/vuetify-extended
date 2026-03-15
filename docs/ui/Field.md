@@ -18,7 +18,7 @@ Most flexible input/display primitive in the library. `Field` covers text inputs
 ```ts
 export type FieldType = 'text'|'select'|'autocomplete'|'label'|
                         'messagingbox'|'chart'| 'viewtable'|
-                        'map'|'code'|'color'|'html'|'htmlview'|'listselect'|
+                        'map'|'map-polygon'|'code'|'color'|'html'|'htmlview'|'listselect'|
                         'time'|'date'|'datetime'|'button'|'image'|
                         'document'|'password'|'float'|'integer'|'decimal'|
                         'collection'|'textarea'|'boolean'|'table'|'reporttable'|'servertable';
@@ -30,7 +30,7 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
 - **Selection and lookup:** `select`, `autocomplete`, `listselect`, `collection`
 - **Date and time:** `date`, `time`, `datetime`
 - **Numeric:** `float`, `integer`, `decimal`, `color`
-- **Rich content and media:** `html`, `htmlview`, `code`, `image`, `document`, `messagingbox`, `chart`, `map`
+- **Rich content and media:** `html`, `htmlview`, `code`, `image`, `document`, `messagingbox`, `chart`, `map`, `map-polygon`
 - **Table-oriented widgets:** `table`, `viewtable`, `reporttable`, `servertable`
 
 ## Param Relevance by Type Family
@@ -58,7 +58,9 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
 
 - `lang`, `codeTheme` for code/html fields
 - `chartType`, `options.chartData(...)`, `options.chartOptions(...)` for charts
-- `mapApiKey`, `mapOptions`, `mapZoom` for maps
+- `mapApiKey`, `mapOptions`, `mapZoom`, `hideMapText` for maps
+- `map` stores/edits a point and can optionally render reverse-geocoded location text below the map
+- `map-polygon` renders and edits GeoJSON polygon values
 - `messageInitialCount`, `messagePageSize`, `options.messageFormat(...)` for messagingbox
 - `fileAccepts`, `fileMaxSize` for image/document uploads or previews
 
@@ -113,6 +115,7 @@ export interface FieldParams {
   mapApiKey?: any;
   mapOptions?: any;
   mapZoom?: number;
+  hideMapText?: boolean;
   fileAccepts?: any;
   fileMaxSize?: number; // In KB
   messageInitialCount?: number;

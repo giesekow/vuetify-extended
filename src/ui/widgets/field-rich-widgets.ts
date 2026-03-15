@@ -1,9 +1,9 @@
-import { Ref, VNode } from "vue";
+import { Ref, VNode, markRaw, nextTick, shallowRef } from "vue";
 import { VBtn, VCard, VCol, VIcon, VImg, VRow, VSheet } from 'vuetify/components';
 import { VAceEditor } from 'vue3-ace-editor';
 import * as ace from 'ace-builds';
 import VueApexCharts from 'vue3-apexcharts';
-import { GoogleMap, Marker } from "vue3-google-map";
+import { GoogleMap, Marker, Polygon } from "vue3-google-map";
 import VueEditor from '@tinymce/tinymce-vue';
 import { fileToBase64, selectFile } from "../../misc";
 import { Dialogs } from "../dialogs";
@@ -13,9 +13,12 @@ ace.config.set("basePath", "https://cdn.jsdelivr.net/npm/ace-builds@" + ace.vers
 export interface RichWidgetContext {
   $h: any;
   $readonly: boolean;
+  $makeRef: any;
+  $watch: any;
   params: Ref<any>;
   modelValue: Ref<any>;
   maxWidth: Ref<any>;
+  getState: <T>(key: string, init: () => T) => T;
   codePreview: Ref<any>;
   chartLoaded: Ref<boolean>;
   chartOpts: Ref<any>;
@@ -631,55 +634,554 @@ export function buildChartWidget(field: RichWidgetContext): VNode[] | undefined 
   ];
 }
 
-export function buildMapWidget(field: RichWidgetContext): VNode[] {
-  const h = field.$h;
+interface MapWidgetState {
+  locationText: Ref<string>;
+  locationLookupKey?: string;
+  locationLookupPending?: string;
+  draftPolygonPaths: Ref<Array<{ lat: number; lng: number }>>;
+  mapComponentRef: Ref<any>;
+  watchersAttached?: boolean;
+  boundMap?: any;
+  mapClickListener?: any;
+  boundPolygon?: any;
+  polygonListeners?: any[];
+  boundPath?: any;
+  pathListeners?: any[];
+}
 
-  const center = {lat: 0, lng: 0};
-  const options: any = field.params.value.mapOptions || {
-    draggable: true
+function getMapWidgetState(field: RichWidgetContext): MapWidgetState {
+  return field.getState('__ve_map_widget_state', () => ({
+    locationText: field.$makeRef(''),
+    draftPolygonPaths: field.$makeRef([]),
+    mapComponentRef: shallowRef(),
+  }));
+}
+
+function isPolygonMap(field: RichWidgetContext) {
+  return field.params.value.type === 'map-polygon';
+}
+
+function normalizePoint(value: any): { lat: number; lng: number } | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  if (typeof value.lat === 'number' && typeof value.lng === 'number') {
+    return { lat: value.lat, lng: value.lng };
+  }
+
+  if (Array.isArray(value.coordinates) && value.coordinates.length >= 2) {
+    return {
+      lat: Number(value.coordinates[1]),
+      lng: Number(value.coordinates[0]),
+    };
+  }
+
+  if (Array.isArray(value) && value.length >= 2) {
+    return {
+      lat: Number(value[1]),
+      lng: Number(value[0]),
+    };
+  }
+
+  return undefined;
+}
+
+function normalizePolygonCoordinates(value: any): Array<{ lat: number; lng: number }> {
+  if (!value) {
+    return [];
+  }
+
+  const geometry = value.type === 'Feature' ? value.geometry : value;
+
+  let ring: any[] = [];
+  if (geometry?.type === 'Polygon' && Array.isArray(geometry.coordinates?.[0])) {
+    ring = geometry.coordinates[0];
+  } else if (Array.isArray(value)) {
+    ring = value;
+  }
+
+  const points = ring
+    .map((item: any) => {
+      if (Array.isArray(item) && item.length >= 2) {
+        return { lat: Number(item[1]), lng: Number(item[0]) };
+      }
+
+      if (item && typeof item.lat === 'number' && typeof item.lng === 'number') {
+        return { lat: item.lat, lng: item.lng };
+      }
+
+      return undefined;
+    })
+    .filter((item: any): item is { lat: number; lng: number } => !!item && !Number.isNaN(item.lat) && !Number.isNaN(item.lng));
+
+  if (points.length > 1) {
+    const first = points[0]!;
+    const last = points[points.length - 1]!;
+    if (first.lat === last.lat && first.lng === last.lng) {
+      points.pop();
+    }
+  }
+
+  return points;
+}
+
+function toGeoJsonPolygon(paths: Array<{ lat: number; lng: number }>) {
+  const normalized = paths
+    .map((item) => ({ lat: Number(item.lat), lng: Number(item.lng) }))
+    .filter((item) => !Number.isNaN(item.lat) && !Number.isNaN(item.lng));
+
+  if (normalized.length < 3) {
+    return undefined;
+  }
+
+  const closed = [...normalized];
+  const first = closed[0];
+  const last = closed[closed.length - 1];
+  if (!last || first.lat !== last.lat || first.lng !== last.lng) {
+    closed.push({ ...first });
+  }
+
+  return {
+    type: 'Polygon',
+    coordinates: [closed.map((item) => [item.lng, item.lat])],
+  };
+}
+
+function polygonCenter(paths: Array<{ lat: number; lng: number }>, fallback: { lat: number; lng: number }) {
+  if (!paths.length) {
+    return fallback;
+  }
+
+  const aggregate = paths.reduce((acc, item) => {
+    acc.lat += item.lat;
+    acc.lng += item.lng;
+    return acc;
+  }, { lat: 0, lng: 0 });
+
+  return {
+    lat: aggregate.lat / paths.length,
+    lng: aggregate.lng / paths.length,
+  };
+}
+
+function clearMapListeners(listeners?: any[]) {
+  (listeners || []).forEach((listener: any) => {
+    if (listener?.remove) {
+      listener.remove();
+      return;
+    }
+
+    if (listener?.removeListener) {
+      listener.removeListener();
+    }
+  });
+}
+
+function polygonPathToArray(path: any) {
+  const result: Array<{ lat: number; lng: number }> = [];
+  if (!path) {
+    return result;
+  }
+
+  for (let index = 0; index < path.getLength(); index++) {
+    const point = path.getAt(index);
+    result.push({ lat: point.lat(), lng: point.lng() });
+  }
+
+  return result;
+}
+
+function syncPolygonModel(field: RichWidgetContext, state: MapWidgetState, polygon: any) {
+  const path = polygon?.getPath?.();
+  const points = polygonPathToArray(path);
+  const nextValue = toGeoJsonPolygon(points);
+
+  if (nextValue) {
+    state.draftPolygonPaths.value = [];
+    field.modelValue.value = nextValue;
+  } else {
+    state.draftPolygonPaths.value = points;
+    field.modelValue.value = undefined;
+  }
+}
+
+function syncPolygonListeners(field: RichWidgetContext, state: MapWidgetState, api: any, polygon: any) {
+  if (!api?.event || !polygon) {
+    return;
+  }
+
+  if (state.boundPolygon === polygon) {
+    return;
+  }
+
+  clearMapListeners(state.polygonListeners);
+  clearMapListeners(state.pathListeners);
+
+  state.boundPolygon = polygon;
+  state.boundPath = polygon.getPath?.();
+  state.polygonListeners = [
+    api.event.addListener(polygon, 'rightclick', (event: any) => {
+      if (field.$readonly) {
+        return;
+      }
+
+      if (typeof event?.vertex === 'number') {
+        polygon.getPath().removeAt(event.vertex);
+        syncPolygonModel(field, state, polygon);
+      }
+    }),
+    api.event.addListener(polygon, 'mouseup', () => {
+      if (!field.$readonly) {
+        syncPolygonModel(field, state, polygon);
+      }
+    }),
+    api.event.addListener(polygon, 'dragend', () => {
+      if (!field.$readonly) {
+        syncPolygonModel(field, state, polygon);
+      }
+    }),
+  ];
+
+  if (state.boundPath) {
+    state.pathListeners = [
+      api.event.addListener(state.boundPath, 'insert_at', () => syncPolygonModel(field, state, polygon)),
+      api.event.addListener(state.boundPath, 'set_at', () => syncPolygonModel(field, state, polygon)),
+      api.event.addListener(state.boundPath, 'remove_at', () => syncPolygonModel(field, state, polygon)),
+    ];
+  }
+}
+
+function syncPolygonMapClick(field: RichWidgetContext, state: MapWidgetState, api: any, map: any) {
+  if (!isPolygonMap(field) || field.$readonly || !api?.event || !map) {
+    return;
+  }
+
+  if (state.boundMap === map && state.mapClickListener) {
+    return;
+  }
+
+  clearMapListeners(state.mapClickListener ? [state.mapClickListener] : []);
+  state.boundMap = map;
+  state.mapClickListener = api.event.addListener(map, 'click', (event: any) => {
+    if (!event?.latLng) {
+      return;
+    }
+
+    const existing = normalizePolygonCoordinates(field.modelValue.value);
+    const base = existing.length ? existing : [...state.draftPolygonPaths.value];
+    const nextPaths = [...base, { lat: event.latLng.lat(), lng: event.latLng.lng() }];
+
+    if (nextPaths.length >= 3) {
+      const nextValue = toGeoJsonPolygon(nextPaths);
+      state.draftPolygonPaths.value = [];
+      field.modelValue.value = nextValue;
+    } else {
+      state.draftPolygonPaths.value = nextPaths;
+    }
+  });
+}
+
+
+
+function currentMapCenter(field: RichWidgetContext, state: MapWidgetState) {
+  const center = { lat: 0, lng: 0 };
+  if (isPolygonMap(field)) {
+    const fromModel = normalizePolygonCoordinates(field.modelValue.value);
+    return polygonCenter(fromModel.length ? fromModel : state.draftPolygonPaths.value, center);
+  }
+
+  return normalizePoint(field.modelValue.value) || center;
+}
+
+function syncMapRuntime(field: RichWidgetContext, state: MapWidgetState) {
+  const ref = state.mapComponentRef.value;
+  if (!ref?.ready || !ref.api || !ref.map) {
+    return;
+  }
+
+  const center = currentMapCenter(field, state);
+  syncMapLocationText(field, state, ref.api);
+  syncPolygonMapClick(field, state, ref.api, ref.map);
+
+  nextTick(() => {
+    refreshGoogleMap(ref.api, ref.map, center);
+  });
+}
+
+function ensureMapWatchers(field: RichWidgetContext, state: MapWidgetState) {
+  if (state.watchersAttached) {
+    return;
+  }
+
+  state.watchersAttached = true;
+
+  field.$watch(() => state.mapComponentRef.value, () => {
+    syncMapRuntime(field, state);
+  }, { immediate: true });
+
+  field.$watch(() => state.mapComponentRef.value?.ready, (ready: boolean) => {
+    if (ready) {
+      syncMapRuntime(field, state);
+    }
+  }, { immediate: true });
+
+  field.$watch(() => field.modelValue.value, () => {
+    syncMapRuntime(field, state);
+  }, { deep: true });
+
+  field.$watch(() => state.draftPolygonPaths.value, () => {
+    syncMapRuntime(field, state);
+  }, { deep: true });
+}
+
+function refreshGoogleMap(api: any, map: any, center: { lat: number; lng: number }) {
+  if (!api?.event || !map) {
+    return;
+  }
+
+  const refresh = () => {
+    try {
+      api.event.trigger(map, 'resize');
+      if (typeof map.panTo === 'function') {
+        map.panTo(center);
+      } else if (typeof map.setCenter === 'function') {
+        map.setCenter(center);
+      }
+    } catch (_error) {
+      // Ignore transient map refresh errors.
+    }
   };
 
-  options.position = field.modelValue.value || center;
-  options.draggable = !field.$readonly;
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(refresh);
+  } else {
+    setTimeout(refresh, 0);
+  }
+
+  setTimeout(refresh, 180);
+}
+function syncMapLocationText(field: RichWidgetContext, state: MapWidgetState, api: any) {
+  if (isPolygonMap(field) || field.params.value.hideMapText) {
+    state.locationText.value = '';
+    state.locationLookupKey = undefined;
+    state.locationLookupPending = undefined;
+    return;
+  }
+
+  const point = normalizePoint(field.modelValue.value);
+  if (!point) {
+    state.locationText.value = '';
+    state.locationLookupKey = undefined;
+    state.locationLookupPending = undefined;
+    return;
+  }
+
+  const key = `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`;
+  if (state.locationLookupKey === key || state.locationLookupPending === key) {
+    return;
+  }
+
+  if (!api?.Geocoder) {
+    state.locationText.value = key;
+    state.locationLookupKey = key;
+    state.locationLookupPending = undefined;
+    return;
+  }
+
+  state.locationLookupPending = key;
+  state.locationText.value = 'Resolving location...';
+
+  const geocoder = new api.Geocoder();
+  geocoder.geocode({ location: point }, (results: any[], status: string) => {
+    if (state.locationLookupPending !== key) {
+      return;
+    }
+
+    state.locationLookupPending = undefined;
+    state.locationLookupKey = key;
+
+    if (status === 'OK' && results?.length) {
+      state.locationText.value = results[0].formatted_address || key;
+      return;
+    }
+
+    state.locationText.value = key;
+  });
+}
+
+export function buildMapWidget(field: RichWidgetContext): VNode[] {
+  const h = field.$h;
+  const center = { lat: 0, lng: 0 };
+  const state = getMapWidgetState(field);
+  ensureMapWatchers(field, state);
+
+  const mapApiKey = field.params.value.mapApiKey;
+  const polygonPathsFromModel = normalizePolygonCoordinates(field.modelValue.value);
+  const polygonPaths = polygonPathsFromModel.length ? polygonPathsFromModel : state.draftPolygonPaths.value;
+
+  if (polygonPathsFromModel.length && state.draftPolygonPaths.value.length) {
+    state.draftPolygonPaths.value = [];
+  }
+
+  const pointValue = normalizePoint(field.modelValue.value);
+  const mapCenter = isPolygonMap(field) ? polygonCenter(polygonPaths, center) : (pointValue || center);
+  const pointOptions: any = {
+    ...(field.params.value.mapOptions || {}),
+    position: pointValue || center,
+    draggable: !field.$readonly,
+  };
+  const polygonOptions: any = {
+    strokeColor: '#146eb4',
+    strokeOpacity: 0.9,
+    strokeWeight: 2,
+    fillColor: '#146eb4',
+    fillOpacity: 0.24,
+    editable: !field.$readonly,
+    draggable: !field.$readonly,
+    clickable: true,
+    paths: polygonPaths,
+    ...(field.params.value.mapOptions || {}),
+  };
+
+  const mapHeight = field.params.value.height || '300px';
+  const mapChildren: VNode[] = [];
+
+  if (isPolygonMap(field)) {
+    if (polygonPaths.length >= 3) {
+      mapChildren.push(
+        h(Polygon as any, {
+          ref: (el: any) => {
+            const polygon = el?.polygon;
+            const ref = state.mapComponentRef.value;
+            if (polygon && ref?.ready && ref.api) {
+              syncPolygonListeners(field, state, ref.api, polygon);
+            }
+          },
+          options: polygonOptions,
+        })
+      );
+    }
+
+    if (polygonPaths.length < 3) {
+      polygonPaths.forEach((item) => {
+        mapChildren.push(
+          h(Marker, {
+            options: {
+              position: item,
+              draggable: false,
+            },
+          })
+        );
+      });
+    }
+  } else {
+    mapChildren.push(
+      h(Marker, {
+        options: pointOptions,
+        title: field.params.value.label,
+        draggable: !field.$readonly,
+        onDragend: (event: any) => {
+          const pos = { lat: event.latLng.lat(), lng: event.latLng.lng() };
+          field.modelValue.value = pos;
+        },
+      })
+    );
+  }
+
+  const mapNode = h(
+    'div',
+    {
+      style: {
+        height: typeof mapHeight === 'number' ? `${mapHeight}px` : mapHeight,
+        width: '100%',
+        maxWidth: field.maxWidth.value,
+        border: '1px solid rgba(0, 0, 0, 0.12)',
+        borderRadius: '12px',
+        overflow: 'hidden',
+        background: '#f8fafc',
+      },
+    },
+    !mapApiKey
+      ? h(
+          'div',
+          {
+            class: ['d-flex', 'align-center', 'justify-center', 'text-center', 'px-4', 'py-6', 'text-body-2'],
+            style: {
+              height: '100%',
+            },
+          },
+          'Google Maps is not configured. Set VITE_GOOGLE_MAPS_API_KEY in test/.env (or the repo root .env) to enable this widget.'
+        )
+      : h(
+          GoogleMap,
+          {
+            ref: (el: any) => {
+              state.mapComponentRef.value = el ? markRaw(el) : el;
+            },
+            apiKey: mapApiKey,
+            style: {
+              height: typeof mapHeight === 'number' ? `${mapHeight}px` : mapHeight,
+              width: '100%',
+            },
+            center: mapCenter,
+            zoom: field.params.value.mapZoom || 5,
+          },
+          {
+            default: () => mapChildren,
+          }
+        )
+  );
 
   return [
     h(
       'div',
       {
-        class: ['ml-2', 'mb-4']
+        class: ['ml-2', 'mb-4'],
       },
       field.params.value.label
     ),
     h(
       'div',
       {},
+      mapNode
+    ),
+    ...(!isPolygonMap(field) && !field.params.value.hideMapText && state.locationText.value ? [
       h(
-        GoogleMap,
+        VSheet,
         {
-          apiKey: field.params.value.mapApiKey,
+          rounded: 'lg',
+          variant: 'tonal',
+          color: 'primary',
+          class: ['mt-3', 'px-3', 'py-2'],
           style: {
-            ...field.params.value.style, 
-            height: field.params.value.height || '300px',
             width: '100%',
-            'max-width': field.maxWidth.value
+            maxWidth: field.maxWidth.value,
           },
-          center: field.modelValue.value || center,
-          zoom: field.params.value.mapZoom || 5
         },
-        () => h(
-          Marker,
-          {
-            options: options,
-            title: field.params.value.label,
-            draggable: true,
-            onDragend: (event: any) => {
-              const pos = {lat: event.latLng.lat(), lng: event.latLng.lng()};
-              field.modelValue.value = pos;
-            }
-          }
-        )
-      )
-    )
+        () =>
+          h(
+            'div',
+            {
+              class: ['text-body-2'],
+            },
+            state.locationText.value
+          )
+      ),
+    ] : []),
+    ...(isPolygonMap(field) && !field.$readonly ? [
+      h(
+        'div',
+        {
+          class: ['text-caption', 'mt-2'],
+          style: {
+            maxWidth: field.maxWidth.value,
+            opacity: '0.72',
+          },
+        },
+        polygonPaths.length >= 3 ? 'Drag polygon vertices to edit. Right-click a vertex to remove it.' : 'Click on the map to add polygon points.'
+      ),
+    ] : []),
   ];
 }
 
