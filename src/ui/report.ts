@@ -54,8 +54,8 @@ export interface ReportOptions {
   master?: Master;
   form?: (props: any, context: any, index: number) => Promise<Form|undefined>|Form|undefined;
   hasForm?: (props: any, context: any, index: number) => Promise<boolean|undefined>|boolean|undefined;
-  saved?: () => Promise<void>|void;
-  cancel?: () => Promise<void>|void;
+  saved?: (report: Report) => Promise<void>|void;
+  cancel?: (report: Report) => Promise<void>|void;
   access?: (report: Report, mode: any) => Promise<boolean>|boolean;
   setup?: (report: Report) => void;
   beforePrint?: (report: Report, mode?: ReportMode) => Promise<any|undefined>|any|undefined;
@@ -895,6 +895,9 @@ export class Report extends UIBase {
       }
 
       if (this.params.value.mode === 'create' && this.params.value.multiple) {
+        if (this.options.saved) {
+          await this.options.saved(this)
+        }
         this.handleOn('saved', this);
         await this.prepareForm(props, context, 0);
         this.handleOn('before-reset', this);
@@ -902,10 +905,16 @@ export class Report extends UIBase {
         this.captureCleanState();
         this.handleOn('reset', this);
       } else if (this.params.value.mode === 'edit' && this.params.value.editAfterSave) {
+        if (this.options.saved) {
+          await this.options.saved(this)
+        }
         this.captureCleanState();
         this.handleOn('saved', this);
         await this.prepareForm(props, context, 0);
       } else {
+        if (this.options.saved) {
+          await this.options.saved(this)
+        }
         if (this.params.value.mode === 'create') {
           this.handleOn('before-reset', this);
           await this.$master?.$reset();
@@ -929,6 +938,9 @@ export class Report extends UIBase {
     }
 
     await sleep(50);
+    if (this.options.cancel) {
+      await this.options.cancel(this)
+    }
     this.handleOn('cancel', this);
   }
 

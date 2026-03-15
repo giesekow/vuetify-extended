@@ -46,8 +46,8 @@ export interface ReportOptions {
     master?: Master;
     form?: (props: any, context: any, index: number) => Promise<Form | undefined> | Form | undefined;
     hasForm?: (props: any, context: any, index: number) => Promise<boolean | undefined> | boolean | undefined;
-    saved?: () => Promise<void> | void;
-    cancel?: () => Promise<void> | void;
+    saved?: (report: Report) => Promise<void> | void;
+    cancel?: (report: Report) => Promise<void> | void;
     access?: (report: Report, mode: any) => Promise<boolean> | boolean;
     setup?: (report: Report) => void;
     beforePrint?: (report: Report, mode?: ReportMode) => Promise<any | undefined> | any | undefined;
