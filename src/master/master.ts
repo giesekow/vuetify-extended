@@ -362,7 +362,7 @@ export class Master extends EventEmitter {
     if (this.itemType && (this.itemId || mode === "create")) {
       const postprocessedData = await this.postprocess(this.data);
       const data: any = mode === "create" ? await this.$app.service(this.itemType).create(postprocessedData) : await this.$app.service(this.itemType).patch(this.itemId, postprocessedData);
-      this.data = data;
+      this.data = {...postprocessedData, ...data};
     }
 
     this.emit("saved", {type: this.itemType, id: this.itemId});
