@@ -54,6 +54,11 @@ function totalLineItems(items: any[]) {
 
 const DEMO_MAP_API_KEY = (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY || '';
 const DEMO_POINT_LOCATION = { lat: 48.366512, lng: 10.894446 };
+const DEMO_MULTI_POINT_LOCATIONS = [
+  { lat: 48.366512, lng: 10.894446 },
+  { lat: 48.371481, lng: 10.898222 },
+  { lat: 48.361924, lng: 10.887601 },
+];
 const DEMO_POLYGON_LOCATION = {
   type: 'Polygon',
   coordinates: [[
@@ -309,7 +314,7 @@ function buildRichWidgetsForm() {
                 label: 'Office Location',
                 storage: 'officeLocation',
                 type: 'map',
-                cols: 6,
+                cols: 4,
                 height: 260,
                 mapApiKey: DEMO_MAP_API_KEY,
                 mapZoom: 13,
@@ -317,10 +322,22 @@ function buildRichWidgetsForm() {
                 hint: DEMO_MAP_API_KEY ? 'Point map with reverse-geocoded text below the map.' : 'Set VITE_GOOGLE_MAPS_API_KEY in the test app to enable the map demos.',
               }),
               new Field({
+                label: 'Delivery Stops',
+                storage: 'deliveryStops',
+                type: 'map',
+                multiple: true,
+                cols: 4,
+                height: 260,
+                mapApiKey: DEMO_MAP_API_KEY,
+                mapZoom: 13,
+                default: DEMO_MULTI_POINT_LOCATIONS,
+                hint: DEMO_MAP_API_KEY ? 'Multi-marker example. Click to add more stops, drag to adjust, and right-click a marker to remove it.' : 'Set VITE_GOOGLE_MAPS_API_KEY in the test app to enable the multi-marker demo.',
+              }),
+              new Field({
                 label: 'Service Area',
                 storage: 'serviceArea',
                 type: 'map-polygon',
-                cols: 6,
+                cols: 4,
                 height: 260,
                 mapApiKey: DEMO_MAP_API_KEY,
                 mapZoom: 13,

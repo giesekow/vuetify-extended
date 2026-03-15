@@ -19,7 +19,7 @@ The UI layer is class-based and centers around `UIBase` descendants that render 
 - [Dialogs](./Dialogs.md)
   Global modal/dialog manager for alerts, confirms, progress, prompts, and other blocking overlays.
 - [Field](./Field.md)
-  Most flexible input/display primitive in the library. `Field` covers text inputs, selects, editors, tables, charts, maps, collections, messaging UI, and file/image/document display.
+  Most flexible input/display primitive in the library. `Field` covers text inputs, selects, editors, tables, charts, single-point maps, multi-marker maps, GeoJSON polygon maps, collections, messaging UI, and file/image/document display.
 - [Form](./Form.md)
   Composable form container that hosts fields, action buttons, validation, save/cancel flows, and keyboard-first behavior.
 - [Fullscreen](./Fullscreen.md)

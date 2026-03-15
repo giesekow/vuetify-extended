@@ -58,8 +58,11 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
 
 - `lang`, `codeTheme` for code/html fields
 - `chartType`, `options.chartData(...)`, `options.chartOptions(...)` for charts
-- `mapApiKey`, `mapOptions`, `mapZoom`, `hideMapText` for maps
+- `mapApiKey`, `mapOptions`, `mapZoom`, `hideMapText`, `multiple` for maps
 - `map` stores/edits a point and can optionally render reverse-geocoded location text below the map
+- `map` with `multiple: true` is intended for route stops, waypoints, and other multi-location entry use cases
+- `map` with `multiple: true` stores `Array<{ lat, lng }>` and renders one reverse-geocoded address row per marker
+- multi-marker maps support click-to-add, drag-to-move, and right-click removal when the field is editable
 - `map-polygon` renders and edits GeoJSON polygon values
 - `messageInitialCount`, `messagePageSize`, `options.messageFormat(...)` for messagingbox
 - `fileAccepts`, `fileMaxSize` for image/document uploads or previews

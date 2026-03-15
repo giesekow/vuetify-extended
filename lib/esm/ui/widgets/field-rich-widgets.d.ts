@@ -2,9 +2,12 @@ import { Ref, VNode } from "vue";
 export interface RichWidgetContext {
     $h: any;
     $readonly: boolean;
+    $makeRef: any;
+    $watch: any;
     params: Ref<any>;
     modelValue: Ref<any>;
     maxWidth: Ref<any>;
+    getState: <T>(key: string, init: () => T) => T;
     codePreview: Ref<any>;
     chartLoaded: Ref<boolean>;
     chartOpts: Ref<any>;

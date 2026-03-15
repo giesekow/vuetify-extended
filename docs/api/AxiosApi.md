@@ -10,6 +10,7 @@ Axios-based Keycloak client with service-style CRUD wrappers, optional Socket.IO
 
 - Supports host-configurable auth sync endpoints, including `GET` endpoints like `auth/me`.
 - Can route Socket.IO envelopes into `service(path).on(...)` events.
+- Mirrors `params.query` into normal URL query params even when `queryMode` is `rawquery-header`, while still preserving the legacy rawquery header.
 - Exposes `user`, `token`, `userRef`, `tokenRef`, `authenticatedRef`, `permissionsRef`, and `socketConnectedRef` on the application instance.
 
 ## Reference
@@ -43,6 +44,8 @@ export interface AxiosServiceParams {
   axios?: AxiosRequestConfig;
 }
 ```
+
+`query` is always mirrored into normal axios URL params. If `queryMode` is `rawquery-header`, the same payload is also sent in the legacy `rawquery` header for servers that still depend on it.
 
 ### `AxiosApi`
 

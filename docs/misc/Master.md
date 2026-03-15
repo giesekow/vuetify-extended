@@ -31,6 +31,18 @@ Master.setDefault({
 })
 ```
 
+The same default can also be applied through bootstrap configuration:
+
+```ts
+createVuetifyExtendedApp({
+  defaults: {
+    master: {
+      idField: 'id',
+    },
+  },
+})
+```
+
 ## Shared ID Resolution
 
 Throughout the runtime, ids are resolved in this order:

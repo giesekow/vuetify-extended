@@ -76,18 +76,25 @@ Key exports:
 
 Most of the main UI classes also now expose `setDefault(...)` so a host app can establish project-wide defaults without repeating constructor params everywhere.
 
+`Field` map widgets now support three mapping modes:
+
+- single-point `type: 'map'`
+- multi-marker `type: 'map'` with `multiple: true`, stored as `Array<{ lat, lng }>`
+- GeoJSON polygon `type: 'map-polygon'`
+
 ## `master`
 
 The `master` module exports:
 
 - `Master`
 
-This is the shared data model used by forms and reports. It now supports `Master.setDefault(...)`, including a project-wide `idField` default.
+This is the shared data model used by forms and reports. It now supports `Master.setDefault(...)`, including a project-wide `idField` default, and the bootstrap helpers can apply the same default through `defaults.master`.
 
 The shared id lookup order throughout the runtime is:
 
 - explicit local `idField` or `itemValue`
 - `Master.setDefault({ idField: ... })`
+- bootstrap `defaults.master` for the same project-wide id-field fallback
 - `_id`
 - `id`
 

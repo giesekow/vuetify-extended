@@ -635,14 +635,16 @@ export function buildChartWidget(field: RichWidgetContext): VNode[] | undefined 
 }
 
 interface MapWidgetState {
-  locationText: Ref<string>;
-  locationLookupKey?: string;
-  locationLookupPending?: string;
+  locationEntries: Ref<Array<{ key: string; text: string }>>;
+  locationCache?: Record<string, string>;
+  locationPending?: Record<string, boolean>;
   draftPolygonPaths: Ref<Array<{ lat: number; lng: number }>>;
   mapComponentRef: Ref<any>;
   watchersAttached?: boolean;
-  boundMap?: any;
-  mapClickListener?: any;
+  boundPolygonMap?: any;
+  polygonMapClickListener?: any;
+  boundPointMap?: any;
+  pointMapClickListener?: any;
   boundPolygon?: any;
   polygonListeners?: any[];
   boundPath?: any;
@@ -651,14 +653,20 @@ interface MapWidgetState {
 
 function getMapWidgetState(field: RichWidgetContext): MapWidgetState {
   return field.getState('__ve_map_widget_state', () => ({
-    locationText: field.$makeRef(''),
+    locationEntries: field.$makeRef([]),
     draftPolygonPaths: field.$makeRef([]),
     mapComponentRef: shallowRef(),
+    locationCache: {},
+    locationPending: {},
   }));
 }
 
 function isPolygonMap(field: RichWidgetContext) {
   return field.params.value.type === 'map-polygon';
+}
+
+function isMultiPointMap(field: RichWidgetContext) {
+  return field.params.value.type === 'map' && !!field.params.value.multiple;
 }
 
 function normalizePoint(value: any): { lat: number; lng: number } | undefined {
@@ -685,6 +693,32 @@ function normalizePoint(value: any): { lat: number; lng: number } | undefined {
   }
 
   return undefined;
+}
+
+function normalizePointList(value: any): Array<{ lat: number; lng: number }> {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    if (!value.length) {
+      return [];
+    }
+
+    const looksLikePointArray = value.every((item: any) => !!normalizePoint(item));
+    if (looksLikePointArray) {
+      return value
+        .map((item: any) => normalizePoint(item))
+        .filter((item: any): item is { lat: number; lng: number } => !!item);
+    }
+  }
+
+  const point = normalizePoint(value);
+  return point ? [point] : [];
+}
+
+function pointKey(point: { lat: number; lng: number }) {
+  return `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`;
 }
 
 function normalizePolygonCoordinates(value: any): Array<{ lat: number; lng: number }> {
@@ -748,7 +782,7 @@ function toGeoJsonPolygon(paths: Array<{ lat: number; lng: number }>) {
   };
 }
 
-function polygonCenter(paths: Array<{ lat: number; lng: number }>, fallback: { lat: number; lng: number }) {
+function pointsCenter(paths: Array<{ lat: number; lng: number }>, fallback: { lat: number; lng: number }) {
   if (!paths.length) {
     return fallback;
   }
@@ -857,13 +891,13 @@ function syncPolygonMapClick(field: RichWidgetContext, state: MapWidgetState, ap
     return;
   }
 
-  if (state.boundMap === map && state.mapClickListener) {
+  if (state.boundPolygonMap === map && state.polygonMapClickListener) {
     return;
   }
 
-  clearMapListeners(state.mapClickListener ? [state.mapClickListener] : []);
-  state.boundMap = map;
-  state.mapClickListener = api.event.addListener(map, 'click', (event: any) => {
+  clearMapListeners(state.polygonMapClickListener ? [state.polygonMapClickListener] : []);
+  state.boundPolygonMap = map;
+  state.polygonMapClickListener = api.event.addListener(map, 'click', (event: any) => {
     if (!event?.latLng) {
       return;
     }
@@ -882,16 +916,48 @@ function syncPolygonMapClick(field: RichWidgetContext, state: MapWidgetState, ap
   });
 }
 
+function syncPointMapClick(field: RichWidgetContext, state: MapWidgetState, api: any, map: any) {
+  if (!isMultiPointMap(field) || field.$readonly || !api?.event || !map) {
+    return;
+  }
 
+  if (state.boundPointMap === map && state.pointMapClickListener) {
+    return;
+  }
+
+  clearMapListeners(state.pointMapClickListener ? [state.pointMapClickListener] : []);
+  state.boundPointMap = map;
+  state.pointMapClickListener = api.event.addListener(map, 'click', (event: any) => {
+    if (!event?.latLng) {
+      return;
+    }
+
+    const nextPoints = [
+      ...normalizePointList(field.modelValue.value),
+      { lat: event.latLng.lat(), lng: event.latLng.lng() },
+    ];
+
+    field.modelValue.value = nextPoints;
+  });
+}
+
+function currentMapPoints(field: RichWidgetContext, state: MapWidgetState) {
+  if (isPolygonMap(field)) {
+    const fromModel = normalizePolygonCoordinates(field.modelValue.value);
+    return fromModel.length ? fromModel : state.draftPolygonPaths.value;
+  }
+
+  if (isMultiPointMap(field)) {
+    return normalizePointList(field.modelValue.value);
+  }
+
+  const point = normalizePoint(field.modelValue.value);
+  return point ? [point] : [];
+}
 
 function currentMapCenter(field: RichWidgetContext, state: MapWidgetState) {
   const center = { lat: 0, lng: 0 };
-  if (isPolygonMap(field)) {
-    const fromModel = normalizePolygonCoordinates(field.modelValue.value);
-    return polygonCenter(fromModel.length ? fromModel : state.draftPolygonPaths.value, center);
-  }
-
-  return normalizePoint(field.modelValue.value) || center;
+  return pointsCenter(currentMapPoints(field, state), center);
 }
 
 function syncMapRuntime(field: RichWidgetContext, state: MapWidgetState) {
@@ -901,11 +967,13 @@ function syncMapRuntime(field: RichWidgetContext, state: MapWidgetState) {
   }
 
   const center = currentMapCenter(field, state);
+  const points = currentMapPoints(field, state);
   syncMapLocationText(field, state, ref.api);
+  syncPointMapClick(field, state, ref.api, ref.map);
   syncPolygonMapClick(field, state, ref.api, ref.map);
 
   nextTick(() => {
-    refreshGoogleMap(ref.api, ref.map, center);
+    refreshGoogleMap(ref.api, ref.map, center, points);
   });
 }
 
@@ -935,7 +1003,7 @@ function ensureMapWatchers(field: RichWidgetContext, state: MapWidgetState) {
   }, { deep: true });
 }
 
-function refreshGoogleMap(api: any, map: any, center: { lat: number; lng: number }) {
+function refreshGoogleMap(api: any, map: any, center: { lat: number; lng: number }, points: Array<{ lat: number; lng: number }>) {
   if (!api?.event || !map) {
     return;
   }
@@ -943,6 +1011,13 @@ function refreshGoogleMap(api: any, map: any, center: { lat: number; lng: number
   const refresh = () => {
     try {
       api.event.trigger(map, 'resize');
+      if (points.length > 1 && typeof api.LatLngBounds === 'function' && typeof map.fitBounds === 'function') {
+        const bounds = new api.LatLngBounds();
+        points.forEach((item) => bounds.extend(item));
+        map.fitBounds(bounds);
+        return;
+      }
+
       if (typeof map.panTo === 'function') {
         map.panTo(center);
       } else if (typeof map.setCenter === 'function') {
@@ -961,52 +1036,65 @@ function refreshGoogleMap(api: any, map: any, center: { lat: number; lng: number
 
   setTimeout(refresh, 180);
 }
+
 function syncMapLocationText(field: RichWidgetContext, state: MapWidgetState, api: any) {
   if (isPolygonMap(field) || field.params.value.hideMapText) {
-    state.locationText.value = '';
-    state.locationLookupKey = undefined;
-    state.locationLookupPending = undefined;
+    state.locationEntries.value = [];
     return;
   }
 
-  const point = normalizePoint(field.modelValue.value);
-  if (!point) {
-    state.locationText.value = '';
-    state.locationLookupKey = undefined;
-    state.locationLookupPending = undefined;
+  const points = isMultiPointMap(field)
+    ? normalizePointList(field.modelValue.value)
+    : (() => {
+        const point = normalizePoint(field.modelValue.value);
+        return point ? [point] : [];
+      })();
+
+  if (!points.length) {
+    state.locationEntries.value = [];
     return;
   }
 
-  const key = `${point.lat.toFixed(6)},${point.lng.toFixed(6)}`;
-  if (state.locationLookupKey === key || state.locationLookupPending === key) {
-    return;
-  }
+  state.locationCache = state.locationCache || {};
+  state.locationPending = state.locationPending || {};
+
+  const updateEntries = () => {
+    state.locationEntries.value = points.map((point) => {
+      const key = pointKey(point);
+      return {
+        key,
+        text: state.locationCache?.[key] || (state.locationPending?.[key] ? 'Resolving location...' : key),
+      };
+    });
+  };
 
   if (!api?.Geocoder) {
-    state.locationText.value = key;
-    state.locationLookupKey = key;
-    state.locationLookupPending = undefined;
+    points.forEach((point) => {
+      const key = pointKey(point);
+      state.locationCache![key] = key;
+      delete state.locationPending![key];
+    });
+    updateEntries();
     return;
   }
 
-  state.locationLookupPending = key;
-  state.locationText.value = 'Resolving location...';
-
+  updateEntries();
   const geocoder = new api.Geocoder();
-  geocoder.geocode({ location: point }, (results: any[], status: string) => {
-    if (state.locationLookupPending !== key) {
+
+  points.forEach((point) => {
+    const key = pointKey(point);
+    if (state.locationCache?.[key] || state.locationPending?.[key]) {
       return;
     }
 
-    state.locationLookupPending = undefined;
-    state.locationLookupKey = key;
+    state.locationPending![key] = true;
+    updateEntries();
 
-    if (status === 'OK' && results?.length) {
-      state.locationText.value = results[0].formatted_address || key;
-      return;
-    }
-
-    state.locationText.value = key;
+    geocoder.geocode({ location: point }, (results: any[], status: string) => {
+      delete state.locationPending![key];
+      state.locationCache![key] = status === 'OK' && results?.length ? (results[0].formatted_address || key) : key;
+      updateEntries();
+    });
   });
 }
 
@@ -1019,18 +1107,20 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
   const mapApiKey = field.params.value.mapApiKey;
   const polygonPathsFromModel = normalizePolygonCoordinates(field.modelValue.value);
   const polygonPaths = polygonPathsFromModel.length ? polygonPathsFromModel : state.draftPolygonPaths.value;
+  const pointValues = isMultiPointMap(field)
+    ? normalizePointList(field.modelValue.value)
+    : (() => {
+        const point = normalizePoint(field.modelValue.value);
+        return point ? [point] : [];
+      })();
 
   if (polygonPathsFromModel.length && state.draftPolygonPaths.value.length) {
     state.draftPolygonPaths.value = [];
   }
 
-  const pointValue = normalizePoint(field.modelValue.value);
-  const mapCenter = isPolygonMap(field) ? polygonCenter(polygonPaths, center) : (pointValue || center);
-  const pointOptions: any = {
-    ...(field.params.value.mapOptions || {}),
-    position: pointValue || center,
-    draggable: !field.$readonly,
-  };
+  const mapCenter = isPolygonMap(field)
+    ? pointsCenter(polygonPaths, center)
+    : pointsCenter(pointValues, center);
   const polygonOptions: any = {
     strokeColor: '#146eb4',
     strokeOpacity: 0.9,
@@ -1064,9 +1154,10 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
     }
 
     if (polygonPaths.length < 3) {
-      polygonPaths.forEach((item) => {
+      polygonPaths.forEach((item, index) => {
         mapChildren.push(
           h(Marker, {
+            key: `${pointKey(item)}-draft`,
             options: {
               position: item,
               draggable: false,
@@ -1075,15 +1166,69 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
         );
       });
     }
-  } else {
+  } else if (isMultiPointMap(field)) {
+    pointValues.forEach((item, index) => {
+      mapChildren.push(
+        h(Marker, {
+          key: pointKey(item),
+          options: {
+            ...(field.params.value.mapOptions || {}),
+            position: item,
+            draggable: !field.$readonly,
+          },
+          title: `${field.params.value.label || 'Location'} ${index + 1}`,
+          draggable: !field.$readonly,
+          onDragend: (event: any) => {
+            if (!event?.latLng) {
+              return;
+            }
+
+            const currentKey = pointKey(item);
+            let replaced = false;
+            const nextPoints = normalizePointList(field.modelValue.value).map((point) => {
+              if (!replaced && pointKey(point) === currentKey) {
+                replaced = true;
+                return { lat: event.latLng.lat(), lng: event.latLng.lng() };
+              }
+              return point;
+            });
+            field.modelValue.value = nextPoints;
+          },
+          onRightclick: () => {
+            if (field.$readonly) {
+              return;
+            }
+
+            const currentKey = pointKey(item);
+            let removed = false;
+            const nextPoints = normalizePointList(field.modelValue.value).filter((point) => {
+              if (!removed && pointKey(point) === currentKey) {
+                removed = true;
+                return false;
+              }
+              return true;
+            });
+            field.modelValue.value = nextPoints;
+          },
+        })
+      );
+    });
+  } else if (pointValues[0]) {
     mapChildren.push(
       h(Marker, {
-        options: pointOptions,
+        options: {
+          ...(field.params.value.mapOptions || {}),
+          position: pointValues[0],
+          draggable: !field.$readonly,
+        },
         title: field.params.value.label,
         draggable: !field.$readonly,
         onDragend: (event: any) => {
-          const pos = { lat: event.latLng.lat(), lng: event.latLng.lng() };
-          field.modelValue.value = pos;
+          if (!event?.latLng) {
+            return;
+          }
+
+          field.modelValue.value = { lat: event.latLng.lat(), lng: event.latLng.lng() };
         },
       })
     );
@@ -1133,6 +1278,40 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
         )
   );
 
+  const locationSheet = !isPolygonMap(field) && !field.params.value.hideMapText && state.locationEntries.value.length
+    ? h(
+        VSheet,
+        {
+          rounded: 'lg',
+          variant: 'tonal',
+          color: 'primary',
+          class: ['mt-3', 'px-3', 'py-2'],
+          style: {
+            width: '100%',
+            maxWidth: field.maxWidth.value,
+          },
+        },
+        () => state.locationEntries.value.length === 1
+          ? h(
+              'div',
+              {
+                class: ['text-body-2'],
+              },
+              state.locationEntries.value[0]?.text || ''
+            )
+          : state.locationEntries.value.map((entry, index) =>
+              h(
+                'div',
+                {
+                  key: entry.key,
+                  class: ['text-body-2', ...(index > 0 ? ['mt-2'] : [])],
+                },
+                `${index + 1}. ${entry.text}`
+              )
+            )
+      )
+    : undefined;
+
   return [
     h(
       'div',
@@ -1146,27 +1325,18 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
       {},
       mapNode
     ),
-    ...(!isPolygonMap(field) && !field.params.value.hideMapText && state.locationText.value ? [
+    ...(locationSheet ? [locationSheet] : []),
+    ...(isMultiPointMap(field) && !field.$readonly ? [
       h(
-        VSheet,
+        'div',
         {
-          rounded: 'lg',
-          variant: 'tonal',
-          color: 'primary',
-          class: ['mt-3', 'px-3', 'py-2'],
+          class: ['text-caption', 'mt-2'],
           style: {
-            width: '100%',
             maxWidth: field.maxWidth.value,
+            opacity: '0.72',
           },
         },
-        () =>
-          h(
-            'div',
-            {
-              class: ['text-body-2'],
-            },
-            state.locationText.value
-          )
+        'Click on the map to add markers. Drag markers to adjust them. Right-click a marker to remove it.'
       ),
     ] : []),
     ...(isPolygonMap(field) && !field.$readonly ? [
