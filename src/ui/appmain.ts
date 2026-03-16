@@ -12,6 +12,7 @@ import { Api } from "../api";
 import { DialogForm } from "./dialogform";
 import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent } from "./shortcut";
 import { VApp, VAppBar, VAppBarTitle, VBtn, VCard, VCardText, VFooter, VMain, VMenu } from 'vuetify/components';
+import { Master } from "../master";
 
 export interface AppParams {
   ref?: string;
@@ -759,6 +760,7 @@ export class AppMain extends UIBase {
     if (!ftype) return;
 
     const fieldMaps: any = {}
+    const itemId = Master.getItemId(options, Master.getDefaultIdField())
 
     return new Field({
       type: fieldMaps[ftype] || ftype,
@@ -768,7 +770,7 @@ export class AppMain extends UIBase {
       icon: options.icon,
       required: options.isRequired,
       multiple: options.multiple || false,
-      storage: `udfs.${options._id}`,
+      storage: `udfs.${itemId}`,
       cols: options.gridSize?.cols,
       xs: options.gridSize?.xs,
       sm: options.gridSize?.sm,
