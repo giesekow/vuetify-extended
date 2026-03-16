@@ -15,6 +15,7 @@ export declare class Master extends EventEmitter {
     private validates;
     private postprocesses;
     private preprocesses;
+    private tempFields;
     constructor(options?: MasterOptions);
     static setDefault(value: MasterOptions, reset?: boolean): void;
     static getDefaultIdField(): string | undefined;
@@ -23,6 +24,8 @@ export declare class Master extends EventEmitter {
     static resolveItemValueField(items?: any[] | any, idField?: any): string;
     static getItemId(item: any, idField?: any): any;
     static matchesItemId(item: any, id: any, idField?: any): boolean;
+    set $temporary(value: string[]);
+    get $temporary(): string[];
     get $type(): any;
     set $type(value: any);
     get $id(): any;

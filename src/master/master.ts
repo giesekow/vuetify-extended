@@ -1,5 +1,6 @@
 import nestedproperty from "nested-property";
 import { EventEmitter } from "../ui/lib";
+import nestedProperty from "nested-property";
 
 export interface MasterOptions {
   type?: string;
@@ -22,6 +23,7 @@ export class Master extends EventEmitter {
   private validates: any[] = [];
   private postprocesses: any[] = [];
   private preprocesses: any[] = [];
+  private tempFields: string[] = []
 
   constructor(options?: MasterOptions) {
     super();
@@ -86,6 +88,14 @@ export class Master extends EventEmitter {
     if (!(id || id === 0)) return false;
     const itemId = Master.getItemId(item, idField);
     return (itemId || itemId === 0) && itemId.toString() === id.toString();
+  }
+
+  set $temporary(value: string[]) {
+    this.tempFields = value;
+  }
+
+  get $temporary(): string[] {
+    return this.tempFields
   }
 
   get $type() {
@@ -361,8 +371,27 @@ export class Master extends EventEmitter {
 
     if (this.itemType && (this.itemId || mode === "create")) {
       const postprocessedData = await this.postprocess(this.data);
+      const skiped: any[] = []
+
+      for (const f of this.tempFields) {
+        if (nestedProperty.has(postprocessedData, f)) {
+          skiped.push({
+            key: f,
+            value: nestedProperty.get(postprocessedData, f)
+          })
+          nestedProperty.set(postprocessedData, f, null)
+        }
+      }
+
       const data: any = mode === "create" ? await this.$app.service(this.itemType).create(postprocessedData) : await this.$app.service(this.itemType).patch(this.itemId, postprocessedData);
+
+      // restore temp
+      for (const sk of skiped) {
+        nestedProperty.set(postprocessedData, sk.key, sk.value)
+      }
+      
       this.data = {...postprocessedData, ...data};
+
       if (!this.itemId){
         this.itemId = this.itemId || Master.getItemId(this.data,this.idField)
       }
