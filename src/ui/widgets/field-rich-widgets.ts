@@ -29,6 +29,7 @@ export interface RichWidgetContext {
   modelValue: Ref<any>;
   maxWidth: Ref<any>;
   getState: <T>(key: string, init: () => T) => T;
+  isCreateMode: () => boolean;
   codePreview: Ref<any>;
   chartLoaded: Ref<boolean>;
   chartOpts: Ref<any>;
@@ -823,6 +824,8 @@ interface MapWidgetState {
   boundRectangle?: any;
   rectangleListeners?: any[];
   geoJsonSignature?: string;
+  currentLocationRequested?: boolean;
+  currentLocationResolved?: boolean;
 }
 
 
@@ -1624,6 +1627,83 @@ function ensureMapWatchers(field: RichWidgetContext, state: MapWidgetState) {
   field.$watch(() => state.draftLinePaths.value, () => syncMapRuntime(field, state), { deep: true });
 }
 
+function hasSeedableMapValue(field: RichWidgetContext) {
+  if (isCircleMap(field)) {
+    return !!normalizeCircleValue(field.modelValue.value);
+  }
+
+  if (isPolygonMap(field)) {
+    return normalizePolygonCoordinates(field.modelValue.value).length >= 3;
+  }
+
+  if (isRectangleMap(field)) {
+    return !!normalizeRectangleValue(field.modelValue.value);
+  }
+
+  if (field.params.value.type === 'map' && !isMultiPointMap(field)) {
+    return !!normalizePoint(field.modelValue.value);
+  }
+
+  return true;
+}
+
+function seedMapFromCurrentLocation(field: RichWidgetContext, state: MapWidgetState) {
+  if (!field.isCreateMode() || field.$readonly || state.currentLocationRequested || hasSeedableMapValue(field)) {
+    return;
+  }
+
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    state.currentLocationRequested = true;
+    state.currentLocationResolved = false;
+    return;
+  }
+
+  state.currentLocationRequested = true;
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      state.currentLocationResolved = true;
+
+      if (hasSeedableMapValue(field)) {
+        return;
+      }
+
+      const point = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      };
+
+      if (isCircleMap(field)) {
+        field.modelValue.value = { center: point, radius: 1000 };
+        return;
+      }
+
+      if (isPolygonMap(field)) {
+        const squareBounds = rectangleFromCenter(point, 500);
+        field.modelValue.value = toGeoJsonPolygon(rectangleToPoints(squareBounds));
+        return;
+      }
+
+      if (isRectangleMap(field)) {
+        field.modelValue.value = rectangleFromCenter(point, 500);
+        return;
+      }
+
+      if (field.params.value.type === 'map' && !isMultiPointMap(field)) {
+        field.modelValue.value = point;
+      }
+    },
+    () => {
+      state.currentLocationResolved = false;
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 300000,
+    }
+  );
+}
+
 function refreshGoogleMap(api: any, map: any, center: { lat: number; lng: number }, points: Array<{ lat: number; lng: number }>) {
   if (!api?.event || !map) {
     return;
@@ -1818,6 +1898,7 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
   const h = field.$h;
   const state = getMapWidgetState(field);
   ensureMapWatchers(field, state);
+  seedMapFromCurrentLocation(field, state);
 
   const mapApiKey = field.params.value.mapApiKey;
   const polygonPathsFromModel = normalizePolygonCoordinates(field.modelValue.value);

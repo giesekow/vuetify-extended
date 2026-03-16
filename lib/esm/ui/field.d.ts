@@ -187,6 +187,7 @@ export declare class Field extends UIBase {
     get $readonly(): any;
     get $parentReport(): Report | undefined;
     get $mode(): ReportMode | undefined;
+    private isCreateMode;
     get $value(): any;
     get $options(): any[];
     get $collectionForm(): Form | undefined;

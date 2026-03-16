@@ -278,6 +278,27 @@ export class Field extends UIBase {
     return this.$parentReport?.$params.mode;
   }
 
+  private isCreateMode() {
+    if (this.params.value.readonly) {
+      return false;
+    }
+
+    if (this.params.value && (this.params.value as any).mode === 'create') {
+      return true;
+    }
+
+    let parent: any = this.$parent;
+    while (parent) {
+      if (parent.$params?.mode === 'create') {
+        return true;
+      }
+
+      parent = parent.$parent;
+    }
+
+    return this.$mode === 'create';
+  }
+
   get $value() {
     const val = this.postprocess(this.modelValue.value);
     if (this.params.value.type === 'decimal') {
@@ -1028,6 +1049,7 @@ export class Field extends UIBase {
         this.$set(key, value);
         return value;
       },
+      isCreateMode: () => this.isCreateMode(),
       codePreview: this.codePreview,
       chartLoaded: this.chartLoaded,
       chartOpts: this.chartOpts,

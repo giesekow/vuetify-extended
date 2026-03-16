@@ -20,6 +20,7 @@ export interface RichWidgetContext {
     modelValue: Ref<any>;
     maxWidth: Ref<any>;
     getState: <T>(key: string, init: () => T) => T;
+    isCreateMode: () => boolean;
     codePreview: Ref<any>;
     chartLoaded: Ref<boolean>;
     chartOpts: Ref<any>;
