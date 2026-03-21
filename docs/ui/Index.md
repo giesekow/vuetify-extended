@@ -16,6 +16,8 @@ The UI layer is class-based and centers around `UIBase` descendants that render 
   Collection-oriented workflow screen for browsing/editing grouped data with buttons, reports, selectors, and nested actions.
 - [DialogForm](./DialogForm.md)
   Form wrapper that runs inside a dialog surface and reuses the same field/form/button model as the rest of the library.
+- [Dashboard](./Dashboard.md)
+  Dashboard page and widget reference covering `Dashboard`, the shared widget shell, header menu behavior, refresh behavior, and the expected data/value format for every dashboard widget type.
 - [Dialogs](./Dialogs.md)
   Global modal/dialog manager for alerts, confirms, progress, prompts, and other blocking overlays.
 - [Field](./Field.md)

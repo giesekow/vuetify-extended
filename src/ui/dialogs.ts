@@ -12,11 +12,14 @@ export interface DialogOptions {
   warningTimeout?: number|undefined;
   progressSize?: number|undefined;
   progressWidth?: number|undefined;
+  infoWindowWidth?: number|undefined;
+  infoWindowHeight?: number|undefined;
 }
 
 export class Dialogs {
 
   private static confirmDialog: Ref<boolean> = ref(false);
+  private static infoDialog: Ref<boolean> = ref(false);
   private static successDialog: Ref<boolean> = ref(false);
   private static errorDialog: Ref<boolean> = ref(false);
   private static warningDialog: Ref<boolean> = ref(false);
@@ -24,6 +27,12 @@ export class Dialogs {
 
   private static confirmTitle: Ref<string> = ref('');
   private static confirmText: Ref<string> = ref('');
+  
+  private static infoTitle: Ref<string> = ref('');
+  private static infoText: Ref<string> = ref('');
+  private static infoWidth: Ref<number|undefined> = ref(0)
+  private static infoHeight: Ref<number|undefined> = ref(0)
+
   private static successText: Ref<string> = ref('');
   private static errorText: Ref<string> = ref('');
   private static warningText: Ref<string> = ref('');
@@ -34,6 +43,7 @@ export class Dialogs {
 
   private static confirmYes: any = null;
   private static confirmNo: any = null;
+  private static infoClose: any = null;
   private static confirmKeydownHandler?: (ev: KeyboardEvent) => void;
   private static rootMounted = false;
 
@@ -64,9 +74,11 @@ export class Dialogs {
         const ErrorSnackbar = Dialogs.errorComponent();
         const WarningSnackbar = Dialogs.warningComponent();
         const ProgressOverlay = Dialogs.progressComponent();
+        const InfoDialog = Dialogs.infoComponent()
 
         return () => [
           h(ConfirmDialog),
+          h(InfoDialog),
           h(SuccessSnackbar),
           h(ErrorSnackbar),
           h(WarningSnackbar),
@@ -128,6 +140,58 @@ export class Dialogs {
                       }
                     },
                     () => 'Yes'
+                  )
+                ]
+              )
+            ]
+          )
+        )
+      },
+    });
+  }
+
+  static infoComponent() {
+    return defineComponent({
+      props: [],
+      setup: (props, context) => {
+        return () => h(
+          VDialog,
+          {
+            modelValue: Dialogs.infoDialog.value,
+            persistent: true,
+            width: Dialogs.infoWidth.value || Dialogs.options.value.infoWindowWidth || 400,
+            maxHeight: Dialogs.infoHeight.value || Dialogs.options.value.infoWindowHeight || 300
+          },
+          () => h(
+            VCard,
+            {},
+            () => [
+              h(
+                VCardTitle,
+                {},
+                () => Dialogs.infoTitle.value
+              ),
+              h(
+                VCardText,
+                {},
+                () => Dialogs.infoText.value
+              ),
+              h(
+                VCardActions,
+                {},
+                () => [
+                  h(
+                    VSpacer
+                  ),
+                  h(
+                    VBtn,
+                    {
+                      color: 'success',
+                      onClick: () => {
+                        if (Dialogs.infoClose) Dialogs.infoClose();
+                      }
+                    },
+                    () => 'Close'
                   )
                 ]
               )
@@ -325,6 +389,22 @@ export class Dialogs {
     })
   }
 
+  static async $info(text: string, title?: string, options?: {width?: number, height?: number}): Promise<void> {
+    return new Promise((resolve: any) => {
+      Dialogs.infoClose = () => {
+        Dialogs.removeConfirmKeydownHandler();
+        Dialogs.infoDialog.value = false;
+        resolve();
+      }
+      Dialogs.installConfirmKeydownHandler();
+      Dialogs.infoText.value = text;
+      Dialogs.infoTitle.value = title || 'Info';
+      Dialogs.infoWidth.value = options?.width || Dialogs.options.value.infoWindowWidth || 400
+      Dialogs.infoHeight.value = options?.height || Dialogs.options.value.infoWindowHeight || 300
+      Dialogs.infoDialog.value = true;
+    })
+  }
+
   static hasBlockingDialog(): boolean {
     return Dialogs.confirmDialog.value || Dialogs.progressDialog.value;
   }
@@ -335,7 +415,7 @@ export class Dialogs {
     }
 
     Dialogs.confirmKeydownHandler = (ev: KeyboardEvent) => {
-      if (!Dialogs.confirmDialog.value) {
+      if (!Dialogs.confirmDialog.value && !Dialogs.infoDialog.value) {
         return;
       }
 
@@ -347,6 +427,9 @@ export class Dialogs {
         if (Dialogs.confirmNo) {
           Dialogs.confirmNo();
         }
+        if (Dialogs.infoClose) {
+          Dialogs.infoClose();
+        }
         return;
       }
 
@@ -355,6 +438,9 @@ export class Dialogs {
         ev.stopPropagation();
         if (Dialogs.confirmYes) {
           Dialogs.confirmYes();
+        }
+        if (Dialogs.infoClose) {
+          Dialogs.infoClose();
         }
       }
     };

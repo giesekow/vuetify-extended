@@ -1,4 +1,5 @@
 import { h } from 'vue';
+import { VAvatar, VChip, VIcon } from 'vuetify/components';
 import {
   Api,
   AppMain,
@@ -24,6 +25,21 @@ import {
   ShellIconAction,
   UserArea,
   MailboxView,
+  Dashboard,
+  DashboardMetricWidget,
+  DashboardTableWidget,
+  DashboardListWidget,
+  DashboardProgressWidget,
+  DashboardChartWidget,
+  DashboardTrendWidget,
+  DashboardTimelineWidget,
+  DashboardActionListWidget,
+  DashboardAlertWidget,
+  DashboardEmptyStateWidget,
+  DashboardStatGridWidget,
+  DashboardMapWidget,
+  DashboardCalendarWidget,
+  DashboardTabsWidget,
   AccessDeniedScreen,
   SplashScreen,
 } from '../../src';
@@ -249,6 +265,529 @@ function buildInfoLabel(text: string) {
     label: text,
     cols: 12,
   });
+}
+
+function buildDashboardMetricCard(
+  title: string,
+  value: number,
+  icon: string,
+  color: string,
+  formatValue?: (value: number) => string,
+  delayMs: number = 180,
+) {
+  return new DashboardMetricWidget(
+    {
+      title,
+      icon,
+      iconColor: color,
+      cols: 12,
+      sm: 6,
+      lg: 3,
+      height: 118,
+      bodyStyle: { display: 'flex', flexDirection: 'column', justifyContent: 'center' },
+    },
+    {
+      value: async () => {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        return value;
+      },
+      formatValue: (_widget, currentValue) => {
+        const numeric = typeof currentValue === 'number' ? currentValue : value;
+        return formatValue ? formatValue(numeric) : numeric.toLocaleString();
+      },
+    },
+  );
+}
+
+function buildDashboardDemo() {
+  const orders = [
+    { name: 'G Pro X Superlight', amount: '$149', vendor: 'Logitech', status: 'Completed', rating: '(5.0)' },
+    { name: 'DeathAdder V3', amount: '$79', vendor: 'Razer', status: 'Pending', rating: '(4.5)' },
+    { name: 'Pulsefire Haste 2', amount: '$299', vendor: 'HyperX', status: 'Completed', rating: '(4.8)' },
+    { name: 'Viper V2 Pro', amount: '$29', vendor: 'Razer', status: 'Completed', rating: '(4.2)' },
+    { name: 'MX Master 3S', amount: '$49', vendor: 'Logitech', status: 'Cancelled', rating: '(4.0)' },
+  ];
+
+  const transactions = [
+    { initials: 'JL', label: 'John Leider', time: '21 Mar 8:00PM', amount: '+$36.11', color: '#1f4f2b' },
+    { initials: '$', label: 'ATM withdrawal', time: '21 Mar 6:00PM', amount: '-$20.00', color: '#4f3210' },
+    { initials: 'JD', label: 'Jane Doe', time: '21 Mar 4:00PM', amount: '+$45.00', color: '#1f4f2b' },
+    { initials: 'A', label: 'Amazon', time: '21 Mar 10:00AM', amount: '-$99.99', color: '#4f3210' },
+    { initials: 'W', label: 'Water Bill', time: '16 Mar 9:00AM', amount: '-$25.00', color: '#123b5a' },
+    { initials: 'E', label: 'Electricity Bill', time: '14 Mar 8:00AM', amount: '-$45.00', color: '#47215a' },
+  ];
+
+  const summary = [
+    { initials: 'R', label: 'Revenue', value: '$47,230', amount: 0.82 },
+    { initials: 'S', label: 'Sales', value: '$14,345', amount: 0.62 },
+    { initials: 'C', label: 'Cost', value: '$12,345', amount: 0.41 },
+    { initials: 'P', label: 'Profit', value: '$34,567', amount: 0.2 },
+  ];
+
+  const revenueSeries = [
+    { label: 'Jan', value: 9200 },
+    { label: 'Feb', value: 10450 },
+    { label: 'Mar', value: 11320 },
+    { label: 'Apr', value: 12640 },
+    { label: 'May', value: 14110 },
+    { label: 'Jun', value: 15340 },
+  ];
+
+  const categoryMix = [
+    { label: 'Gaming', value: 47, valueLabel: '47%' },
+    { label: 'Office', value: 28, valueLabel: '28%' },
+    { label: 'Audio', value: 15, valueLabel: '15%' },
+    { label: 'Other', value: 10, valueLabel: '10%' },
+  ];
+
+  const activityTimeline = [
+    { title: 'Warehouse sync completed', subtitle: 'Inventory levels were refreshed across all regions.', time: '09:20', icon: 'mdi-warehouse', color: '#3b82f6' },
+    { title: 'New enterprise order approved', subtitle: 'HyperX procurement request cleared finance review.', time: '10:05', icon: 'mdi-check-decagram-outline', color: '#10b981' },
+    { title: 'Low stock alert raised', subtitle: 'MX Master 3S inventory dropped below the reorder threshold.', time: '11:40', icon: 'mdi-alert-circle-outline', color: '#f59e0b' },
+    { title: 'Shipment delayed', subtitle: 'Carrier updated the expected delivery window for batch 1042.', time: '13:15', icon: 'mdi-truck-delivery-outline', color: '#ef4444' },
+  ];
+
+  const actionItems = [
+    { title: 'Create campaign', subtitle: 'Launch a targeted promo for high-intent segments.', icon: 'mdi-bullhorn-outline', avatarColor: '#1e3a8a', actionText: 'Launch', actionColor: 'primary' },
+    { title: 'Review returns queue', subtitle: '12 returns are waiting for approval.', icon: 'mdi-package-variant-closed-remove', avatarColor: '#7c2d12', chipText: '12 pending', chipColor: 'warning', actionText: 'Review', actionColor: 'warning' },
+    { title: 'Invite teammate', subtitle: 'Add another operator to the commerce workspace.', icon: 'mdi-account-plus-outline', avatarColor: '#14532d', actionText: 'Invite', actionColor: 'success' },
+  ];
+
+  const growthSparkline = [38, 44, 41, 53, 57, 62, 69, 74];
+
+  const alertItems = [
+    { severity: 'warning' as const, title: 'Inventory threshold reached', message: 'MX Master 3S stock is below the target threshold in EU West.', time: '5 min ago', chipText: 'Restock soon' },
+    { severity: 'error' as const, title: 'Carrier delay detected', message: 'Two orders are trending beyond the promised delivery window.', time: '18 min ago', chipText: 'Needs review' },
+    { severity: 'info' as const, title: 'Pricing sync completed', message: 'Marketplace pricing finished syncing for 42 products.', time: '42 min ago', chipText: 'Completed' },
+  ];
+
+  const statGridItems = [
+    { label: 'AOV', value: '$128', caption: 'Average order value', icon: 'mdi-cash-multiple', color: '#3b82f6' },
+    { label: 'Refund rate', value: '1.4%', caption: 'Down 0.2% this week', icon: 'mdi-undo-variant', color: '#10b981' },
+    { label: 'Conversion', value: '4.8%', caption: 'Storefront conversion', icon: 'mdi-chart-line', color: '#f59e0b' },
+    { label: 'Open tickets', value: 12, caption: 'Awaiting support follow-up', icon: 'mdi-lifebuoy', color: '#ef4444' },
+  ];
+
+  const mapData = {
+    markers: [
+      { lat: 48.366512, lng: 10.894446, label: 'Warehouse', color: '#3b82f6' },
+      { lat: 48.371481, lng: 10.898222, label: 'Hub', color: '#10b981' },
+      { lat: 48.361924, lng: 10.887601, label: 'Store', color: '#f59e0b' },
+    ],
+    line: [
+      { lat: 48.361924, lng: 10.887601 },
+      { lat: 48.366512, lng: 10.894446 },
+      { lat: 48.371481, lng: 10.898222 },
+    ],
+    polygon: [
+      { lat: 48.373, lng: 10.885 },
+      { lat: 48.373, lng: 10.904 },
+      { lat: 48.359, lng: 10.904 },
+      { lat: 48.359, lng: 10.885 },
+    ],
+  };
+
+  const calendarItems = [
+    { date: new Date(2026, 2, 4), title: 'Retail campaign', color: '#3b82f6' },
+    { date: new Date(2026, 2, 9), title: 'Vendor review', color: '#10b981' },
+    { date: new Date(2026, 2, 9), title: 'Ops sync', color: '#8b5cf6' },
+    { date: new Date(2026, 2, 14), title: 'Promo launch', color: '#f59e0b' },
+    { date: new Date(2026, 2, 21), title: 'Quarterly snapshot', color: '#ef4444' },
+  ];
+
+  const statusColor = (status: string) => status === 'Completed' ? 'success' : (status === 'Pending' ? 'warning' : 'error');
+
+  return new Dashboard(
+    {
+      title: 'Commerce Dashboard',
+      subtitle: 'A first-pass dashboard screen built on UIBase widgets.',
+      maxWidth: 1400,
+      dense: true,
+      theme: 'dark',
+      backgroundColor: '#1f2937',
+      backgroundGradient: 'linear-gradient(180deg, rgba(31,41,55,0.96) 0%, rgba(30,41,59,0.9) 100%)',
+      backgroundImage: 'radial-gradient(circle at top right, rgba(59,130,246,0.18), transparent 28%), radial-gradient(circle at bottom left, rgba(16,185,129,0.12), transparent 24%)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      containerStyle: { paddingTop: '36px', paddingBottom: '28px', borderRadius: '20px' },
+    },
+    {
+      menuItems: (dashboard) => [
+        new MenuItem(
+          {
+            text: 'Refresh Widgets',
+            subText: 'Reload all dashboard data',
+            icon: 'mdi-refresh',
+            action: 'function',
+          },
+          {
+            callback: async () => {
+              Dialogs.$showProgress({});
+              try {
+                await dashboard.refresh();
+                Dialogs.$success('Dashboard refreshed from menu.');
+              } finally {
+                Dialogs.$hideProgress();
+              }
+            },
+          },
+        ),
+        new MenuItem(
+          {
+            text: 'Open Dashboard Tools',
+            subText: 'Launch a reusable Menu screen',
+            icon: 'mdi-view-grid-outline',
+            action: 'menu',
+          },
+          {
+            menu: async () => new Menu(
+              { title: 'Dashboard Tools' },
+              {
+                children: () => [
+                  new MenuItem(
+                    {
+                      text: 'Show Success Message',
+                      subText: 'Simple function-style menu action',
+                      icon: 'mdi-check-circle-outline',
+                      action: 'function',
+                    },
+                    {
+                      callback: async () => {
+                        Dialogs.$success('Dashboard tools menu clicked.');
+                      },
+                    },
+                  ),
+                  new MenuItem(
+                    {
+                      text: 'Open Splash Screen',
+                      subText: 'Show another UIBase screen from the menu',
+                      icon: 'mdi-image-filter-center-focus-strong-outline',
+                      action: 'function',
+                    },
+                    {
+                      callback: async () => {
+                        AppManager.showUI(new SplashScreen({
+                          title: 'Preparing Workspace',
+                          subtitle: 'Loading dashboard utilities...',
+                          loadingText: 'Almost ready',
+                          backgroundColor: '#0f172a',
+                          backgroundGradient: 'linear-gradient(180deg, rgba(15,23,42,0.98) 0%, rgba(30,41,59,0.9) 100%)',
+                        }));
+                      },
+                    },
+                  ),
+                ],
+              },
+            ),
+          },
+        ),
+        new MenuItem(
+          {
+            text: 'About This Menu',
+            subText: 'This dropdown uses MenuItem actions directly',
+            icon: 'mdi-information-outline',
+            action: 'function',
+          },
+          {
+            callback: async () => {
+              Dialogs.$success('Dashboard header actions are powered by MenuItem definitions.');
+            },
+          },
+        ),
+      ],
+      topChildren: () => [
+        buildDashboardMetricCard('Total subscribers', 23412, 'mdi-account-group-outline', '#1e88e5', (value) => value.toLocaleString(), 120),
+        buildDashboardMetricCard('Total revenue', 14301, 'mdi-star-outline', '#43a047', (value) => `$${value.toLocaleString()}`, 220),
+        buildDashboardMetricCard('Total orders', 402, 'mdi-cart-outline', '#fb8c00', (value) => value.toLocaleString(), 320),
+        buildDashboardMetricCard('Total products', 76, 'mdi-shape-outline', '#e53935', (value) => value.toLocaleString(), 420),
+      ],
+      children: () => [
+        new DashboardTableWidget(
+          {
+            title: 'Recent Orders',
+            cols: 12,
+            lg: 8,
+            height: 430,
+            headers: [
+              { key: 'name', title: 'Name' },
+              { key: 'amount', title: 'Amount' },
+              { key: 'vendor', title: 'Vendor' },
+              { key: 'status', title: 'Status' },
+              { key: 'rating', title: 'Rating', align: 'end' },
+            ],
+            items: orders,
+            showSearch: true,
+            searchPlaceholder: 'Search',
+            pagination: true,
+            pageSize: 3,
+          },
+          {
+            onRowClick: async (_widget, row) => {
+              Dialogs.$success(`Selected ${row.name}`);
+            },
+            cell: (_widget, row, column) => {
+              if (column.key === 'name') {
+                return h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } }, [
+                  h(VAvatar, { size: 32, color: 'grey-darken-2' }, () => row.name.charAt(0)),
+                  h('span', row.name),
+                ]);
+              }
+
+              if (column.key === 'status') {
+                return h(VChip, { size: 'x-small', color: statusColor(row.status), variant: 'outlined' }, () => row.status);
+              }
+
+              if (column.key === 'rating') {
+                return h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' } }, [
+                  h('span', row.rating),
+                  h(VIcon, { icon: 'mdi-star', color: 'warning', size: 16 }),
+                ]);
+              }
+            },
+          },
+        ),
+        new DashboardChartWidget(
+          {
+            title: 'Revenue Trend',
+            subtitle: 'Monthly revenue performance',
+            cols: 12,
+            lg: 4,
+            height: 430,
+            chartType: 'line',
+            items: revenueSeries,
+            chartHeight: 230,
+          },
+          {
+            onItemClicked: async (_widget, item) => {
+              Dialogs.$success(`Focused ${item.label} revenue`);
+            },
+          },
+        ),
+      ],
+      bottomChildren: () => [
+        new DashboardListWidget({
+          title: 'Transactions',
+          cols: 12,
+          lg: 4,
+          separator: true,
+          height: 360,
+          items: transactions.map((item, index) => ({
+            key: index,
+            avatarText: item.initials,
+            avatarColor: item.color,
+            title: item.label,
+            subtitle: item.time,
+            value: item.amount,
+          })),
+        }),
+        new DashboardProgressWidget({
+          title: 'Summary',
+          cols: 12,
+          lg: 4,
+          height: 360,
+          items: summary.map((item, index) => ({
+            key: index,
+            avatarText: item.initials,
+            avatarColor: 'primary',
+            label: item.label,
+            value: item.value,
+            amount: item.amount,
+            color: 'primary',
+            bgColor: 'grey-darken-1',
+          })),
+        }),
+        new DashboardTimelineWidget(
+          {
+            title: 'Activity Timeline',
+            cols: 12,
+            lg: 4,
+            height: 360,
+            items: activityTimeline,
+          },
+          {
+            onItemClicked: async (_widget, item) => {
+              Dialogs.$success(item.title);
+            },
+          },
+        ),
+        new DashboardTrendWidget(
+          {
+            title: 'Growth Snapshot',
+            subtitle: 'Customer growth over the last 8 weeks',
+            cols: 12,
+            lg: 4,
+            height: 320,
+            trend: 'up',
+            caption: 'Monthly active customers are trending upward.',
+            sparklineValues: growthSparkline,
+            icon: 'mdi-trending-up',
+            iconColor: '#10b981',
+          },
+          {
+            value: async () => 18.4,
+            delta: async () => '+4.6% MoM',
+            formatValue: (_widget, value) => `${Number(value || 0).toFixed(1)}%`,
+            onClicked: async () => {
+              Dialogs.$success('Growth snapshot opened.');
+            },
+          },
+        ),
+        new DashboardActionListWidget(
+          {
+            title: 'Quick Actions',
+            cols: 12,
+            lg: 4,
+            height: 320,
+            items: actionItems,
+          },
+          {
+            onItemClicked: async (_widget, item) => {
+              Dialogs.$success(`${item.title} clicked`);
+            },
+          },
+        ),
+        new DashboardChartWidget(
+          {
+            title: 'Category Mix',
+            subtitle: 'Revenue share by segment',
+            cols: 12,
+            lg: 4,
+            height: 320,
+            chartType: 'donut',
+            items: categoryMix,
+            chartHeight: 220,
+          },
+          {
+            onItemClicked: async (_widget, item) => {
+              Dialogs.$success(`${item.label}: ${item.valueLabel || item.value}`);
+            },
+          },
+        ),
+        new DashboardAlertWidget(
+          {
+            title: 'Alerts',
+            cols: 12,
+            lg: 4,
+            height: 360,
+            items: alertItems,
+          },
+          {
+            onItemClicked: async (_widget, item) => {
+              Dialogs.$success(item.title);
+            },
+          },
+        ),
+        new DashboardCalendarWidget(
+          {
+            title: 'Calendar',
+            cols: 12,
+            lg: 4,
+            height: 360,
+            year: 2026,
+            month: 3,
+            items: calendarItems,
+          },
+          {
+            onDateClicked: async (_widget, date, items) => {
+              Dialogs.$success(`${date.toDateString()}${items.length ? ` (${items.length} items)` : ''}`);
+            },
+          },
+        ),
+        new DashboardMapWidget(
+          {
+            title: 'Coverage Map',
+            subtitle: 'Warehouse, route, and service footprint',
+            cols: 12,
+            lg: 4,
+            height: 360,
+            data: mapData,
+            mapHeight: 250,
+          },
+          {
+            onMarkerClicked: async (_widget, marker) => {
+              Dialogs.$success(marker.label || 'Marker clicked');
+            },
+          },
+        ),
+        new DashboardStatGridWidget(
+          {
+            title: 'KPI Grid',
+            cols: 12,
+            lg: 4,
+            height: 320,
+            columns: 2,
+            items: statGridItems,
+          },
+          {
+            onItemClicked: async (_widget, item) => {
+              Dialogs.$success(`${item.label}: ${item.value}`);
+            },
+          },
+        ),
+        new DashboardTabsWidget(
+          {
+            title: 'Workspace Tabs',
+            cols: 12,
+            lg: 4,
+            height: 320,
+            tabs: [
+              {
+                label: 'Regions',
+                badge: 3,
+                children: () => [
+                  h('div', { style: { display: 'grid', gap: '10px' } }, [
+                    h(VChip, { color: 'primary', variant: 'tonal' }, () => 'EU West'),
+                    h(VChip, { color: 'success', variant: 'tonal' }, () => 'US Central'),
+                    h(VChip, { color: 'warning', variant: 'tonal' }, () => 'APAC South'),
+                  ]),
+                ],
+              },
+              {
+                label: 'Ops',
+                children: () => [
+                  h('div', { style: { display: 'grid', gap: '8px' } }, [
+                    h('div', { style: { fontWeight: 600 } }, 'Open work items'),
+                    h('div', { class: ['text-body-2'], style: { opacity: 0.74 } }, '12 tickets awaiting assignment'),
+                    h('div', { class: ['text-body-2'], style: { opacity: 0.74 } }, '4 inbound deliveries expected today'),
+                  ]),
+                ],
+              },
+              {
+                label: 'Notes',
+                children: () => [
+                  h('div', { class: ['text-body-2'], style: { opacity: 0.78, lineHeight: 1.6 } }, 'Dashboard tabs can swap between small contextual panels without leaving the page.'),
+                ],
+              },
+            ],
+          },
+          {
+            onTabChanged: async (_widget, tab) => {
+              Dialogs.$success(`Switched to ${tab.label}`);
+            },
+          },
+        ),
+        new DashboardEmptyStateWidget(
+          {
+            title: 'Onboarding',
+            cols: 12,
+            lg: 4,
+            height: 320,
+            titleText: 'No campaigns connected',
+            message: 'Connect your first campaign source to start measuring attribution, spend, and conversion data in this dashboard.',
+            icon: 'mdi-rocket-launch-outline',
+            toneColor: '#8b5cf6',
+            buttonText: 'Connect Source',
+          },
+          {
+            onClicked: async () => {
+              Dialogs.$success('Connect source clicked.');
+            },
+          },
+        ),
+      ],
+    },
+  );
 }
 
 function buildLineItemForm() {
@@ -877,7 +1416,7 @@ function buildNestedMenu() {
       title: 'Utilities',
       cols: 12,
       md: 6,
-      lg: 4,
+      lg: 6,
     },
     {
       children: async () => [
@@ -1010,6 +1549,20 @@ function buildNestedMenu() {
                 backgroundGradient: 'radial-gradient(circle at top, rgba(16,185,129,0.18), transparent 40%), linear-gradient(180deg, #f8fbff 0%, #e8f3ef 100%)',
                 progressColor: 'success',
               }));
+            },
+          },
+        ),
+        new MenuItem(
+          {
+            action: 'function',
+            text: 'Show Dashboard',
+            subText: 'First-pass dashboard screen with reusable dashboard widgets.',
+            icon: 'mdi-view-dashboard-outline',
+            color: 'secondary',
+          },
+          {
+            callback: async () => {
+              AppManager.showUI(buildDashboardDemo());
             },
           },
         ),
@@ -1268,7 +1821,7 @@ export function createDemoApp() {
             title: 'Show shell help',
           },
           {
-            onClicked: () => Dialogs.$info('This header action is rendered with the reusable ShellIconAction widget.', { title: 'Shell Icon Action' }),
+            onClicked: () => Dialogs.$info('This header action is rendered with the reusable ShellIconAction widget.'),
           },
         ).component),
         h(new MailboxBell({ color: 'primary', badgeColor: 'error', title: 'Open Team Mailbox', viewWidth: 980 }).component),

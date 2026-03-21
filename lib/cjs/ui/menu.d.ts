@@ -54,7 +54,7 @@ export declare class Menu extends UIBase {
     get $ref(): string | undefined;
     access(): Promise<boolean | undefined>;
     hasParent(): boolean;
-    setParent(parent: Menu): void;
+    setParent(parent: UIBase): void;
     setParams(params: MenuParams): void;
     get $params(): MenuParams;
     props(): never[];

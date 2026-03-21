@@ -90,7 +90,7 @@ export class Menu extends UIBase {
     return this.$parent ? true : false;
   }
 
-  setParent(parent: Menu) {
+  setParent(parent: UIBase) {
     super.setParent(parent);
   }
 
@@ -898,7 +898,6 @@ export class Menu extends UIBase {
   }
 
 }
-
 
 export interface MenuItemParams {
   action?: 'report'|'collection'|'function'|'menu';
