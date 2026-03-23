@@ -3,6 +3,7 @@ import { EventEmitter } from './lib';
 import { Master } from '../master';
 export declare class BaseComponent extends EventEmitter {
     private dataStore;
+    private renderVersion;
     get $makeRef(): typeof ref;
     get $h(): typeof h;
     get $watch(): typeof watch;
@@ -12,11 +13,10 @@ export declare class BaseComponent extends EventEmitter {
     props(): never[];
     render(props: any, context: any): VNode | VNode[] | undefined;
     setup(props: any, context: any): void;
+    forceRender(): void;
     get component(): import("vue").DefineComponent<Readonly<{}>, () => VNode<import("vue").RendererNode, import("vue").RendererElement, {
         [key: string]: any;
-    }> | VNode<import("vue").RendererNode, import("vue").RendererElement, {
-        [key: string]: any;
-    }>[] | undefined, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<Readonly<{}>>>, {}, {}>;
+    }>, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<Readonly<{}>>>, {}, {}>;
     destructor(): void;
     mounted(): void;
     unmounted(): void;

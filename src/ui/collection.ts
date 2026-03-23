@@ -47,6 +47,18 @@ export class Collection extends UIBase {
     this.prevState = undefined;
   }
 
+  get $currentReport(): Report|undefined {
+    return this.currentReport
+  }
+
+  get $currentTrigger(): Trigger|undefined {
+    return this.currentTrigger
+  }
+
+  get $currentSelector(): Selector|undefined {
+    return this.currentSelector
+  }
+
   static setDefault(value: CollectionParams, reset?: boolean): void {
     if (reset) {
       Collection.defaultParams = value;

@@ -1,9 +1,10 @@
-import { VNode, defineComponent, h, ref, watch, onUnmounted, onMounted } from 'vue';
+import { Fragment, VNode, defineComponent, h, ref, watch, onUnmounted, onMounted } from 'vue';
 import { EventEmitter } from './lib';
 import { Master } from '../master';
 
 export class BaseComponent extends EventEmitter {
   private dataStore: any = {};
+  private renderVersion = ref(0);
 
   get $makeRef() {
     return ref;
@@ -40,6 +41,10 @@ export class BaseComponent extends EventEmitter {
   setup(props: any, context: any) {
   }
 
+  forceRender() {
+    this.renderVersion.value += 1;
+  }
+
   get component () {
     return defineComponent({
       props: this.props(),
@@ -60,7 +65,11 @@ export class BaseComponent extends EventEmitter {
           this.destructor();
         })
         
-        return () => this.render(props, context);
+        return () => {
+          const version = this.renderVersion.value;
+          const content = this.render(props, context);
+          return h(Fragment, { key: version }, Array.isArray(content) ? content : (content ? [content] : []));
+        };
       },
     })
   }

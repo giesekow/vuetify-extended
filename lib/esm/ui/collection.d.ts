@@ -34,6 +34,9 @@ export declare class Collection extends UIBase {
     private currentIndex;
     private static defaultParams;
     constructor(params?: CollectionParams, options?: CollectionOptions);
+    get $currentReport(): Report | undefined;
+    get $currentTrigger(): Trigger | undefined;
+    get $currentSelector(): Selector | undefined;
     static setDefault(value: CollectionParams, reset?: boolean): void;
     access(mode: any): Promise<boolean | undefined>;
     get $ref(): string | undefined;
