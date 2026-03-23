@@ -3,7 +3,7 @@ import { EventEmitter } from './lib';
 import { Master } from '../master';
 export declare class BaseComponent extends EventEmitter {
     private dataStore;
-    private renderVersion;
+    private forceRenderListeners;
     get $makeRef(): typeof ref;
     get $h(): typeof h;
     get $watch(): typeof watch;

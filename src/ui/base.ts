@@ -4,7 +4,7 @@ import { Master } from '../master';
 
 export class BaseComponent extends EventEmitter {
   private dataStore: any = {};
-  private renderVersion = ref(0);
+  private forceRenderListeners = new Set<() => void>();
 
   get $makeRef() {
     return ref;
@@ -42,31 +42,37 @@ export class BaseComponent extends EventEmitter {
   }
 
   forceRender() {
-    this.renderVersion.value += 1;
+    this.forceRenderListeners.forEach((listener) => listener());
   }
 
   get component () {
     return defineComponent({
       props: this.props(),
       setup: (props, context) => {
+        const renderVersion = ref(0);
+        const rerender = () => {
+          renderVersion.value += 1;
+        };
 
         context.expose({$this: this});
 
         this.setup(props, context);
 
         onMounted(() => {
+          this.forceRenderListeners.add(rerender);
           this.mounted();
           this.attachEventListeners();
         });
     
         onUnmounted(() => {
+          this.forceRenderListeners.delete(rerender);
           this.unmounted();
           this.removeEventListeners();
           this.destructor();
         })
         
         return () => {
-          const version = this.renderVersion.value;
+          const version = renderVersion.value;
           const content = this.render(props, context);
 
           if (Array.isArray(content)) {
