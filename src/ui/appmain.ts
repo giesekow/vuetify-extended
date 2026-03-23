@@ -700,6 +700,7 @@ export class AppMain extends UIBase {
   }
 
   private async activateCurrentItem(index: number = this.index.value) {
+    this.syncStackRefs();
     this.fabOpen.value = false;
     if (index < 0 || index >= this.stack.length) {
       return;
@@ -899,7 +900,6 @@ export class AppMain extends UIBase {
         const info = this.stack.pop();
         if (info) info.item.removeEventListeners();
       }
-      this.syncStackRefs();
       await this.activateCurrentItem();
     } else if (rem >= this.stack.length) {
       this.loadApp();
