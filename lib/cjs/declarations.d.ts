@@ -6,6 +6,8 @@ import type { KeycloakClient as FeathersKeycloakClient } from 'feathers-keycloak
 export interface Service<T = any> {
     on(event: string, listener: (...args: any[]) => void): any;
     once(event: string, listener: (...args: any[]) => void): any;
+    off(event: string, listener?: (...args: any[]) => void): any;
+    removeListener(event: string, listener?: (...args: any[]) => void): any;
     emit(event: string, ...args: any[]): any;
     find(params?: any): Promise<any>;
     findOne(params?: any): Promise<T | undefined>;
@@ -20,6 +22,8 @@ export interface Service<T = any> {
 export interface Application {
     on(event: string, listener: (...args: any[]) => void): any;
     once(event: string, listener: (...args: any[]) => void): any;
+    off(event: string, listener?: (...args: any[]) => void): any;
+    removeListener(event: string, listener?: (...args: any[]) => void): any;
     emit(event: string, ...args: any[]): any;
     service<T = any>(path: string): Service<T>;
     authentication?: any;
@@ -57,6 +61,8 @@ export interface Application {
 export interface FeathersService<T = any> extends BaseFeathersService<T> {
     on(event: string, listener: (...args: any[]) => void): any;
     once(event: string, listener: (...args: any[]) => void): any;
+    off(event: string, listener?: (...args: any[]) => void): any;
+    removeListener(event: string, listener?: (...args: any[]) => void): any;
     emit(event: string, ...args: any[]): any;
     findOne(params?: any): Promise<T | undefined>;
     findAll(params?: any): Promise<T[]>;
@@ -68,6 +74,8 @@ export interface FeathersService<T = any> extends BaseFeathersService<T> {
 export interface FeathersApplication extends BaseFeathersApplication {
     on(event: string, listener: (...args: any[]) => void): any;
     once(event: string, listener: (...args: any[]) => void): any;
+    off(event: string, listener?: (...args: any[]) => void): any;
+    removeListener(event: string, listener?: (...args: any[]) => void): any;
     emit(event: string, ...args: any[]): any;
     service<T = any>(path: string): FeathersService<T> & FeathersServiceAddons;
     authentication: FeathersKeycloakClient;

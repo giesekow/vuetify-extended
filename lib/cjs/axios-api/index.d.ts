@@ -9,7 +9,8 @@ declare class SimpleEventEmitter {
     on(name: string, listener: EventListener, reference?: string | symbol): this;
     once(name: string, listener: EventListener, reference?: string | symbol): this;
     emit(name: string, data?: any): this | undefined;
-    removeListener(name: string, listenerToRemove?: EventListener): void;
+    removeListener(name: string, listenerToRemove?: EventListener): this;
+    off(name: string, listenerToRemove?: EventListener): this;
     clearListeners(reference?: string | symbol): void;
 }
 export interface AxiosServiceParams {

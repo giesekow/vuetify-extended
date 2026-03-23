@@ -56,15 +56,20 @@ class SimpleEventEmitter {
 
   removeListener(name: string, listenerToRemove?: EventListener) {
     if (!this.events[name]) {
-      return;
+      return this;
     }
 
     if (!listenerToRemove) {
       this.events[name] = [];
-      return;
+      return this;
     }
 
     this.events[name] = this.events[name].filter((listener) => listener.callback !== listenerToRemove);
+    return this;
+  }
+
+  off(name: string, listenerToRemove?: EventListener) {
+    return this.removeListener(name, listenerToRemove);
   }
 
   clearListeners(reference?: string | symbol) {
