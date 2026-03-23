@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
     },
     root: currentDir,
     server: {
-    port: 4177,
+    port: 4180,
     fs: {
       allow: [resolve(currentDir, '..')],
     },

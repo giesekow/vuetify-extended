@@ -1,4 +1,4 @@
-import { Fragment, VNode, defineComponent, h, ref, watch, onUnmounted, onMounted } from 'vue';
+import { Fragment, VNode, cloneVNode, defineComponent, h, ref, watch, onUnmounted, onMounted } from 'vue';
 import { EventEmitter } from './lib';
 import { Master } from '../master';
 
@@ -68,7 +68,16 @@ export class BaseComponent extends EventEmitter {
         return () => {
           const version = this.renderVersion.value;
           const content = this.render(props, context);
-          return h(Fragment, { key: version }, Array.isArray(content) ? content : (content ? [content] : []));
+
+          if (Array.isArray(content)) {
+            return h(Fragment, { key: version }, content);
+          }
+
+          if (!content) {
+            return undefined;
+          }
+
+          return cloneVNode(content, { ...context.attrs, key: version }, true);
         };
       },
     })

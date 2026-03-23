@@ -16,7 +16,7 @@ export declare class BaseComponent extends EventEmitter {
     forceRender(): void;
     get component(): import("vue").DefineComponent<Readonly<{}>, () => VNode<import("vue").RendererNode, import("vue").RendererElement, {
         [key: string]: any;
-    }>, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<Readonly<{}>>>, {}, {}>;
+    }> | undefined, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<Readonly<{}>>>, {}, {}>;
     destructor(): void;
     mounted(): void;
     unmounted(): void;
