@@ -767,7 +767,7 @@ export class Report extends UIBase {
 
       return h('div', {
         style: {
-          flex: '1 1 320px',
+          flex: '0 1 auto',
           minWidth: 0,
           maxWidth: '100%',
         },
@@ -802,7 +802,7 @@ export class Report extends UIBase {
                 gap: '12px',
                 rowGap: '12px',
                 maxWidth: '100%',
-                width: '100%',
+                width: 'fit-content',
               },
             },
             desktopContent
