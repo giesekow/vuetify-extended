@@ -68,8 +68,17 @@ export interface MailboxBellParams {
   maxBadge?: number;
   title?: string;
   viewWidth?: string | number;
+  hideOnMobile?: boolean;
+  hideOnNonMobile?: boolean;
+  mobileLocation?: 'header' | 'drawer';
 }
 ```
+
+Responsive shell behavior:
+- `hideOnMobile` hides the bell on compact/mobile shell layouts.
+- `hideOnNonMobile` hides it on larger shell layouts.
+- `mobileLocation` controls whether the bell stays visible in the compact mobile header or moves into the right-side mobile drawer.
+- If `hideOnMobile` is `true`, `mobileLocation` has no effect on mobile.
 
 ### `Mailbox`
 

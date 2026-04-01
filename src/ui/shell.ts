@@ -14,6 +14,7 @@ export interface AppTitleBlockParams extends ShellResponsiveVisibilityParams {
   subtitle?: string;
   overline?: string;
   icon?: string;
+  image?: string;
   color?: string;
   align?: 'left'|'center'|'right';
 }
@@ -49,7 +50,18 @@ export class AppTitleBlock extends UIBase {
         textAlign,
       },
     }, [
-      ...(this.$params.icon ? [h(VAvatar, {
+      ...(this.$params.image ? [h(VAvatar, {
+        size: 40,
+      }, () => h('img', {
+        src: this.$params.image,
+        alt: this.$params.title || 'App title image',
+        style: {
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          display: 'block',
+        },
+      }))] : this.$params.icon ? [h(VAvatar, {
         color: this.$params.color || 'primary',
         variant: 'tonal',
         size: 40,
