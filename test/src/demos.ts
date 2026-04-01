@@ -1304,7 +1304,7 @@ function buildTriggerDemo() {
     {
       title: 'Trigger Demo',
       subtitle: 'Search, filter, select, remove, and process rows.',
-      width: 1100,
+      // width: 1100,
       objectType: 'people',
       idField: '_id',
       multiple: true,

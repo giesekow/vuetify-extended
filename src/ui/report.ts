@@ -741,6 +741,7 @@ export class Report extends UIBase {
         {
           style: {
             width: '100%',
+            maxWidth: '100%',
             display: 'flex',
             justifyContent: (this.params.value.horizontalAlign || 'center') === 'center' ? 'center' : this.params.value.horizontalAlign === 'right' ? 'flex-end' : 'flex-start',
           },

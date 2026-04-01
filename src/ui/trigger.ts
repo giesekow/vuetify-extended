@@ -855,6 +855,7 @@ export class Trigger extends UIBase {
           style: {
             width: '100%',
             display: 'flex',
+            maxWidth: `calc(100vw - 32px)`,
             justifyContent: (this.params.value.horizontalAlign || 'center') === 'center' ? 'center' : this.params.value.horizontalAlign === 'right' ? 'flex-end' : 'flex-start',
           },
         },
