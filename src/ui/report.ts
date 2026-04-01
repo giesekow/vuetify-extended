@@ -753,6 +753,27 @@ export class Report extends UIBase {
       ? (this.params.value.sideButtonPosition === 'left' ? [sideActions, content] : [content, sideActions])
       : [content];
 
+    const desktopContent = desktopChildren.map((child, index) => {
+      const isSideAction = !!sideActions && ((this.params.value.sideButtonPosition === 'left' && index === 0) || (this.params.value.sideButtonPosition !== 'left' && index === desktopChildren.length - 1));
+      if (isSideAction) {
+        return h('div', {
+          style: {
+            flex: '0 0 auto',
+            minWidth: 0,
+            maxWidth: '100%',
+          },
+        }, [child]);
+      }
+
+      return h('div', {
+        style: {
+          flex: '1 1 320px',
+          minWidth: 0,
+          maxWidth: '100%',
+        },
+      }, [child]);
+    });
+
     return h(
       'div',
       {
@@ -777,11 +798,14 @@ export class Report extends UIBase {
               style: {
                 display: 'flex',
                 alignItems: 'flex-start',
+                flexWrap: 'wrap',
                 gap: '12px',
+                rowGap: '12px',
                 maxWidth: '100%',
+                width: '100%',
               },
             },
-            desktopChildren
+            desktopContent
           )]
         ),
       ]
