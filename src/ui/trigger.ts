@@ -891,22 +891,11 @@ export class Trigger extends UIBase {
         }, [child]);
       }
 
-      if (mobileActions) {
-        const repSize = `calc(100vw - 32px)`
-        return h('div', {
-          style: {
-            flex: '0 1 auto',
-            minWidth: 0,
-            maxWidth: repSize,
-          },
-        }, [child]);
-      }
-
       return h('div', {
         style: {
           flex: '0 1 auto',
           minWidth: 0,
-          maxWidth: '100%',
+          maxWidth: `calc(100vw - 32px)`,
         },
       }, [child]);
     });
