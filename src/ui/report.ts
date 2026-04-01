@@ -337,7 +337,12 @@ export class Report extends UIBase {
                 h(
                   VCard,
                   {
-                    minWidth: 400,
+                    style: {
+                      width: 'min(calc(100vw - 32px), 400px)',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      boxSizing: 'border-box',
+                    },
                     class: (this.params.value.horizontalAlign || "center") === "center" ? ['mx-auto']: []
                   },
                   () => [
@@ -638,8 +643,9 @@ export class Report extends UIBase {
       {
         elevation: 2,
         style: {
-          width: this.params.value.sideButtonWidth,
-          minWidth: this.params.value.sideButtonWidth,
+          width: this.clampToViewport(this.params.value.sideButtonWidth, this.params.value.sideButtonWidth || 180),
+          minWidth: 0,
+          maxWidth: 'calc(100vw - 32px)',
           alignSelf: 'flex-start',
         },
       },
@@ -700,8 +706,9 @@ export class Report extends UIBase {
             {
               elevation: 2,
               style: {
-                width: this.params.value.sideButtonWidth,
-                minWidth: this.params.value.sideButtonWidth,
+                width: this.clampToViewport(this.params.value.sideButtonWidth, this.params.value.sideButtonWidth || 180),
+                minWidth: 0,
+                maxWidth: 'calc(100vw - 32px)',
               },
             },
             () => h(
@@ -800,8 +807,8 @@ export class Report extends UIBase {
       variant: 'tonal',
       class: ['mx-auto'],
       style: {
-        width: this.currentForm?.$params.width || this.currentForm?.$params.maxWidth || '100%',
-        maxWidth: this.currentForm?.$params.maxWidth || this.currentForm?.$params.width || '100%',
+        width: this.clampToViewport(this.currentForm?.$params.width || this.currentForm?.$params.maxWidth, '100%'),
+        maxWidth: this.clampToViewport(this.currentForm?.$params.maxWidth || this.currentForm?.$params.width, '100%'),
       },
     }, () => h(VCardText, {
       style: {
@@ -1116,6 +1123,24 @@ export class Report extends UIBase {
 
   private syncSideActionBreakpoint(matches?: boolean) {
     this.compactSideActions.value = matches ?? (typeof window !== 'undefined' ? window.innerWidth < 1400 : false);
+  }
+
+  private toCssSize(value?: string | number) {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    return typeof value === 'number' ? `${value}px` : value;
+  }
+
+  private clampToViewport(value?: string | number, fallback?: string | number) {
+    const size = this.toCssSize(value ?? fallback);
+    if (!size) {
+      return undefined;
+    }
+    if (size.includes('%') || size.includes('vw') || size.includes('vh') || size.includes('calc(') || size.includes('min(') || size.includes('max(') || size.includes('clamp(')) {
+      return size;
+    }
+    return `min(calc(100vw - 32px), ${size})`;
   }
 
   private attachSideActionBreakpoint() {

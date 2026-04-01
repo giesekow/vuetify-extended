@@ -11,13 +11,15 @@ import { Button } from "./button";
 import { Api } from "../api";
 import { DialogForm } from "./dialogform";
 import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent } from "./shortcut";
-import { VApp, VAppBar, VAppBarTitle, VBtn, VCard, VCardText, VFooter, VMain, VMenu } from 'vuetify/components';
+import { VApp, VAppBar, VAppBarTitle, VBtn, VCard, VCardText, VFooter, VMain, VMenu, VNavigationDrawer, VDivider } from 'vuetify/components';
 import { Master } from "../master";
 
 export interface AppParams {
   ref?: string;
   udfQuery?: any;
   title?: string;
+  mobileTitle?: string;
+  mobileLogo?: string;
   showHeader?: boolean;
   showFooter?: boolean;
   showFab?: boolean;
@@ -100,6 +102,13 @@ export class AppMain extends UIBase {
   private fabButtonInstances: Array<Button>;
   private fabOpen: Ref<boolean>;
   private shortcutHandler?: (ev: KeyboardEvent) => void;
+  private compactShellLayout: Ref<boolean>;
+  private shellLayoutMediaQuery?: MediaQueryList;
+  private shellLayoutMediaHandler?: ((ev: MediaQueryListEvent) => void) | undefined;
+  private mobileHeaderDrawerOpen: Ref<boolean>;
+  private footerHeight: Ref<number>;
+  private footerElement?: HTMLElement;
+  private footerResizeObserver?: ResizeObserver;
   private static defaultParams: AppParams = {
     showHeader: false,
     showFooter: false,
@@ -131,6 +140,9 @@ export class AppMain extends UIBase {
     this.dialogFocusTargets = new Map();
     this.fabButtonInstances = [];
     this.fabOpen = this.$makeRef(false);
+    this.compactShellLayout = this.$makeRef(typeof window !== 'undefined' ? window.innerWidth < 960 : false);
+    this.mobileHeaderDrawerOpen = this.$makeRef(false);
+    this.footerHeight = this.$makeRef(0);
   }
 
   static setDefault(value: AppParams, reset?: boolean): void {
@@ -191,6 +203,7 @@ export class AppMain extends UIBase {
     const footerBar = this.renderShellBar('footer');
     const showHeader = this.params.value.showHeader || !!headerBar || !!header;
     const showFooter = this.params.value.showFooter || !!footerBar || !!footer;
+    const compactHeaderDrawer = this.renderCompactHeaderDrawer(showHeader);
 
     if (!showHeader && !showFooter) {
       return this.wrapWithFab(content, showFooter);
@@ -202,6 +215,7 @@ export class AppMain extends UIBase {
         class: ['vuetify-extended-app-shell'],
       },
       () => [
+        ...(compactHeaderDrawer ? [compactHeaderDrawer] : []),
         ...(showHeader ? [
           h(
             VAppBar,
@@ -214,8 +228,12 @@ export class AppMain extends UIBase {
               {
                 style: {
                   width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
                   paddingLeft: '16px',
                   paddingRight: '16px',
+                  boxSizing: 'border-box',
                 },
               },
               [headerBar || header || h(VAppBarTitle, {}, () => this.params.value.title || 'Application')]
@@ -258,6 +276,7 @@ export class AppMain extends UIBase {
               app: true,
               elevation: 2,
               class: ['px-4', 'py-2'],
+              ref: (el: Element | any) => this.setFooterElement(el),
             },
             () => footerBar || footer || ''
           ),
@@ -388,7 +407,7 @@ export class AppMain extends UIBase {
         position: 'fixed',
         right: right ? '24px' : undefined,
         left: right ? undefined : '24px',
-        bottom: showFooter ? '96px' : '24px',
+        bottom: showFooter ? `${this.footerHeight.value + 24}px` : '24px',
         zIndex: 1200,
       },
     }, [
@@ -414,8 +433,8 @@ export class AppMain extends UIBase {
         default: () => h(VCard, {
           elevation: 8,
           style: {
-            minWidth: '220px',
-            maxWidth: '280px',
+            width: 'min(calc(100vw - 32px), 280px)',
+            maxWidth: 'calc(100vw - 32px)',
           },
         }, () => h(VCardText, {
           style: {
@@ -555,7 +574,7 @@ export class AppMain extends UIBase {
     }
 
     const h = this.$h;
-    const layout = this.getShellLayout(region);
+    const layout = this.getResolvedShellLayout(region);
 
     return h('div', {
       style: this.getShellBarContainerStyle(region, layout),
@@ -567,17 +586,61 @@ export class AppMain extends UIBase {
   }
 
   private renderShellBarSection(region: 'header' | 'footer', section: 'Start' | 'Center' | 'End'): VNode | VNode[] | undefined {
-    const key = `${region}${section}` as keyof AppOptions;
-    const render = this.options[key] as ((app: AppMain) => AppShellContent | AppShellContent[]) | undefined;
-    if (!render) {
+    if (this.compactShellLayout.value && region === 'header' && section === 'Start') {
+      return this.renderMobileHeaderBrand();
+    }
+
+    if (this.compactShellLayout.value && region === 'header' && section === 'Center') {
       return undefined;
     }
 
-    return this.normalizeShellContent(render(this));
+    const items = this.compactShellLayout.value && region === 'header' && section === 'End'
+      ? this.getCompactHeaderActionItems()
+      : this.getShellBarSectionItems(region, section);
+    if (items.length === 0) {
+      return undefined;
+    }
+
+    const responsive = this.renderCompactShellOverflow(region, section, items);
+    if (responsive) {
+      return responsive;
+    }
+
+    return this.normalizeShellContent(items);
+  }
+
+  private getShellBarSectionItems(region: 'header' | 'footer', section: 'Start' | 'Center' | 'End'): AppShellContent[] {
+    const key = `${region}${section}` as keyof AppOptions;
+    const render = this.options[key] as ((app: AppMain) => AppShellContent | AppShellContent[]) | undefined;
+    if (!render) {
+      return [];
+    }
+
+    const content = render(this);
+    return Array.isArray(content) ? content : [content];
+  }
+
+  private getCompactHeaderActionItems(): AppShellContent[] {
+    return [
+      ...this.getShellBarSectionItems('header', 'Start'),
+      ...this.getShellBarSectionItems('header', 'Center'),
+      ...this.getShellBarSectionItems('header', 'End'),
+    ];
   }
 
   private getShellLayout(region: 'header' | 'footer') {
     return (region === 'header' ? this.params.value.headerLayout : this.params.value.footerLayout) || 'balanced';
+  }
+
+  private getResolvedShellLayout(region: 'header' | 'footer') {
+    const layout = this.getShellLayout(region);
+    if (this.compactShellLayout.value && layout !== 'stacked') {
+      if (region === 'header') {
+        return 'auto' as const;
+      }
+      return 'stacked' as const;
+    }
+    return layout;
   }
 
   private getShellWidthValue(region: 'header' | 'footer', section: 'Start' | 'Center' | 'End') {
@@ -597,9 +660,11 @@ export class AppMain extends UIBase {
     if (layout === 'stacked') {
       return {
         width: '100%',
+        minHeight: '100%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'stretch',
+        justifyContent: 'center',
         gap: '10px',
       };
     }
@@ -610,6 +675,7 @@ export class AppMain extends UIBase {
 
     return {
       width: '100%',
+      minHeight: '100%',
       display: 'grid',
       gridTemplateColumns: `${startWidth} ${centerWidth} ${endWidth}`,
       alignItems: 'center',
@@ -620,15 +686,17 @@ export class AppMain extends UIBase {
   private getShellBarSectionStyle(region: 'header' | 'footer', section: 'Start' | 'Center' | 'End', layout: 'balanced'|'auto'|'stacked') {
     const justifyContent = section === 'Start' ? 'flex-start' : section === 'Center' ? 'center' : 'flex-end';
     const width = this.normalizeCssSize(this.getShellWidthValue(region, section));
+    const compactHeaderSection = this.compactShellLayout.value && region === 'header';
 
     return {
       minWidth: 0,
       width: layout === 'stacked' ? '100%' : width,
+      minHeight: '100%',
       display: 'flex',
       alignItems: 'center',
       justifyContent,
       gap: '12px',
-      flexWrap: 'wrap',
+      flexWrap: compactHeaderSection ? 'nowrap' : 'wrap',
     };
   }
 
@@ -681,10 +749,261 @@ export class AppMain extends UIBase {
     return rendered.length === 1 ? rendered[0] : rendered;
   }
 
+  private renderMobileHeaderBrand() {
+    if (!this.compactShellLayout.value) {
+      return undefined;
+    }
+
+    const title = this.params.value.mobileTitle || this.params.value.title || 'Application';
+    const logo = this.params.value.mobileLogo;
+    const h = this.$h;
+
+    return h('div', {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        minWidth: 0,
+        height: '100%',
+      },
+    }, [
+      ...(logo ? [h('img', {
+        src: logo,
+        alt: title,
+        style: {
+          width: '28px',
+          height: '28px',
+          objectFit: 'contain',
+          flexShrink: 0,
+          borderRadius: '8px',
+        },
+      })] : []),
+      h('div', {
+        style: {
+          minWidth: 0,
+          fontSize: '0.95rem',
+          fontWeight: '700',
+          lineHeight: '1.2',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        },
+      }, title),
+    ]);
+  }
+
+  private renderCompactShellOverflow(region: 'header' | 'footer', section: 'Start' | 'Center' | 'End', items: AppShellContent[]) {
+    if (!this.compactShellLayout.value || region !== 'header' || section !== 'End') {
+      return undefined;
+    }
+
+    const entries = items
+      .map((item, index) => ({
+        index,
+        item,
+        node: this.normalizeShellItem(item),
+        priority: this.mobileShellPriority(item),
+      }))
+      .filter((entry): entry is { index: number; item: AppShellContent; node: VNode; priority: number } => !!entry.node);
+
+    if (entries.length === 0) {
+      return undefined;
+    }
+
+    if (entries.length <= 2 && entries.every((entry) => entry.priority >= 90)) {
+      return entries.map((entry) => entry.node);
+    }
+
+    const preferredVisible = entries.filter((entry) => entry.priority >= 90);
+    const visible = preferredVisible.length > 0
+      ? preferredVisible.sort((a, b) => a.index - b.index)
+      : [...entries].sort((a, b) => b.priority - a.priority || a.index - b.index).slice(0, 2).sort((a, b) => a.index - b.index);
+    const visibleIndexes = new Set(visible.map((entry) => entry.index));
+    const overflow = entries.filter((entry) => !visibleIndexes.has(entry.index)).sort((a, b) => a.index - b.index);
+
+    const h = this.$h;
+    return h('div', {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        gap: '8px',
+        width: '100%',
+        height: '100%',
+        minWidth: 0,
+      },
+    }, [
+      ...visible.map((entry) => h('div', {
+        style: {
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+      }, [entry.node])),
+      ...(overflow.length > 0 ? [h('div', {
+        style: {
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+      }, [h(VBtn, {
+        icon: 'mdi-menu',
+        variant: 'text',
+        size: 'default',
+        title: 'Open header menu',
+        'aria-label': 'Open header menu',
+        style: {
+          height: '40px',
+          width: '40px',
+          minWidth: '40px',
+        },
+        onClick: () => {
+          this.mobileHeaderDrawerOpen.value = true;
+        },
+      })])] : []),
+    ]);
+  }
+
+  private mobileShellPriority(item: AppShellContent) {
+    if (item instanceof UIBase) {
+      const type = item.constructor?.name;
+      if (type === 'UserArea') return 100;
+      if (type === 'MailboxBell') return 90;
+      if (type === 'ShellIconAction') return 70;
+      if (type === 'StatusBadge') return 30;
+      if (type === 'EnvironmentTag') return 20;
+      if (type === 'AppTitleBlock') return 10;
+      return 50;
+    }
+
+    if (typeof item === 'string' || typeof item === 'number') {
+      return 10;
+    }
+
+    return 40;
+  }
+
+  private shouldHideShellItem(item: AppShellContent) {
+    if (!(item instanceof UIBase)) {
+      return false;
+    }
+
+    const params = (item as any).$params || {};
+    if (this.compactShellLayout.value && params.hideOnMobile) {
+      return true;
+    }
+
+    if (!this.compactShellLayout.value && params.hideOnNonMobile) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private renderCompactHeaderDrawer(showHeader: boolean) {
+    if (!showHeader || !this.compactShellLayout.value) {
+      return undefined;
+    }
+
+    const sections = (['Start', 'Center', 'End'] as const)
+      .map((section) => this.getShellBarSectionItems('header', section)
+        .filter((item) => this.mobileShellPriority(item) < 90)
+        .map((item) => this.normalizeShellItem(item))
+        .filter((item): item is VNode => !!item))
+      .filter((items) => items.length > 0);
+
+    if (sections.length === 0) {
+      return undefined;
+    }
+
+    const h = this.$h;
+    const sectionNodes: VNode[] = [];
+    sections.forEach((nodes: VNode[], index: number) => {
+      if (index > 0) {
+        sectionNodes.push(h(VDivider));
+      }
+
+      sectionNodes.push(h('div', {
+        style: {
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          minWidth: 0,
+        },
+      }, nodes.map((node: VNode) => h('div', {
+        style: {
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'flex-start',
+          minWidth: 0,
+        },
+      }, [node]))));
+    });
+
+    return h(VNavigationDrawer, {
+      modelValue: this.mobileHeaderDrawerOpen.value,
+      'onUpdate:modelValue': (value: boolean) => {
+        this.mobileHeaderDrawerOpen.value = value;
+      },
+      location: 'right',
+      temporary: true,
+      width: 320,
+      scrim: true,
+    }, () => h('div', {
+      style: {
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+      },
+    }, [
+      h('div', {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '16px',
+          gap: '12px',
+        },
+      }, [
+        h('div', {
+          style: {
+            fontSize: '1rem',
+            fontWeight: '700',
+          },
+        }, 'Header Menu'),
+        h(VBtn, {
+          icon: 'mdi-close',
+          variant: 'text',
+          size: 'small',
+          'aria-label': 'Close header menu',
+          onClick: () => {
+            this.mobileHeaderDrawerOpen.value = false;
+          },
+        }),
+      ]),
+      h(VDivider),
+      h(VCardText, {
+        style: {
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          padding: '16px',
+        },
+      }, () => sectionNodes),
+    ]));
+  }
+
   private normalizeShellItem(item: AppShellContent): VNode | undefined {
     const h = this.$h;
 
     if (item === null || item === undefined || item === false) {
+      return undefined;
+    }
+
+    if (this.shouldHideShellItem(item)) {
       return undefined;
     }
 
@@ -702,6 +1021,7 @@ export class AppMain extends UIBase {
   private async activateCurrentItem(index: number = this.index.value) {
     this.syncStackRefs();
     this.fabOpen.value = false;
+    this.mobileHeaderDrawerOpen.value = false;
     if (index < 0 || index >= this.stack.length) {
       return;
     }
@@ -724,6 +1044,7 @@ export class AppMain extends UIBase {
 
   private async loadApp() {
     this.fabOpen.value = false;
+    this.mobileHeaderDrawerOpen.value = false;
     Dialogs.$showProgress({})
     const menu = await this.menu();
 
@@ -973,6 +1294,7 @@ export class AppMain extends UIBase {
 
   attachEventListeners() {
     super.attachEventListeners();
+    this.attachShellLayoutBreakpoint();
     if (typeof window !== 'undefined' && !this.shortcutHandler) {
       this.shortcutHandler = (ev: KeyboardEvent) => this.onAppKeydown(ev);
       window.addEventListener('keydown', this.shortcutHandler);
@@ -981,10 +1303,86 @@ export class AppMain extends UIBase {
 
   removeEventListeners() {
     super.removeEventListeners();
+    this.detachShellLayoutBreakpoint();
+    this.disconnectFooterObserver();
     if (typeof window !== 'undefined' && this.shortcutHandler) {
       window.removeEventListener('keydown', this.shortcutHandler);
       this.shortcutHandler = undefined;
     }
+  }
+
+  private syncShellLayoutBreakpoint(matches?: boolean) {
+    this.compactShellLayout.value = matches ?? (typeof window !== 'undefined' ? window.innerWidth < 960 : false);
+    if (!this.compactShellLayout.value) {
+      this.mobileHeaderDrawerOpen.value = false;
+    }
+  }
+
+  private attachShellLayoutBreakpoint() {
+    if (typeof window === 'undefined' || this.shellLayoutMediaQuery) {
+      return;
+    }
+
+    this.shellLayoutMediaQuery = window.matchMedia('(max-width: 959px)');
+    this.syncShellLayoutBreakpoint(this.shellLayoutMediaQuery.matches);
+    this.shellLayoutMediaHandler = (ev: MediaQueryListEvent) => {
+      this.syncShellLayoutBreakpoint(ev.matches);
+    };
+
+    if (typeof this.shellLayoutMediaQuery.addEventListener === 'function') {
+      this.shellLayoutMediaQuery.addEventListener('change', this.shellLayoutMediaHandler);
+    } else {
+      this.shellLayoutMediaQuery.addListener(this.shellLayoutMediaHandler);
+    }
+  }
+
+  private detachShellLayoutBreakpoint() {
+    if (!this.shellLayoutMediaQuery || !this.shellLayoutMediaHandler) {
+      this.shellLayoutMediaQuery = undefined;
+      this.shellLayoutMediaHandler = undefined;
+      return;
+    }
+
+    if (typeof this.shellLayoutMediaQuery.removeEventListener === 'function') {
+      this.shellLayoutMediaQuery.removeEventListener('change', this.shellLayoutMediaHandler);
+    } else {
+      this.shellLayoutMediaQuery.removeListener(this.shellLayoutMediaHandler);
+    }
+
+    this.shellLayoutMediaQuery = undefined;
+    this.shellLayoutMediaHandler = undefined;
+  }
+
+  private setFooterElement(el: Element | any) {
+    const root = el instanceof HTMLElement ? el : el?.$el;
+    const element = root instanceof HTMLElement ? root : undefined;
+    if (element === this.footerElement) {
+      this.updateFooterHeight();
+      return;
+    }
+
+    this.disconnectFooterObserver();
+    this.footerElement = element;
+    this.updateFooterHeight();
+
+    if (typeof ResizeObserver !== 'undefined' && this.footerElement) {
+      this.footerResizeObserver = new ResizeObserver(() => this.updateFooterHeight());
+      this.footerResizeObserver.observe(this.footerElement);
+    }
+  }
+
+  private updateFooterHeight() {
+    this.footerHeight.value = this.footerElement?.offsetHeight || 0;
+  }
+
+  private disconnectFooterObserver() {
+    if (this.footerResizeObserver) {
+      this.footerResizeObserver.disconnect();
+      this.footerResizeObserver = undefined;
+    }
+
+    this.footerElement = undefined;
+    this.footerHeight.value = 0;
   }
 
 }

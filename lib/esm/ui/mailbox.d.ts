@@ -54,6 +54,8 @@ export interface MailboxBellParams {
     maxBadge?: number;
     title?: string;
     viewWidth?: string | number;
+    hideOnMobile?: boolean;
+    hideOnNonMobile?: boolean;
 }
 export declare class Mailbox {
     private static options;
@@ -103,6 +105,7 @@ export declare class MailboxView extends UIBase {
     show(): Promise<void>;
     forceCancel(): Promise<void>;
     private normalizeSize;
+    private clampToViewport;
     private getSelectedItems;
     private isSelected;
     private toggleSelection;

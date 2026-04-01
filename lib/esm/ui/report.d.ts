@@ -157,6 +157,8 @@ export declare class Report extends UIBase {
     exportTemplate(): Promise<ExportTemplateInfo | undefined>;
     private exportAction;
     private syncSideActionBreakpoint;
+    private toCssSize;
+    private clampToViewport;
     private attachSideActionBreakpoint;
     private detachSideActionBreakpoint;
     private handleOn;

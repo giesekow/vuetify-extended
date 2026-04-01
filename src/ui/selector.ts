@@ -185,11 +185,11 @@ export class Selector extends UIBase {
       {
         modelValue: this.dialog.value,
         persistent: this.params.value.persistent !== false,
-        maxWidth: this.params.value.maxWidth,
-        width: this.params.value.width,
-        minWidth: this.params.value.minWidth,
+        maxWidth: this.clampToViewport(this.params.value.maxWidth),
+        width: this.clampToViewport(this.params.value.width),
+        minWidth: this.clampToViewport(this.params.value.minWidth),
         onAfterEnter: () => this.focusPrimaryInput(),
-      },
+      } as any,
       () => h(
         'div',
         {
@@ -199,11 +199,9 @@ export class Selector extends UIBase {
           h(
           VCard,
           {
-            maxWidth: this.params.value.maxWidth,
-            width: this.params.value.width,
-            minWidth: this.params.value.minWidth,
-            elevation: this.params.value.elevation
-          },
+            elevation: this.params.value.elevation,
+            style: this.cardSizeStyle(),
+          } as any,
           () => [
             this.buildTitle(props, context),
             ...(this.params.value.subtitle ? [this.buildSubTitle(props, context)] : []),
@@ -217,6 +215,37 @@ export class Selector extends UIBase {
         ]
       )
     );
+  }
+
+  private toCssSize(value?: string | number) {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    return typeof value === 'number' ? `${value}px` : value;
+  }
+
+  private clampToViewport(value?: string | number) {
+    const size = this.toCssSize(value);
+    if (!size) {
+      return undefined;
+    }
+    if (size.includes('%') || size.includes('vw') || size.includes('vh') || size.includes('calc(') || size.includes('min(') || size.includes('max(') || size.includes('clamp(')) {
+      return size;
+    }
+    return `min(calc(100vw - 32px), ${size})`;
+  }
+
+  private cardSizeStyle() {
+    const width = this.clampToViewport(this.params.value.width);
+    const maxWidth = this.clampToViewport(this.params.value.maxWidth);
+    const minWidth = this.clampToViewport(this.params.value.minWidth);
+
+    return {
+      width,
+      maxWidth,
+      minWidth,
+      boxSizing: 'border-box',
+    };
   }
 
   private buildTitle(props: any, context: any) {

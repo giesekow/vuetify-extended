@@ -1,7 +1,11 @@
 import { VNode } from "vue";
 import { UIBase } from "./base";
 import { Button } from "./button";
-export interface AppTitleBlockParams {
+export interface ShellResponsiveVisibilityParams {
+    hideOnMobile?: boolean;
+    hideOnNonMobile?: boolean;
+}
+export interface AppTitleBlockParams extends ShellResponsiveVisibilityParams {
     title?: string;
     subtitle?: string;
     overline?: string;
@@ -17,7 +21,7 @@ export declare class AppTitleBlock extends UIBase {
     get $params(): AppTitleBlockParams;
     render(): VNode | undefined;
 }
-export interface EnvironmentTagParams {
+export interface EnvironmentTagParams extends ShellResponsiveVisibilityParams {
     text?: string;
     color?: string;
     variant?: 'flat' | 'text' | 'outlined' | 'plain' | 'elevated' | 'tonal';
@@ -31,7 +35,7 @@ export declare class EnvironmentTag extends UIBase {
     get $params(): EnvironmentTagParams;
     render(): VNode | undefined;
 }
-export interface StatusBadgeParams {
+export interface StatusBadgeParams extends ShellResponsiveVisibilityParams {
     text?: string;
     icon?: string;
     color?: string;
@@ -46,7 +50,7 @@ export declare class StatusBadge extends UIBase {
     get $params(): StatusBadgeParams;
     render(): VNode | undefined;
 }
-export interface ShellIconActionParams {
+export interface ShellIconActionParams extends ShellResponsiveVisibilityParams {
     icon?: string;
     title?: string;
     color?: string;
@@ -69,7 +73,7 @@ export declare class ShellIconAction extends UIBase {
     get $params(): ShellIconActionParams;
     render(): VNode | undefined;
 }
-export interface UserAreaParams {
+export interface UserAreaParams extends ShellResponsiveVisibilityParams {
     name?: string;
     subtitle?: string;
     email?: string;

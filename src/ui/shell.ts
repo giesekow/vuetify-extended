@@ -3,7 +3,12 @@ import { UIBase } from "./base";
 import { Button } from "./button";
 import { VAvatar, VBadge, VBtn, VCard, VCardText, VDivider, VIcon, VList, VListItem, VListItemTitle, VMenu, VChip } from 'vuetify/components';
 
-export interface AppTitleBlockParams {
+export interface ShellResponsiveVisibilityParams {
+  hideOnMobile?: boolean;
+  hideOnNonMobile?: boolean;
+}
+
+export interface AppTitleBlockParams extends ShellResponsiveVisibilityParams {
   title?: string;
   subtitle?: string;
   overline?: string;
@@ -66,7 +71,7 @@ export class AppTitleBlock extends UIBase {
   }
 }
 
-export interface EnvironmentTagParams {
+export interface EnvironmentTagParams extends ShellResponsiveVisibilityParams {
   text?: string;
   color?: string;
   variant?: 'flat'|'text'|'outlined'|'plain'|'elevated'|'tonal';
@@ -106,7 +111,7 @@ export class EnvironmentTag extends UIBase {
   }
 }
 
-export interface StatusBadgeParams {
+export interface StatusBadgeParams extends ShellResponsiveVisibilityParams {
   text?: string;
   icon?: string;
   color?: string;
@@ -149,7 +154,7 @@ export class StatusBadge extends UIBase {
 }
 
 
-export interface ShellIconActionParams {
+export interface ShellIconActionParams extends ShellResponsiveVisibilityParams {
   icon?: string;
   title?: string;
   color?: string;
@@ -244,7 +249,7 @@ export class ShellIconAction extends UIBase {
   }
 }
 
-export interface UserAreaParams {
+export interface UserAreaParams extends ShellResponsiveVisibilityParams {
   name?: string;
   subtitle?: string;
   email?: string;
@@ -334,12 +339,16 @@ export class UserArea extends UIBase {
         ...activatorProps,
         variant: 'text',
         style: {
-          height: 'auto',
-          paddingInline: '4px',
-          paddingBlock: '4px',
+          height: '40px',
+          width: '40px',
+          minWidth: '40px',
+          paddingInline: '0',
+          paddingBlock: '0',
           textTransform: 'none',
           borderRadius: '999px',
-          minWidth: '0',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
         },
         'aria-label': this.$params.name || 'Open user menu',
       }, () => this.buildActivator()),

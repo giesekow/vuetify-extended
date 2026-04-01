@@ -99,6 +99,9 @@ export declare class Form extends UIBase {
     leftButtons(props: any, context: any): Array<Button>;
     bottomLeftButtons(props: any, context: any): Array<Button>;
     render(props: any, context: any): VNode | undefined;
+    private toCssSize;
+    private clampToViewport;
+    private cardSizeStyle;
     focusPrimaryInput(): Promise<void>;
     private setCardRoot;
     private focusSpecialFieldTarget;

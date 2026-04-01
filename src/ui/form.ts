@@ -224,14 +224,12 @@ export class Form extends UIBase {
       {
         ref: (el: Element | any) => this.setCardRoot(el),
         onKeydown: (ev: KeyboardEvent) => this.onFormKeydown(ev),
-        maxWidth: this.params.value.maxWidth,
-        width: this.params.value.width,
-        minWidth: this.params.value.minWidth,
         elevation: this.params.value.elevation,
         class: this.params.value.cardClass,
         maxHeight: this.params.value.maxHeight,
-        minHeight: this.params.value.minHeight
-      },
+        minHeight: this.params.value.minHeight,
+        style: this.cardSizeStyle(),
+      } as any,
       () => [
         this.buildTitle(props, context),
         ...(this.params.value.subtitle ? [this.buildSubTitle(props, context)] : []),
@@ -242,6 +240,37 @@ export class Form extends UIBase {
         this.buildBottomActions(props, context),
       ]
     );
+  }
+
+  private toCssSize(value?: string | number) {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    return typeof value === 'number' ? `${value}px` : value;
+  }
+
+  private clampToViewport(value?: string | number) {
+    const size = this.toCssSize(value);
+    if (!size) {
+      return undefined;
+    }
+    if (size.includes('%') || size.includes('vw') || size.includes('vh') || size.includes('calc(') || size.includes('min(') || size.includes('max(') || size.includes('clamp(')) {
+      return size;
+    }
+    return `min(calc(100vw - 32px), ${size})`;
+  }
+
+  private cardSizeStyle() {
+    const width = this.clampToViewport(this.params.value.width);
+    const maxWidth = this.clampToViewport(this.params.value.maxWidth);
+    const minWidth = this.clampToViewport(this.params.value.minWidth);
+
+    return {
+      width,
+      maxWidth: maxWidth || (width ? undefined : '100%'),
+      minWidth,
+      boxSizing: 'border-box',
+    };
   }
 
   async focusPrimaryInput() {

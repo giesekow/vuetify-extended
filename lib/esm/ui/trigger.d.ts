@@ -181,6 +181,8 @@ export declare class Trigger extends UIBase {
     attachEventListeners(): void;
     removeEventListeners(): void;
     private syncSideActionBreakpoint;
+    private toCssSize;
+    private clampToViewport;
     private attachSideActionBreakpoint;
     private detachSideActionBreakpoint;
     private handleOn;

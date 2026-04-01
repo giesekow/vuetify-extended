@@ -400,13 +400,10 @@ export class Trigger extends UIBase {
                 VCard,
                 {
                   onKeydown: (ev: KeyboardEvent) => this.onTriggerKeydown(ev),
-                  maxWidth: this.params.value.maxWidth,
-                  width: this.params.value.width,
-                  minWidth: this.params.value.minWidth,
                   style: this.cardStyle(),
                   elevation: this.params.value.elevation,
                   class: (this.params.value.horizontalAlign || "center") === "center" ? ['mx-auto'] : []
-                },
+                } as any,
                 () => [
                   this.buildTitle(props, context),
                   ...(this.params.value.subtitle ? [this.buildSubTitle(props, context)] : []),
@@ -439,7 +436,10 @@ export class Trigger extends UIBase {
 
   private cardStyle() {
     return {
-      maxWidth: '100%',
+      width: this.clampToViewport(this.params.value.width),
+      maxWidth: this.clampToViewport(this.params.value.maxWidth, '100%'),
+      minWidth: this.clampToViewport(this.params.value.minWidth),
+      boxSizing: 'border-box',
     };
   }
 
@@ -756,8 +756,9 @@ export class Trigger extends UIBase {
       {
         elevation: 2,
         style: {
-          width: this.params.value.sideButtonWidth,
-          minWidth: this.params.value.sideButtonWidth,
+          width: this.clampToViewport(this.params.value.sideButtonWidth, this.params.value.sideButtonWidth || 180),
+          minWidth: 0,
+          maxWidth: 'calc(100vw - 32px)',
           alignSelf: 'flex-start',
         },
       },
@@ -818,8 +819,9 @@ export class Trigger extends UIBase {
             {
               elevation: 2,
               style: {
-                width: this.params.value.sideButtonWidth,
-                minWidth: this.params.value.sideButtonWidth,
+                width: this.clampToViewport(this.params.value.sideButtonWidth, this.params.value.sideButtonWidth || 180),
+                minWidth: 0,
+                maxWidth: 'calc(100vw - 32px)',
               },
             },
             () => h(
@@ -1414,6 +1416,24 @@ export class Trigger extends UIBase {
 
   private syncSideActionBreakpoint(matches?: boolean) {
     this.compactSideActions.value = matches ?? (typeof window !== 'undefined' ? window.innerWidth < 1400 : false);
+  }
+
+  private toCssSize(value?: string | number) {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    return typeof value === 'number' ? `${value}px` : value;
+  }
+
+  private clampToViewport(value?: string | number, fallback?: string | number) {
+    const size = this.toCssSize(value ?? fallback);
+    if (!size) {
+      return undefined;
+    }
+    if (size.includes('%') || size.includes('vw') || size.includes('vh') || size.includes('calc(') || size.includes('min(') || size.includes('max(') || size.includes('clamp(')) {
+      return size;
+    }
+    return `min(calc(100vw - 32px), ${size})`;
   }
 
   private attachSideActionBreakpoint() {

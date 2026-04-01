@@ -171,7 +171,7 @@ export class Menu extends UIBase {
                       xl: this.params.value.containerXl,
                       xxl: this.params.value.containerXxl,
                       sm: this.params.value.containerSm,
-                      style: { paddingTop: '16px', paddingBottom: '16px', paddingLeft: '24px', paddingRight: '24px', overflow: 'visible' },
+                      style: { paddingTop: '16px', paddingBottom: '16px', paddingLeft: 'clamp(12px, 4vw, 24px)', paddingRight: 'clamp(12px, 4vw, 24px)', overflow: 'visible' },
                     },
                     () => this.build(props, context)
                   )
@@ -287,14 +287,11 @@ export class Menu extends UIBase {
                 ref: (el: Element | any) => this.setCardElement(index, el),
                 color: item.$params.color || 'primary',
                 elevation: 4,
-                maxWidth: this.params.value.maxWidth,
-                minWidth: this.params.value.minWidth,
-                width: this.params.value.width,
                 class: ['mx-auto'],
                 role: 'button',
                 tabindex: this.params.value.keyboardNavigation ? -1 : undefined,
                 'aria-selected': this.params.value.keyboardNavigation ? index === this.activeIndex.value : undefined,
-                style: this.menuCardStyle(index) as any,
+                style: { ...this.menuCardSizingStyle(), ...this.menuCardStyle(index) } as any,
                 onMouseenter: () => this.setActiveIndex(index),
                 onClick: () => {
                   this.setActiveIndex(index);
@@ -448,6 +445,36 @@ export class Menu extends UIBase {
       },
       displayShortcut.label
     );
+  }
+
+  private normalizeCssSize(value?: string | number) {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+
+    return typeof value === 'number' ? `${value}px` : value;
+  }
+
+  private clampToViewport(value?: string | number, fallback?: string | number) {
+    const size = this.normalizeCssSize(value ?? fallback);
+    if (!size) {
+      return undefined;
+    }
+
+    if (size.includes('%') || size.includes('vw') || size.includes('vh') || size.includes('calc(') || size.includes('min(') || size.includes('max(') || size.includes('clamp(')) {
+      return size;
+    }
+
+    return `min(calc(100vw - 32px), ${size})`;
+  }
+
+  private menuCardSizingStyle() {
+    return {
+      width: this.clampToViewport(this.params.value.width),
+      maxWidth: this.clampToViewport(this.params.value.maxWidth, '100%'),
+      minWidth: this.clampToViewport(this.params.value.minWidth),
+      boxSizing: 'border-box',
+    };
   }
 
   private async prepareChildren() {

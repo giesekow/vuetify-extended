@@ -63,6 +63,8 @@ export interface MailboxBellParams {
   maxBadge?: number;
   title?: string;
   viewWidth?: string | number;
+  hideOnMobile?: boolean;
+  hideOnNonMobile?: boolean;
 }
 
 export class Mailbox {
@@ -368,6 +370,17 @@ export class MailboxView extends UIBase {
     return typeof value === 'number' ? `${value}px` : value;
   }
 
+  private clampToViewport(value?: string | number, fallback?: string | number) {
+    const size = this.normalizeSize(value ?? fallback);
+    if (!size) {
+      return undefined;
+    }
+    if (size.includes('%') || size.includes('vw') || size.includes('vh') || size.includes('calc(') || size.includes('min(') || size.includes('max(') || size.includes('clamp(')) {
+      return size;
+    }
+    return `min(calc(100vw - 24px), ${size})`;
+  }
+
   private getSelectedItems() {
     const ids = new Set(this.selectedIds.value);
     return Mailbox.$items.filter((item) => ids.has(item.id));
@@ -418,7 +431,7 @@ export class MailboxView extends UIBase {
   render(): VNode | VNode[] | undefined {
     const h = this.$h;
     const title = this.$params.title || Mailbox.$title;
-    const width = typeof this.$params.width === 'number' ? `${this.$params.width}px` : (this.$params.width || '980px');
+    const width = this.clampToViewport(this.$params.width, 980) || 'calc(100vw - 24px)';
     const justify = this.$params.horizontalAlign === 'left' ? 'start' : this.$params.horizontalAlign === 'right' ? 'end' : 'center';
     const align = this.$params.verticalAlign === 'center' ? 'center' : this.$params.verticalAlign === 'end' ? 'end' : 'start';
     const listMaxHeight = this.normalizeSize(this.$params.listMaxHeight) || '60vh';
@@ -594,6 +607,11 @@ export class MailboxBell extends UIBase {
           variant: this.$params.variant,
           title: this.$params.title,
           'aria-label': this.$params.title,
+          style: {
+            height: '40px',
+            width: '40px',
+            minWidth: '40px',
+          },
           onClick: () => AppManager.showUI(new MailboxView({ title: Mailbox.$title, width: this.$params.viewWidth })),
         }),
       }),

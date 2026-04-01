@@ -11,6 +11,8 @@ export interface AppParams {
     ref?: string;
     udfQuery?: any;
     title?: string;
+    mobileTitle?: string;
+    mobileLogo?: string;
     showHeader?: boolean;
     showFooter?: boolean;
     showFab?: boolean;
@@ -86,6 +88,13 @@ export declare class AppMain extends UIBase {
     private fabButtonInstances;
     private fabOpen;
     private shortcutHandler?;
+    private compactShellLayout;
+    private shellLayoutMediaQuery?;
+    private shellLayoutMediaHandler?;
+    private mobileHeaderDrawerOpen;
+    private footerHeight;
+    private footerElement?;
+    private footerResizeObserver?;
     private static defaultParams;
     constructor(params?: AppParams, options?: AppOptions);
     static setDefault(value: AppParams, reset?: boolean): void;
@@ -114,7 +123,10 @@ export declare class AppMain extends UIBase {
     private renderShellRegion;
     private renderShellBar;
     private renderShellBarSection;
+    private getShellBarSectionItems;
+    private getCompactHeaderActionItems;
     private getShellLayout;
+    private getResolvedShellLayout;
     private getShellWidthValue;
     private normalizeCssSize;
     private getShellBarContainerStyle;
@@ -123,6 +135,11 @@ export declare class AppMain extends UIBase {
     private mainShellContentStyle;
     private mainShellOverlayStyle;
     private normalizeShellContent;
+    private renderMobileHeaderBrand;
+    private renderCompactShellOverflow;
+    private mobileShellPriority;
+    private shouldHideShellItem;
+    private renderCompactHeaderDrawer;
     private normalizeShellItem;
     private activateCurrentItem;
     $reload(): Promise<void>;
@@ -144,5 +161,11 @@ export declare class AppMain extends UIBase {
     private restoreFocus;
     attachEventListeners(): void;
     removeEventListeners(): void;
+    private syncShellLayoutBreakpoint;
+    private attachShellLayoutBreakpoint;
+    private detachShellLayoutBreakpoint;
+    private setFooterElement;
+    private updateFooterHeight;
+    private disconnectFooterObserver;
 }
 export declare const $APP: (params?: AppParams, options?: AppOptions) => AppMain;

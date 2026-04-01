@@ -1756,7 +1756,7 @@ function buildHomeMenu() {
 
 export function installDemoApi() {
   const store = createSeedStore();
-  const instance = new MemoryApi(clone(store));
+  const instance: any = new MemoryApi(clone(store));
   Api.setInstance(instance);
   return instance;
 }
@@ -1767,8 +1767,12 @@ export function createDemoApp() {
     {
       ref: 'demo-app',
       title: 'Vuetify Extended Demo Workspace',
+      mobileTitle: 'VE Demo',
+      mobileLogo: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Cdefs%3E%3ClinearGradient id=%22g%22 x1=%220%25%22 y1=%220%25%22 x2=%22100%25%22 y2=%22100%25%22%3E%3Cstop offset=%220%25%22 stop-color=%22%230f3d63%22/%3E%3Cstop offset=%22100%25%22 stop-color=%22%231d6fa5%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x=%224%22 y=%224%22 width=%2256%22 height=%2256%22 rx=%2214%22 fill=%22url(%23g)%22/%3E%3Cpath d=%22M18 20h8l6 18 6-18h8L35 46h-6L18 20Z%22 fill=%22white%22/%3E%3C/svg%3E',
       showHeader: true,
       showFooter: true,
+      headerLayout: 'auto',
+      footerLayout: 'auto',
       showFab: true,
       fabIcon: 'mdi-lightning-bolt',
       fabColor: 'primary',
@@ -1801,20 +1805,20 @@ export function createDemoApp() {
         ),
       ],
       headerStart: (app) => [
-        h(new AppTitleBlock({
+        new AppTitleBlock({
           title: app.$params.title || 'Vuetify Extended',
           subtitle: 'Reusable shell widgets in the AppMain header',
           overline: 'Workspace',
           icon: 'mdi-view-dashboard-outline',
           color: '#0f3d63',
-        }).component),
+        }),
       ],
       headerCenter: () => [
-        h(new EnvironmentTag({ text: 'Demo', color: 'warning' }).component),
-        h(new StatusBadge({ text: 'Shell Active', icon: 'mdi-check-circle-outline', color: 'success' }).component),
+        new EnvironmentTag({ text: 'Demo', color: 'warning' }),
+        new StatusBadge({ text: 'Shell Active', icon: 'mdi-check-circle-outline', color: 'success' }),
       ],
       headerEnd: () => [
-        h(new ShellIconAction(
+        new ShellIconAction(
           {
             icon: 'mdi-help-circle-outline',
             color: 'secondary',
@@ -1823,9 +1827,9 @@ export function createDemoApp() {
           {
             onClicked: () => Dialogs.$info('This header action is rendered with the reusable ShellIconAction widget.'),
           },
-        ).component),
-        h(new MailboxBell({ color: 'primary', badgeColor: 'error', title: 'Open Team Mailbox', viewWidth: 980 }).component),
-        h(new UserArea(
+        ),
+        new MailboxBell({ color: 'primary', badgeColor: 'error', title: 'Open Team Mailbox', viewWidth: 980 }),
+        new UserArea(
           {
             name: 'Administrator User',
             subtitle: 'UI Engineer',
@@ -1857,7 +1861,7 @@ export function createDemoApp() {
               ),
             ],
           },
-        ).component),
+        ),
       ],
       footerStart: () => [
         h(new StatusBadge({ text: 'Vuetify Extended Test App', icon: 'mdi-flask-outline', color: 'primary', variant: 'outlined' }).component),

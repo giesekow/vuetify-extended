@@ -127,8 +127,8 @@ export function buildReportTableWidget(field: TableWidgetContext): VNode {
   }
 
   const maxWidth = typeof field.maxWidth.value === 'number' ? field.maxWidth.value - 5 : field.maxWidth.value;
-  const minWidth = field.maxWidth.value
-    ? `${Math.max((typeof field.maxWidth.value === 'number' ? field.maxWidth.value - 5 : Number(field.maxWidth.value)) || 0, field.params.value?.minWidth || 900)}px`
+  const minWidth = field.params.value?.minWidth
+    ? (typeof field.params.value.minWidth === 'number' ? `${field.params.value.minWidth}px` : field.params.value.minWidth)
     : undefined;
 
   return h(VRow, {}, () => [

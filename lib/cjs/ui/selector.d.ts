@@ -67,6 +67,9 @@ export declare class Selector extends UIBase {
     props(): never[];
     private loadItems;
     render(props: any, context: any): VNode | undefined;
+    private toCssSize;
+    private clampToViewport;
+    private cardSizeStyle;
     private buildTitle;
     private buildSubTitle;
     private buildBody;

@@ -64,6 +64,9 @@ export declare class Menu extends UIBase {
         [key: string]: any;
     }>;
     private renderMenuItemShortcut;
+    private normalizeCssSize;
+    private clampToViewport;
+    private menuCardSizingStyle;
     private prepareChildren;
     private menuCardStyle;
     private setCardElement;
