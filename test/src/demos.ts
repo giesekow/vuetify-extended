@@ -820,7 +820,7 @@ function buildBasicsForm() {
   return new Form(
     {
       title: 'Basics',
-      width: 1120,
+      //width: 1120,
       defaultButtonPosition: 'both',
       dense: true,
     },
@@ -1188,7 +1188,7 @@ function buildFullReport(params?: { objectId?: string; mode?: 'create' | 'edit' 
       mode: params?.mode || 'edit',
       horizontalAlign: 'center',
       verticalAlign: 'center',
-      fluid: true,
+      //fluid: true,
       sideButtonPosition: 'right',
     },
     {
@@ -1313,6 +1313,7 @@ function buildTriggerDemo() {
       canExport: false,
       canPrint: false,
       sideButtonPosition: 'left',
+      fluid: true
     },
     {
       headers: async () => PEOPLE_HEADERS,

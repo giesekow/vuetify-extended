@@ -866,6 +866,51 @@ export class Trigger extends UIBase {
       ? (this.params.value.sideButtonPosition === 'left' ? [sideActions, content] : [content, sideActions])
       : [content];
 
+    const desktopContent = desktopChildren.map((child, index) => {
+      const isSideAction = !!sideActions && ((this.params.value.sideButtonPosition === 'left' && index === 0) || (this.params.value.sideButtonPosition !== 'left' && index === desktopChildren.length - 1));
+      if (isSideAction) {
+        return h('div', {
+          style: {
+            flex: '0 0 auto',
+            minWidth: 0,
+            maxWidth: '100%',
+          },
+        }, [child]);
+      }
+
+
+      if (sideActions) {
+        const sbSize = this.clampToViewport(this.params.value.sideButtonWidth, this.params.value.sideButtonWidth || 180)
+        const repSize = `calc(100% - 16px - ${sbSize})`
+        return h('div', {
+          style: {
+            flex: '0 1 auto',
+            minWidth: 0,
+            maxWidth: repSize,
+          },
+        }, [child]);
+      }
+
+      if (mobileActions) {
+        const repSize = `calc(100vw - 32px)`
+        return h('div', {
+          style: {
+            flex: '0 1 auto',
+            minWidth: 0,
+            maxWidth: repSize,
+          },
+        }, [child]);
+      }
+
+      return h('div', {
+        style: {
+          flex: '0 1 auto',
+          minWidth: 0,
+          maxWidth: '100%',
+        },
+      }, [child]);
+    });
+
     return h(
       'div',
       {
@@ -894,7 +939,7 @@ export class Trigger extends UIBase {
                 maxWidth: '100%',
               },
             },
-            desktopChildren
+            desktopContent
           )]
         ),
       ]

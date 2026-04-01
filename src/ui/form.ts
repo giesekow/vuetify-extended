@@ -267,7 +267,7 @@ export class Form extends UIBase {
 
     return {
       width,
-      maxWidth: maxWidth || (width ? undefined : '100%'),
+      maxWidth: maxWidth || '100%',
       minWidth,
       boxSizing: 'border-box',
     };

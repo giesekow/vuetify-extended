@@ -765,6 +765,19 @@ export class Report extends UIBase {
         }, [child]);
       }
 
+
+      if (sideActions) {
+        const sbSize = this.clampToViewport(this.params.value.sideButtonWidth, this.params.value.sideButtonWidth || 180)
+        const repSize = `calc(100% - 16px - ${sbSize})`
+        return h('div', {
+          style: {
+            flex: '0 1 auto',
+            minWidth: 0,
+            maxWidth: repSize,
+          },
+        }, [child]);
+      }
+
       return h('div', {
         style: {
           flex: '0 1 auto',
