@@ -11,6 +11,7 @@ export interface AppTitleBlockParams extends ShellResponsiveVisibilityParams {
     subtitle?: string;
     overline?: string;
     icon?: string;
+    image?: string;
     color?: string;
     align?: 'left' | 'center' | 'right';
 }
