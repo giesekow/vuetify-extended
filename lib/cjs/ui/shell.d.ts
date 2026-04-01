@@ -4,6 +4,7 @@ import { Button } from "./button";
 export interface ShellResponsiveVisibilityParams {
     hideOnMobile?: boolean;
     hideOnNonMobile?: boolean;
+    mobileLocation?: 'header' | 'drawer';
 }
 export interface AppTitleBlockParams extends ShellResponsiveVisibilityParams {
     title?: string;

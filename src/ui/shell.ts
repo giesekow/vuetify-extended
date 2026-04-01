@@ -6,6 +6,7 @@ import { VAvatar, VBadge, VBtn, VCard, VCardText, VDivider, VIcon, VList, VListI
 export interface ShellResponsiveVisibilityParams {
   hideOnMobile?: boolean;
   hideOnNonMobile?: boolean;
+  mobileLocation?: 'header' | 'drawer';
 }
 
 export interface AppTitleBlockParams extends ShellResponsiveVisibilityParams {

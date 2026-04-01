@@ -810,14 +810,9 @@ export class AppMain extends UIBase {
       return undefined;
     }
 
-    if (entries.length <= 2 && entries.every((entry) => entry.priority >= 90)) {
-      return entries.map((entry) => entry.node);
-    }
-
-    const preferredVisible = entries.filter((entry) => entry.priority >= 90);
-    const visible = preferredVisible.length > 0
-      ? preferredVisible.sort((a, b) => a.index - b.index)
-      : [...entries].sort((a, b) => b.priority - a.priority || a.index - b.index).slice(0, 2).sort((a, b) => a.index - b.index);
+    const visible = entries
+      .filter((entry) => this.resolveMobileShellLocation(entry.item) === 'header')
+      .sort((a, b) => a.index - b.index);
     const visibleIndexes = new Set(visible.map((entry) => entry.index));
     const overflow = entries.filter((entry) => !visibleIndexes.has(entry.index)).sort((a, b) => a.index - b.index);
 
@@ -866,6 +861,17 @@ export class AppMain extends UIBase {
     ]);
   }
 
+  private resolveMobileShellLocation(item: AppShellContent): 'header' | 'drawer' {
+    if (item instanceof UIBase) {
+      const params = (item as any).$params || {};
+      if (params.mobileLocation === 'header' || params.mobileLocation === 'drawer') {
+        return params.mobileLocation;
+      }
+    }
+
+    return this.mobileShellPriority(item) >= 90 ? 'header' : 'drawer';
+  }
+
   private mobileShellPriority(item: AppShellContent) {
     if (item instanceof UIBase) {
       const type = item.constructor?.name;
@@ -909,7 +915,7 @@ export class AppMain extends UIBase {
 
     const sections = (['Start', 'Center', 'End'] as const)
       .map((section) => this.getShellBarSectionItems('header', section)
-        .filter((item) => this.mobileShellPriority(item) < 90)
+        .filter((item) => this.resolveMobileShellLocation(item) === 'drawer')
         .map((item) => this.normalizeShellItem(item))
         .filter((item): item is VNode => !!item))
       .filter((items) => items.length > 0);

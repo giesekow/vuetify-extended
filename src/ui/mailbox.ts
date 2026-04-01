@@ -65,6 +65,7 @@ export interface MailboxBellParams {
   viewWidth?: string | number;
   hideOnMobile?: boolean;
   hideOnNonMobile?: boolean;
+  mobileLocation?: 'header' | 'drawer';
 }
 
 export class Mailbox {

@@ -1811,11 +1811,12 @@ export function createDemoApp() {
           overline: 'Workspace',
           icon: 'mdi-view-dashboard-outline',
           color: '#0f3d63',
+          mobileLocation: 'drawer',
         }),
       ],
       headerCenter: () => [
-        new EnvironmentTag({ text: 'Demo', color: 'warning' }),
-        new StatusBadge({ text: 'Shell Active', icon: 'mdi-check-circle-outline', color: 'success' }),
+        new EnvironmentTag({ text: 'Demo', color: 'warning', mobileLocation: 'drawer' }),
+        new StatusBadge({ text: 'Shell Active', icon: 'mdi-check-circle-outline', color: 'success', mobileLocation: 'drawer' }),
       ],
       headerEnd: () => [
         new ShellIconAction(
@@ -1823,12 +1824,13 @@ export function createDemoApp() {
             icon: 'mdi-help-circle-outline',
             color: 'secondary',
             title: 'Show shell help',
+            mobileLocation: 'drawer',
           },
           {
             onClicked: () => Dialogs.$info('This header action is rendered with the reusable ShellIconAction widget.'),
           },
         ),
-        new MailboxBell({ color: 'primary', badgeColor: 'error', title: 'Open Team Mailbox', viewWidth: 980 }),
+        new MailboxBell({ color: 'primary', badgeColor: 'error', title: 'Open Team Mailbox', viewWidth: 980, mobileLocation: 'header' }),
         new UserArea(
           {
             name: 'Administrator User',
@@ -1838,6 +1840,7 @@ export function createDemoApp() {
             avatarColor: 'primary',
             avatarSrc: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
             avatarAlt: 'Administrator profile picture',
+            mobileLocation: 'header',
           },
           {
             buttons: async () => [
