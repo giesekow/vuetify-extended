@@ -19,6 +19,105 @@ export interface SocketIOOptions {
 
 export type FeathersKeycloakClientConfig = KeycloakClientConfig;
 
+function extractFeathersClientErrorMessage(error: any): string | undefined {
+  const responseData = error?.response?.data;
+  const data = error?.data || responseData;
+
+  if (Array.isArray(error?.message)) {
+    const items = error.message.filter((item: any) => typeof item === 'string' && item.trim().length > 0);
+    if (items.length) {
+      return items.join('\n');
+    }
+  }
+
+  if (typeof error?.message === 'string' && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  if (typeof data === 'string' && data.trim().length > 0) {
+    return data;
+  }
+
+  if (Array.isArray(data?.message)) {
+    const items = data.message
+      .map((item: any) => {
+        if (typeof item === 'string') {
+          return item;
+        }
+
+        if (item && typeof item.message === 'string') {
+          return item.message;
+        }
+
+        return undefined;
+      })
+      .filter((item: string | undefined): item is string => !!item && item.trim().length > 0);
+
+    if (items.length) {
+      return items.join('\n');
+    }
+  }
+
+  if (typeof data?.message === 'string' && data.message.trim().length > 0) {
+    return data.message;
+  }
+
+  if (Array.isArray(data?.errors)) {
+    const items = data.errors
+      .map((item: any) => {
+        if (typeof item === 'string') {
+          return item;
+        }
+
+        if (item && typeof item.message === 'string') {
+          return item.message;
+        }
+
+        return undefined;
+      })
+      .filter((item: string | undefined): item is string => !!item && item.trim().length > 0);
+
+    if (items.length) {
+      return items.join('\n');
+    }
+  }
+
+  if (typeof data?.error === 'string' && data.error.trim().length > 0) {
+    return data.error;
+  }
+
+  return undefined;
+}
+
+function normalizeFeathersClientError(error: any) {
+  if (!error || typeof error !== 'object') {
+    return error;
+  }
+
+  const responseData = error?.response?.data;
+  const data = error.data || responseData;
+  const message = extractFeathersClientErrorMessage(error);
+
+  if (message && error.message !== message) {
+    error.originalMessage = error.message;
+    error.message = message;
+  }
+
+  if (data !== undefined && error.data === undefined) {
+    error.data = data;
+  }
+
+  if (error.statusCode === undefined) {
+    error.statusCode = error.code ?? error.status ?? data?.statusCode ?? error?.response?.status;
+  }
+
+  if (error.errorType === undefined && typeof data?.error === 'string') {
+    error.errorType = data.error;
+  }
+
+  return error;
+}
+
 export class FeathersApi {
   static instance: FeathersApplication;
 
@@ -301,6 +400,17 @@ export class FeathersApi {
     client.configure(findOne());
     client.configure(findAll());
     client.configure(count());
+
+    client.hooks({
+      error: {
+        all: [
+          (context: any) => {
+            context.error = normalizeFeathersClientError(context.error);
+            return context;
+          }
+        ]
+      }
+    });
 
     if (!usesSocket) {
       client.hooks({

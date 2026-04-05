@@ -135,6 +135,93 @@ interface AxiosSocketEnvelope {
   item?: any;
 }
 
+function extractAxiosErrorMessage(error: AxiosError): string | undefined {
+  const data = error.response?.data as any;
+
+  if (!data) {
+    return error.message;
+  }
+
+  if (typeof data === 'string') {
+    return data;
+  }
+
+  if (Array.isArray(data?.message)) {
+    const items = data.message
+      .map((item: any) => {
+        if (typeof item === 'string') {
+          return item;
+        }
+
+        if (item && typeof item.message === 'string') {
+          return item.message;
+        }
+
+        return undefined;
+      })
+      .filter((item: string | undefined): item is string => !!item && item.trim().length > 0);
+
+    if (items.length) {
+      return items.join('\n');
+    }
+  }
+
+  if (typeof data?.message === 'string' && data.message.trim().length > 0) {
+    return data.message;
+  }
+
+  if (Array.isArray(data?.errors)) {
+    const items = data.errors
+      .map((item: any) => {
+        if (typeof item === 'string') {
+          return item;
+        }
+
+        if (item && typeof item.message === 'string') {
+          return item.message;
+        }
+
+        return undefined;
+      })
+      .filter((item: string | undefined): item is string => !!item && item.trim().length > 0);
+
+    if (items.length) {
+      return items.join('\n');
+    }
+  }
+
+  if (typeof data?.error === 'string' && data.error.trim().length > 0) {
+    return data.error;
+  }
+
+  return error.message;
+}
+
+function normalizeAxiosError(error: AxiosError): AxiosError {
+  const message = extractAxiosErrorMessage(error);
+  const data = error.response?.data as any;
+  const statusCode = data?.statusCode ?? error.response?.status;
+
+  if (message && error.message !== message) {
+    (error as any).originalMessage = error.message;
+    error.message = message;
+  }
+
+  if (statusCode !== undefined) {
+    (error as any).statusCode = statusCode;
+  }
+
+  if (data !== undefined) {
+    (error as any).data = data;
+  }
+
+  if (typeof data?.error === 'string' && !(error as any).errorType) {
+    (error as any).errorType = data.error;
+  }
+
+  return error;
+}
+
 function ensurePath(path: string): string {
   return path.replace(/^\/+|\/+$/g, '');
 }
@@ -821,7 +908,7 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
         const config = error.config as AxiosApiRequestConfig | undefined;
 
         if (!config || config._veRetry || responseStatus !== 401 || !this.authenticated()) {
-          throw error;
+          throw normalizeAxiosError(error);
         }
 
         config._veRetry = true;
@@ -836,6 +923,10 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
 
           return this.client.request(config);
         } catch (refreshError) {
+          if (axios.isAxiosError(refreshError)) {
+            throw normalizeAxiosError(refreshError);
+          }
+
           throw refreshError;
         }
       }
