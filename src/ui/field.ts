@@ -1510,6 +1510,9 @@ export class Field extends UIBase {
 
   buildDatetime(props: any, context: any) {
     const h = this.$h;
+    const updateValue = (value: any) => {
+      this.modelValue.value = value;
+    };
     return [
       h(
         'div',
@@ -1522,6 +1525,7 @@ export class Field extends UIBase {
         Datepicker,
         {
           modelValue: this.modelValue.value,
+          'model-value': this.modelValue.value,
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -1534,10 +1538,11 @@ export class Field extends UIBase {
           class: this.params.value.class || [],
           style: this.params.value.style || {},
           rules: this.rules(),
+          teleport: true,
+          autoPosition: true,
           ...(this.options.datetimeOptions || {}),
-          "onUpdate:model-value": (value: any) => {
-            this.modelValue.value = value;
-          },
+          "onUpdate:modelValue": updateValue,
+          "onUpdate:model-value": updateValue,
           "onUpdate:focused": (ev: any) => this.onFocusChanged(ev)
         },
       )
