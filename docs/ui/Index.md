@@ -17,11 +17,11 @@ The UI layer is class-based and centers around `UIBase` descendants that render 
 - [DialogForm](./DialogForm.md)
   Form wrapper that runs inside a dialog surface and reuses the same field/form/button model as the rest of the library.
 - [Dashboard](./Dashboard.md)
-  Dashboard page and widget reference covering `Dashboard`, the shared widget shell, header menu behavior, refresh behavior, and the expected data/value format for every dashboard widget type.
+  Dashboard page and widget reference covering `Dashboard`, the shared widget shell, all concrete dashboard widgets, header menu behavior, refresh behavior, and the expected data/value format for every dashboard widget type.
 - [Dialogs](./Dialogs.md)
   Global modal/dialog manager for alerts, confirms, progress, prompts, and other blocking overlays.
 - [Field](./Field.md)
-  Most flexible input/display primitive in the library. `Field` covers text inputs, selects, editors, tables, charts, single-point maps, multi-marker maps, editable line/circle/rectangle/polygon geometry maps, display-only heatmaps/clustered marker maps/mixed GeoJSON maps, collections, messaging UI, and file/image/document display.
+  Most flexible input/display primitive in the library. `Field` covers all field types in detail, including supported params/options, Master storage datatypes, map families, tables, charts, messaging, and the full `collection` field workflow.
 - [Form](./Form.md)
   Composable form container that hosts fields, action buttons, validation, save/cancel flows, and keyboard-first behavior.
 - [Fullscreen](./Fullscreen.md)

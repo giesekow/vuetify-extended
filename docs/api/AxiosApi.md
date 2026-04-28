@@ -12,6 +12,7 @@ Axios-based Keycloak client with service-style CRUD wrappers, optional Socket.IO
 - Can route Socket.IO envelopes into `service(path).on(...)` events.
 - Mirrors `params.query` into normal URL query params even when `queryMode` is `rawquery-header`, while still preserving the legacy rawquery header.
 - Exposes `apiURL`, `apiURLRef`, `setApiURL(...)`, `user`, `token`, `userRef`, `tokenRef`, `authenticatedRef`, `permissionsRef`, and `socketConnectedRef` on the application instance.
+- Normalizes server error payloads into `error.message`, including common NestJS response shapes such as `{ message, error, statusCode }`.
 
 ## Reference
 
@@ -68,6 +69,17 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
 - `static setup(apiURL: any, keycloakConfig: AxiosKeycloakClientConfig, soptions?: AxiosApiOptions)`
 - `instance.setApiURL(newURL: string)`
 
+## Shared Service Surface
+
+Services returned by `AxiosApi.instance.service(path)` support:
+
+- CRUD:
+  `find`, `findOne`, `findAll`, `count`, `get`, `create`, `update`, `patch`, `remove`
+- events:
+  `on`, `once`, `off`, `removeListener`, `emit`
+
+That means axios-backed services can participate in the same `.on(...)` / `.off(...)` style runtime patterns used elsewhere in the library.
+
 ## Runtime URL Switching
 
 `setApiURL(newURL)` updates `client.defaults.baseURL`, updates `apiURLRef`, and makes future axios service calls use the new base URL immediately.
@@ -75,3 +87,22 @@ export class AxiosApplication extends SimpleEventEmitter implements Application 
 If Socket.IO is enabled and `socketURL` was not configured explicitly, the socket endpoint is treated as derived from the API URL. In that case `setApiURL(...)` replaces the socket connection and reconnects it against the new base URL. Custom listeners registered through `onSocket(...)` are reattached to the replacement socket automatically.
 
 If `socketURL` was configured explicitly, `setApiURL(...)` only changes the HTTP API base. The socket target remains unchanged.
+
+## Error Behavior
+
+Axios errors are normalized before being rethrown from the client interceptor.
+
+Practical result:
+
+- if the server returns a NestJS-style payload such as:
+  `{ message: 'Validation failed', error: 'Bad Request', statusCode: 400 }`
+- or:
+  `{ message: ['Name is required', 'Email is invalid'], statusCode: 400 }`
+
+then existing UI code that reads `error.message` receives the useful server message instead of the generic axios text `Request failed with status code 400`.
+
+Normalized extra fields may also be available on the thrown error:
+
+- `error.statusCode`
+- `error.data`
+- `error.errorType`

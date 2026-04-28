@@ -202,6 +202,7 @@ export interface DashboardWidgetOptions {
 - `height`, `minHeight`, and `maxHeight` are handled at the widget shell level.
 - When a widget has extra vertical space, the empty space stays inside the card below the content.
 - When content overflows, the body becomes vertically scrollable.
+- Header title/subtitle text can wrap on narrow screens without hiding the optional widget icon.
 - Widget `theme` inherits from the parent dashboard when it is not set locally.
 - Widget `textColor` overrides both the widget theme and inherited dashboard theme.
 - `DashboardWidget.refresh()` is available on all widget types and is used by `Dashboard.refresh()`.
@@ -246,6 +247,7 @@ export interface DashboardMetricWidgetOptions extends DashboardWidgetOptions {
 - `options.value(...)` overrides `params.value` when provided.
 - `formatValue(...)` is the right place for currency or compact-number formatting.
 - Emits `clicked` and also supports `onClicked(...)`.
+- Numeric values animate on first load and animate again when the widget is refreshed.
 
 ### `DashboardTableWidget`
 
@@ -314,6 +316,8 @@ export interface DashboardTableWidgetOptions extends DashboardWidgetOptions {
 - `cell(...)` is for per-cell rendering without replacing the whole widget.
 - `pagination: true` enables the built-in footer pager.
 - `loadPage(...)` is the server-style path when the full row list is not already in memory.
+- `rowClass(...)` and `rowStyle(...)` decorate rows without replacing the widget body.
+- `page` and `pageSize` seed the initial pager state.
 
 ### `DashboardListWidget`
 
@@ -361,6 +365,7 @@ export interface DashboardListWidgetOptions extends DashboardWidgetOptions {
 
 - `separator` is off by default.
 - Emits `itemClicked` and also supports `onItemClicked(...)`.
+- On smaller screens the right-side value/chip area stacks under the main text block automatically.
 
 ### `DashboardProgressWidget`
 
@@ -410,6 +415,7 @@ export interface DashboardProgressWidgetOptions extends DashboardWidgetOptions {
 
 - Emits `itemClicked` and also supports `onItemClicked(...)`.
 - Bars animate on first load and on refresh.
+- `value` is display text; `amount` is the fill ratio that actually drives the progress bar.
 
 ### `DashboardChartWidget`
 
@@ -454,6 +460,7 @@ export interface DashboardChartWidgetOptions extends DashboardWidgetOptions {
 - `value` is the numeric magnitude.
 - `valueLabel` is optional display text, useful for percentages in donut charts.
 - Emits `itemClicked` and also supports `onItemClicked(...)`.
+- `chartHeight` controls the internal plot area and is separate from widget shell `height`.
 
 ### `DashboardTrendWidget`
 
@@ -496,6 +503,7 @@ export interface DashboardTrendWidgetOptions extends DashboardWidgetOptions {
 
 - `trend` controls iconography and default direction styling.
 - Emits `clicked` and also supports `onClicked(...)`.
+- `formatValue(...)` is the right place for percentage, currency, and compact-number display.
 
 ### `DashboardTimelineWidget`
 
@@ -518,10 +526,30 @@ export interface DashboardTimelineItem {
 }
 ```
 
+#### `DashboardTimelineWidgetParams`
+
+```ts
+export interface DashboardTimelineWidgetParams extends DashboardWidgetParams {
+  items?: DashboardTimelineItem[];
+  emptyText?: string;
+}
+```
+
+#### `DashboardTimelineWidgetOptions`
+
+```ts
+export interface DashboardTimelineWidgetOptions extends DashboardWidgetOptions {
+  items?: (widget: DashboardTimelineWidget) => DashboardTimelineItem[] | Promise<DashboardTimelineItem[] | undefined> | undefined;
+  onItemClicked?: (widget: DashboardTimelineWidget, item: DashboardTimelineItem, index: number) => void | Promise<void>;
+}
+```
+
 #### Notes
 
 - Use either `icon` or `avatarText` depending on the visual style you want.
 - `time` is display-only text; no date parsing is required by the widget.
+- Items are rendered in the order provided; the widget does not sort them automatically.
+- Emits `itemClicked` and also supports `onItemClicked(...)`.
 
 ### `DashboardActionListWidget`
 
@@ -547,10 +575,30 @@ export interface DashboardActionItem {
 }
 ```
 
+#### `DashboardActionListWidgetParams`
+
+```ts
+export interface DashboardActionListWidgetParams extends DashboardWidgetParams {
+  items?: DashboardActionItem[];
+  emptyText?: string;
+}
+```
+
+#### `DashboardActionListWidgetOptions`
+
+```ts
+export interface DashboardActionListWidgetOptions extends DashboardWidgetOptions {
+  items?: (widget: DashboardActionListWidget) => DashboardActionItem[] | Promise<DashboardActionItem[] | undefined> | undefined;
+  onItemClicked?: (widget: DashboardActionListWidget, item: DashboardActionItem, index: number) => void | Promise<void>;
+}
+```
+
 #### Notes
 
 - Emits `itemClicked` and also supports `onItemClicked(...)`.
 - `actionText` controls the right-side button label.
+- If `actionText` is present, the row keeps a dedicated action button.
+- `disabled` dims the row and suppresses click handling.
 
 ### `DashboardAlertWidget`
 
@@ -569,10 +617,29 @@ export interface DashboardAlertItem {
 }
 ```
 
+#### `DashboardAlertWidgetParams`
+
+```ts
+export interface DashboardAlertWidgetParams extends DashboardWidgetParams {
+  items?: DashboardAlertItem[];
+  emptyText?: string;
+}
+```
+
+#### `DashboardAlertWidgetOptions`
+
+```ts
+export interface DashboardAlertWidgetOptions extends DashboardWidgetOptions {
+  items?: (widget: DashboardAlertWidget) => DashboardAlertItem[] | Promise<DashboardAlertItem[] | undefined> | undefined;
+  onItemClicked?: (widget: DashboardAlertWidget, item: DashboardAlertItem, index: number) => void | Promise<void>;
+}
+```
+
 #### Notes
 
 - `severity` controls the visual tone.
 - Emits `itemClicked` and also supports `onItemClicked(...)`.
+- `chipText` is useful for short operational tags such as `Needs review`, `Completed`, or `Restock soon`.
 
 ### `DashboardEmptyStateWidget`
 
@@ -652,6 +719,7 @@ export interface DashboardStatGridWidgetOptions extends DashboardWidgetOptions {
 
 - `columns` controls how many stat cells appear per row.
 - Emits `itemClicked` and also supports `onItemClicked(...)`.
+- `formatValue(...)` is the right place for currency, compact-number, and percentage display.
 
 ### `DashboardMapWidget`
 
@@ -686,6 +754,8 @@ export interface DashboardMapData {
 - `line` is a simple ordered list of `{ lat, lng }` points.
 - `polygon` is a simple ordered list of `{ lat, lng }` points.
 - This widget is display-only; it does not edit geometry.
+- Emits `markerClicked` and also supports `onMarkerClicked(...)`.
+- `showLegend` defaults to visible unless explicitly set to `false`.
 
 #### `DashboardMapWidgetParams`
 
@@ -747,6 +817,7 @@ export interface DashboardCalendarWidgetOptions extends DashboardWidgetOptions {
 - `month` is `1`-based in normal dashboard usage.
 - `date` can be a `Date` instance or any string your host app wants to convert into a valid `Date`.
 - `onDateClicked(...)` receives the clicked date and all items for that date.
+- Emits `dateClicked` and also supports `onDateClicked(...)`.
 
 ### `DashboardTabsWidget`
 
@@ -786,6 +857,7 @@ export interface DashboardTabsWidgetOptions extends DashboardWidgetOptions {
 
 - `children(...)` is the tab body renderer and can return nested `UIBase` instances or raw VNodes.
 - Emits `tabChanged` and also supports `onTabChanged(...)`.
+- `activeTab` is zero-based.
 
 ## Refresh Model
 

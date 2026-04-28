@@ -30,6 +30,7 @@ This folder collects project-level documentation for `vuetify-extended`.
 1. Start with the root [`README.md`](../README.md) for setup and everyday usage.
 2. Read [Architecture](./architecture.md) to understand how the library is organized internally.
 3. Use [API Reference](./api/Index.md) and [UI Reference](./ui/Index.md) when you need module-level details for params, options, and runtime behavior.
+   The most detailed deep-reference pages are currently [Field](./ui/Field.md) and [Dashboard](./ui/Dashboard.md).
 4. Use [Misc Reference](./misc/Index.md) for shared helper functions such as Excel, validation, and print utilities.
 5. Use [General Information](./general-information.md) as a quick reference while extending the library.
 6. Use [Test App](../test/README.md) when you want to manually verify UI workflows.

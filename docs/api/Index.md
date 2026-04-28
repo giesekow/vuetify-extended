@@ -1,6 +1,6 @@
 # API Reference
 
-The API layer provides a shared facade plus two backend implementations: a Feathers client and an axios-based client. Both are normalized to expose the same auth, socket, reactive state, and runtime `apiURL` switching surface.
+The API layer provides a shared facade plus two backend implementations: a Feathers client and an axios-based client. Both are normalized to expose the same auth, socket, reactive state, service-method surface, unsubscribe helpers, runtime `apiURL` switching, and backend-message-friendly error behavior.
 
 ## Pages
 

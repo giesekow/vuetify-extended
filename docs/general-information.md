@@ -71,12 +71,28 @@ Key exports:
   Compact shell action widget for custom header/footer icons with optional badge support and an `onClicked` handler
 - `UserArea`
   Dropdown account-menu shell widget with avatar/image support and host-defined async menu buttons
+- `Dashboard`
+- `DashboardWidget`
+- `DashboardMetricWidget`
+- `DashboardTableWidget`
+- `DashboardListWidget`
+- `DashboardProgressWidget`
+- `DashboardChartWidget`
+- `DashboardTrendWidget`
+- `DashboardTimelineWidget`
+- `DashboardActionListWidget`
+- `DashboardAlertWidget`
+- `DashboardEmptyStateWidget`
+- `DashboardStatGridWidget`
+- `DashboardMapWidget`
+- `DashboardCalendarWidget`
+- `DashboardTabsWidget`
 - `AppMain`
 - `AppManager`
 
 Most of the main UI classes also now expose `setDefault(...)` so a host app can establish project-wide defaults without repeating constructor params everywhere.
 
-`Field` map widgets now support three mapping modes:
+`Field` now supports a broader map/geometry family:
 
 - single-point `type: 'map'`
 - multi-marker `type: 'map'` with `multiple: true`, stored as `Array<{ lat, lng }>`
@@ -85,6 +101,9 @@ Most of the main UI classes also now expose `setDefault(...)` so a host app can 
 - `type: 'map-rectangle'` for editable bounds geometry, with reverse-geocoded corner summaries
 - large geo-reference lists can be paged locally with `mapTextPageSize`, and `hideMapText` now skips geocoding work completely
 - GeoJSON polygon `type: 'map-polygon'`
+- display-only `type: 'map-heatmap'`
+- display-only `type: 'map-cluster'`
+- display-only `type: 'map-geojson'`
 
 ## `master`
 
@@ -116,6 +135,14 @@ This is the shared facade. It does not implement a backend by itself. Instead it
 - `Api.setInstance(...)`
 
 `Api.setup(...)` remains the backwards-compatible Feathers shortcut.
+
+Once configured, `Api.instance.service(path)` now exposes a consistent event/unsubscribe surface across both backends:
+
+- `on(...)`
+- `once(...)`
+- `off(...)`
+- `removeListener(...)`
+- `emit(...)`
 
 ## `setup`
 
@@ -156,6 +183,9 @@ It also now supports:
 - current-user sync through endpoints such as `GET /auth/me`
 - custom socket access through `socket`, `onSocket(...)`, `offSocket(...)`, and `emitSocket(...)`
 - reactive auth/socket refs such as `userRef`, `tokenRef`, `authenticatedRef`, `permissionsRef`, and `socketConnectedRef`
+- normalization of common NestJS-style error payloads into `error.message`
+
+The Feathers client now mirrors that error-message normalization through a global error hook so both supported backends behave more consistently when UI code reads `error.message`.
 
 ## `misc`
 

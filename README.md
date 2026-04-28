@@ -33,6 +33,8 @@ It is less focused on template-heavy, animation-heavy, or design-system-first fr
 - [docs/README.md](./docs/README.md)
 - [docs/architecture.md](./docs/architecture.md)
 - [docs/general-information.md](./docs/general-information.md)
+- [docs/ui/Field.md](./docs/ui/Field.md)
+- [docs/ui/Dashboard.md](./docs/ui/Dashboard.md)
 - [test/README.md](./test/README.md)
 - [starter-template/README.md](./starter-template/README.md)
 
