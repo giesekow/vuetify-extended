@@ -1,5 +1,29 @@
 import { Ref, defineComponent, h, onMounted, onUnmounted, ref } from "vue";
 import { VBtn, VCard, VCardActions, VCardText, VCardTitle, VCol, VDialog, VLayout, VOverlay, VProgressCircular, VRow, VSnackbar, VSpacer } from 'vuetify/components';
+import { Master } from "../master";
+import type { DialogForm, DialogFormOptions, DialogParams } from "./dialogform";
+import type { Field, FieldOptions, FieldParams, FieldType } from "./field";
+import type { FormOptions, FormParams } from "./form";
+import type { Part } from "./part";
+
+export interface PromptParams {
+  title?: string;
+  text?: string;
+  type?: FieldType;
+  confirmText?: string;
+  cancelText?: string;
+  fieldParams?: FieldParams;
+  formParams?: FormParams;
+  dialogParams?: DialogParams;
+}
+
+export interface PromptOptions {
+  master?: Master;
+  fieldOptions?: Omit<FieldOptions, 'master'>;
+  children?: () => Array<Part|Field>;
+  formOptions?: Omit<FormOptions, 'master'|'children'>;
+  dialogOptions?: Omit<DialogFormOptions, 'master'|'form'>;
+}
 
 export interface DialogOptions {
   confirmColor?: string|undefined;
@@ -46,6 +70,9 @@ export class Dialogs {
   private static infoClose: any = null;
   private static confirmKeydownHandler?: (ev: KeyboardEvent) => void;
   private static rootMounted = false;
+  private static promptForm: Ref<DialogForm|undefined> = ref();
+  private static promptVersion: Ref<number> = ref(0);
+  private static promptResolver: ((value: any) => void)|undefined;
 
   private static options: Ref<DialogOptions> = ref({});
 
@@ -74,11 +101,13 @@ export class Dialogs {
         const ErrorSnackbar = Dialogs.errorComponent();
         const WarningSnackbar = Dialogs.warningComponent();
         const ProgressOverlay = Dialogs.progressComponent();
-        const InfoDialog = Dialogs.infoComponent()
+        const InfoDialog = Dialogs.infoComponent();
+        const PromptDialog = Dialogs.promptComponent();
 
         return () => [
           h(ConfirmDialog),
           h(InfoDialog),
+          h(PromptDialog),
           h(SuccessSnackbar),
           h(ErrorSnackbar),
           h(WarningSnackbar),
@@ -198,6 +227,24 @@ export class Dialogs {
             ]
           )
         )
+      },
+    });
+  }
+
+  static promptComponent() {
+    return defineComponent({
+      props: [],
+      setup: () => {
+        return () => {
+          const form = Dialogs.promptForm.value;
+          if (!form) {
+            return undefined;
+          }
+
+          return h(form.component, {
+            key: Dialogs.promptVersion.value,
+          });
+        };
       },
     });
   }
@@ -406,7 +453,114 @@ export class Dialogs {
   }
 
   static hasBlockingDialog(): boolean {
-    return Dialogs.confirmDialog.value || Dialogs.progressDialog.value;
+    return Dialogs.confirmDialog.value || Dialogs.progressDialog.value || !!Dialogs.promptForm.value;
+  }
+
+  static async $prompt(params?: PromptParams, options?: PromptOptions): Promise<any|undefined> {
+    const promptParams = params || {};
+    const promptOptions = options || {};
+
+    if (Dialogs.promptResolver) {
+      await Dialogs.closePrompt(undefined);
+    }
+
+    const [{ DialogForm }, { Form }, { Field }] = await Promise.all([
+      import('./dialogform'),
+      import('./form'),
+      import('./field'),
+    ]);
+
+    const workingMaster = Dialogs.createPromptMaster(promptOptions.master);
+    const hasCustomChildren = typeof promptOptions.children === 'function';
+    const resolvedFieldParams = promptParams.fieldParams || {};
+    const storageKey = resolvedFieldParams.storage || '__promptValue';
+    const dialogParams = promptParams.dialogParams || {};
+    const formParams = promptParams.formParams || {};
+    const formOptions = promptOptions.formOptions || {};
+    const dialogOptions = promptOptions.dialogOptions || {};
+
+    const field = !hasCustomChildren ? new Field(
+      {
+        type: resolvedFieldParams.type || promptParams.type || 'text',
+        label: resolvedFieldParams.label || 'Value',
+        storage: storageKey,
+        autofocus: resolvedFieldParams.autofocus ?? true,
+        cols: resolvedFieldParams.cols ?? 12,
+        ...resolvedFieldParams,
+      },
+      promptOptions.fieldOptions,
+    ) : undefined;
+
+    const form = new Form(
+      {
+        ...formParams,
+        auto: true,
+        sub: true,
+        hideMode: formParams.hideMode ?? true,
+        mode: dialogParams.mode || formParams.mode || 'create',
+        title: promptParams.title ?? formParams.title ?? 'Prompt',
+        subtitle: promptParams.text ?? formParams.subtitle,
+        width: formParams.width ?? (hasCustomChildren ? 760 : 520),
+        saveButton: {
+          ...(formParams.saveButton || {}),
+          text: promptParams.confirmText || formParams.saveButton?.text || 'Confirm',
+        },
+        cancelButton: {
+          ...(formParams.cancelButton || {}),
+          text: promptParams.cancelText || formParams.cancelButton?.text || 'Cancel',
+        },
+      },
+      {
+        ...formOptions,
+        master: workingMaster,
+        children: (() => hasCustomChildren ? (promptOptions.children?.() || []) : (field ? [field] : [])) as any,
+      },
+    );
+
+    let dialog!: DialogForm;
+
+    return new Promise((resolve) => {
+      Dialogs.promptResolver = resolve;
+
+      dialog = new DialogForm(
+        {
+          persistent: dialogParams.persistent ?? true,
+          mode: dialogParams.mode || 'create',
+          fullscreen: dialogParams.fullscreen,
+          invisible: dialogParams.invisible,
+          objectType: dialogParams.objectType,
+          objectId: dialogParams.objectId,
+          ref: dialogParams.ref,
+          closeOnSave: false,
+        },
+        {
+          ...dialogOptions,
+          master: workingMaster,
+          form: async () => form,
+          saved: async () => {
+            if (dialogOptions.saved) {
+              await dialogOptions.saved();
+            }
+
+            const result = hasCustomChildren ? workingMaster.$data : workingMaster.$get(storageKey);
+            await dialog.hide();
+            await Dialogs.closePrompt(result);
+          },
+          cancel: async () => {
+            if (dialogOptions.cancel) {
+              await dialogOptions.cancel();
+            }
+
+            await dialog.hide();
+            await Dialogs.closePrompt(undefined);
+          },
+        },
+      );
+
+      Dialogs.promptForm.value = dialog;
+      Dialogs.promptVersion.value += 1;
+      dialog.show();
+    });
   }
 
   private static installConfirmKeydownHandler() {
@@ -494,6 +648,51 @@ export class Dialogs {
 
   static $hideProgress() {
     Dialogs.progressDialog.value = false;
+  }
+
+  private static async closePrompt(value: any) {
+    const dialog = Dialogs.promptForm.value;
+    const resolve = Dialogs.promptResolver;
+
+    Dialogs.promptForm.value = undefined;
+    Dialogs.promptVersion.value += 1;
+    Dialogs.promptResolver = undefined;
+
+    if (dialog) {
+      dialog.removeEventListeners();
+      dialog.clearListeners();
+    }
+
+    if (resolve) {
+      resolve(value);
+    }
+  }
+
+  private static createPromptMaster(source?: Master) {
+    const master = new Master({
+      type: source?.$type,
+      id: source?.$id,
+      idField: source?.$idField,
+      parent: source?.$parent,
+    });
+
+    if (source) {
+      master.$data = Dialogs.clonePromptData(source.$data);
+    }
+
+    return master;
+  }
+
+  private static clonePromptData<T>(value: T): T {
+    if (typeof globalThis.structuredClone === 'function') {
+      return globalThis.structuredClone(value);
+    }
+
+    try {
+      return JSON.parse(JSON.stringify(value));
+    } catch (_error) {
+      return value;
+    }
   }
 
 }

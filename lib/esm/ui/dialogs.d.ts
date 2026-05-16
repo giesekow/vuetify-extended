@@ -1,3 +1,25 @@
+import { Master } from "../master";
+import type { DialogFormOptions, DialogParams } from "./dialogform";
+import type { Field, FieldOptions, FieldParams, FieldType } from "./field";
+import type { FormOptions, FormParams } from "./form";
+import type { Part } from "./part";
+export interface PromptParams {
+    title?: string;
+    text?: string;
+    type?: FieldType;
+    confirmText?: string;
+    cancelText?: string;
+    fieldParams?: FieldParams;
+    formParams?: FormParams;
+    dialogParams?: DialogParams;
+}
+export interface PromptOptions {
+    master?: Master;
+    fieldOptions?: Omit<FieldOptions, 'master'>;
+    children?: () => Array<Part | Field>;
+    formOptions?: Omit<FormOptions, 'master' | 'children'>;
+    dialogOptions?: Omit<DialogFormOptions, 'master' | 'form'>;
+}
 export interface DialogOptions {
     confirmColor?: string | undefined;
     successColor?: string | undefined;
@@ -36,6 +58,9 @@ export declare class Dialogs {
     private static infoClose;
     private static confirmKeydownHandler?;
     private static rootMounted;
+    private static promptForm;
+    private static promptVersion;
+    private static promptResolver;
     private static options;
     static setOptions(options: DialogOptions): void;
     static get rootIsMounted(): boolean;
@@ -48,6 +73,9 @@ export declare class Dialogs {
     static infoComponent(): import("vue").DefineComponent<Readonly<{}>, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<Readonly<{}>>>, {}, {}>;
+    static promptComponent(): import("vue").DefineComponent<Readonly<{}>, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
+        [key: string]: any;
+    }> | undefined, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<Readonly<{}>>>, {}, {}>;
     static successComponent(): import("vue").DefineComponent<Readonly<{}>, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<Readonly<{}>>>, {}, {}>;
@@ -66,6 +94,7 @@ export declare class Dialogs {
         height?: number;
     }): Promise<void>;
     static hasBlockingDialog(): boolean;
+    static $prompt(params?: PromptParams, options?: PromptOptions): Promise<any | undefined>;
     private static installConfirmKeydownHandler;
     private static removeConfirmKeydownHandler;
     static $error(text: string): void;
@@ -74,4 +103,7 @@ export declare class Dialogs {
     static $showProgress({ value, text }: any): void;
     static $updateProgress({ value, text }: any): void;
     static $hideProgress(): void;
+    private static closePrompt;
+    private static createPromptMaster;
+    private static clonePromptData;
 }

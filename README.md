@@ -1049,6 +1049,24 @@ if (confirmed) {
 }
 ```
 
+Prompt example:
+
+```ts
+const value = await Dialogs.$prompt({
+  title: 'Quick Label',
+  text: 'Enter a short label.',
+  type: 'text',
+  fieldParams: {
+    label: 'Label',
+    required: true,
+  },
+})
+
+if (value !== undefined) {
+  Dialogs.$success(`Prompt returned: ${value}`)
+}
+```
+
 Notifications example:
 
 ```ts

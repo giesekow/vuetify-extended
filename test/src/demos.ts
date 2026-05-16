@@ -1454,6 +1454,90 @@ function buildNestedMenu() {
         new MenuItem(
           {
             action: 'function',
+            text: 'Show Prompt',
+            subText: 'Single-field prompt that returns the confirmed value or undefined on cancel.',
+            icon: 'mdi-form-textbox-password',
+            color: 'primary',
+          },
+          {
+            callback: async () => {
+              const value = await Dialogs.$prompt(
+                {
+                  title: 'Quick Label',
+                  text: 'Enter a short label to use in the next workflow step.',
+                  type: 'text',
+                  fieldParams: {
+                    label: 'Label',
+                    required: true,
+                    clearable: true,
+                  },
+                },
+              );
+
+              if (value === undefined) {
+                Dialogs.$warning('Prompt cancelled.');
+                return;
+              }
+
+              Dialogs.$success(`Prompt returned "${value}".`);
+            },
+          },
+        ),
+        new MenuItem(
+          {
+            action: 'function',
+            text: 'Show Form Prompt',
+            subText: 'Multi-field prompt that returns the working Master data object on confirm.',
+            icon: 'mdi-form-select',
+            color: 'secondary',
+          },
+          {
+            callback: async () => {
+              const value = await Dialogs.$prompt(
+                {
+                  title: 'Schedule Reminder',
+                  text: 'Use a small prompt form when one value is not enough.',
+                  confirmText: 'Create Reminder',
+                  formParams: {
+                    width: 720,
+                  },
+                },
+                {
+                  children: () => [
+                    new Part(
+                      { cols: 12, dense: true },
+                      {
+                        children: () => [
+                          new Field({ label: 'Title', storage: 'title', cols: 6, required: true }),
+                          new Field({ label: 'Channel', storage: 'channel', type: 'select', cols: 6, default: 'email' }, {
+                            selectOptions: async () => [
+                              { name: 'Email', _id: 'email', id: 'email' },
+                              { name: 'SMS', _id: 'sms', id: 'sms' },
+                              { name: 'Push', _id: 'push', id: 'push' },
+                            ],
+                          }),
+                          new Field({ label: 'When', storage: 'when', type: 'datetime', cols: 6, required: true }),
+                          new Field({ label: 'Urgent', storage: 'urgent', type: 'boolean', cols: 6 }),
+                          new Field({ label: 'Summary', storage: 'summary', type: 'textarea', cols: 12 }),
+                        ],
+                      },
+                    ),
+                  ],
+                },
+              );
+
+              if (value === undefined) {
+                Dialogs.$warning('Prompt form cancelled.');
+                return;
+              }
+
+              Dialogs.$success(`Prompt form returned ${JSON.stringify(value)}.`);
+            },
+          },
+        ),
+        new MenuItem(
+          {
+            action: 'function',
             text: 'Show Action Notification',
             subText: 'Notification with action buttons and no modal.',
             icon: 'mdi-bell-badge-outline',

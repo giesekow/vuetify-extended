@@ -503,6 +503,7 @@ There are two dialog systems:
 `Dialogs` is stateful and static. You render its components once near the application root and then call static methods such as:
 
 - `Dialogs.$confirm(...)`
+- `Dialogs.$prompt(...)`
 - `Dialogs.$success(...)`
 - `Dialogs.$error(...)`
 - `Dialogs.$warning(...)`
