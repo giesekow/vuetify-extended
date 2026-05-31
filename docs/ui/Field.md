@@ -98,6 +98,13 @@ export interface FieldParams {
   mapApiKey?: any;
   mapOptions?: any;
   mapZoom?: number;
+  serverSearch?: boolean;
+  searchDebounceMs?: number;
+  minSearchChars?: number;
+  searchOnFocus?: boolean;
+  searchPageSize?: number;
+  cacheSearchResults?: boolean;
+  keepSelectedItemsInOptions?: boolean;
   hideMapText?: boolean;
   mapTextPageSize?: number;
   fileAccepts?: any;
@@ -144,6 +151,21 @@ export interface FieldOptions {
   modifies?: Ref<any>;
   datetimeOptions?: any|undefined;
   selectOptions?: (field: Field) => Promise<any[]|undefined>|any[]|undefined;
+  autocompleteSearch?: (
+    field: Field,
+    search: string,
+    options?: { page?: number; limit?: number; signal?: AbortSignal }
+  ) => Promise<any[] | { items: any[]; total?: number; page?: number; hasMore?: boolean } | undefined>
+    | any[]
+    | { items: any[]; total?: number; page?: number; hasMore?: boolean }
+    | undefined;
+  autocompleteResolveValue?: (
+    field: Field,
+    value: any,
+    options?: { signal?: AbortSignal }
+  ) => Promise<any | any[] | undefined> | any | any[] | undefined;
+  autocompleteNoSearchText?: (field: Field) => string|undefined;
+  autocompleteNoDataText?: (field: Field, search: string) => string|undefined;
   button?: (field: Field) => Button|undefined;
   form?: (field: Field) => Promise<Form|undefined>|Form|undefined;
   headers?: (field: Field) => Promise<any[]|undefined>|any[]|undefined;
@@ -192,6 +214,10 @@ export interface FieldOptions {
   Explicit `Master` instance to bind to.
 - `selectOptions(...)`
   Async/static selection item loader for `select`, `autocomplete`, and `listselect`.
+- `autocompleteSearch(...)`
+  Remote/server-side autocomplete loader used when `type: 'autocomplete'` and `serverSearch: true`.
+- `autocompleteResolveValue(...)`
+  Hydrates stored autocomplete value(s) back into displayable option objects, especially important when `returnObject` is false and `Master` only stores ids.
 - `headers(...)`
   Header loader for table-like widgets and the `collection` field.
 - `items(...)`
@@ -364,11 +390,59 @@ Each section below describes the stored datatype, relevant params, relevant opti
 - Widget:
   `VAutocomplete`
 - Relevant params:
-  same as `select`
+  `multiple`, `itemTitle`, `itemValue`, `idField`, `returnObject`, `clearable`, `serverSearch`, `searchDebounceMs`, `minSearchChars`, `searchOnFocus`, `searchPageSize`, `cacheSearchResults`, `keepSelectedItemsInOptions`
 - Relevant options:
-  `selectOptions(...)`
+  `selectOptions(...)`, `autocompleteSearch(...)`, `autocompleteResolveValue(...)`, `autocompleteNoSearchText(...)`, `autocompleteNoDataText(...)`
 - Notes:
   Uses `autoSelectFirst: true` internally.
+  Supports 2 modes:
+  - local mode:
+    use `selectOptions(...)`, load an item array once, and let the widget filter client-side
+  - server-search mode:
+    set `serverSearch: true` and provide `autocompleteSearch(...)`
+  In server-search mode:
+  - the widget binds search text and calls `autocompleteSearch(...)` after a debounce
+  - local filtering is disabled and the server result set is used directly
+  - `minSearchChars` controls when searching starts
+  - `searchOnFocus: true` allows loading an initial suggestion list even before typing
+  - `cacheSearchResults` keeps per-search-term results in memory for the field instance
+  - `keepSelectedItemsInOptions` keeps already selected item(s) merged into the option list so the label/chip does not disappear when the latest result page does not include them
+  Hydrating existing values:
+  - if `returnObject: true`, the stored object already contains the label data, so no extra hydration is usually needed
+  - if `returnObject` is false, `Master` usually stores only the id/value
+  - in that id-storage mode, provide `autocompleteResolveValue(...)` so edit-mode fields can fetch the selected object and show the proper display label
+  Search result contract:
+  - `autocompleteSearch(...)` may return a plain item array
+  - or `{ items, total?, page?, hasMore? }`
+  Example server-search setup:
+
+```ts
+new Field(
+  {
+    label: 'Manager',
+    storage: 'managerId',
+    type: 'autocomplete',
+    itemTitle: 'name',
+    itemValue: '_id',
+    serverSearch: true,
+    minSearchChars: 1,
+    searchDebounceMs: 250,
+  },
+  {
+    autocompleteSearch: async (_field, search, options) => ({
+      items: await Api.instance.service('people').findAll({
+        query: {
+          name: { $regex: search, $options: 'i' },
+          $limit: options?.limit || 25,
+          $paginate: false,
+        },
+      }),
+    }),
+    autocompleteResolveValue: async (_field, value) =>
+      value ? Api.instance.service('people').get(value) : undefined,
+  },
+)
+```
 
 ### `listselect`
 

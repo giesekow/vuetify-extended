@@ -163,6 +163,32 @@ async function loadPeople(query?: any) {
   return Api.instance.service('people').findAll({ query: { ...(query || {}), $paginate: false } });
 }
 
+async function searchPeople(search: string, limit = 25) {
+  const trimmed = (search || '').trim();
+
+  if (!trimmed) {
+    return loadPeople({
+      $limit: limit,
+      $sort: { name: 1 },
+      $select: ['name', 'role'],
+    });
+  }
+
+  const data =  await Api.instance.service('people').findAll({
+    query: {
+      $limit: limit,
+      $sort: { name: 1 },
+      $select: ['name', 'role'],
+      $or: [
+        { name: { $regex: trimmed, $options: 'i' } },
+        { role: { $regex: trimmed, $options: 'i' } },
+      ],
+      $paginate: false,
+    },
+  });
+  return data;
+}
+
 async function loadPeoplePage(page: number, itemsPerPage: number, query?: any) {
   return Api.instance.service('people').find({
     query: {
@@ -840,8 +866,33 @@ function buildBasicsForm() {
                 { selectOptions: () => STATUS_OPTIONS },
               ),
               new Field(
-                { label: 'Manager', storage: 'managerId', type: 'autocomplete', itemTitle: 'name', itemValue: '_id', cols: 4 },
-                { selectOptions: async () => loadPeople({ $select: ['name', 'role'] }) },
+                {
+                  label: 'Manager',
+                  storage: 'managerId',
+                  type: 'autocomplete',
+                  itemTitle: 'name',
+                  itemValue: '_id',
+                  cols: 4,
+                  serverSearch: true,
+                  minSearchChars: 1,
+                  searchDebounceMs: 250,
+                  searchOnFocus: true,
+                  hint: 'Server-side autocomplete. Type a name or role to search people.',
+                },
+                {
+                  autocompleteSearch: async (_field, search, options) => ({
+                    items: await searchPeople(search, options?.limit || 25),
+                  }),
+                  autocompleteResolveValue: async (_field, value) => {
+                    if (!value) return undefined;
+
+                    const ids = Array.isArray(value) ? value : [value];
+                    const items = await Promise.all(
+                      ids.map(async (id) => Api.instance.service('people').get(id)),
+                    );
+                    return Array.isArray(value) ? items : items[0];
+                  },
+                },
               ),
               new Field(
                 { label: 'Priority', storage: 'priority', type: 'listselect', itemTitle: 'name', itemValue: '_id', cols: 4 },

@@ -100,6 +100,13 @@ export interface FieldParams {
   mapApiKey?: any;
   mapOptions?: any;
   mapZoom?: number;
+  serverSearch?: boolean;
+  searchDebounceMs?: number;
+  minSearchChars?: number;
+  searchOnFocus?: boolean;
+  searchPageSize?: number;
+  cacheSearchResults?: boolean;
+  keepSelectedItemsInOptions?: boolean;
   hideMapText?: boolean;
   mapTextPageSize?: number;
   fileAccepts?: any;
@@ -142,6 +149,36 @@ export interface FieldOptions {
   modifies?: Ref<any>;
   datetimeOptions?: any|undefined;
   selectOptions?: (field: Field) => Promise<any[]|undefined>|any[]|undefined;
+  autocompleteSearch?: (
+    field: Field,
+    search: string,
+    options?: {
+      page?: number;
+      limit?: number;
+      signal?: AbortSignal;
+    }
+  ) => Promise<any[] | {
+    items?: any[];
+    data?: any[];
+    total?: number;
+    page?: number;
+    hasMore?: boolean;
+  } | undefined> | any[] | {
+    items?: any[];
+    data?: any[];
+    total?: number;
+    page?: number;
+    hasMore?: boolean;
+  } | undefined;
+  autocompleteResolveValue?: (
+    field: Field,
+    value: any,
+    options?: {
+      signal?: AbortSignal;
+    }
+  ) => Promise<any | any[] | undefined> | any | any[] | undefined;
+  autocompleteNoSearchText?: (field: Field) => string|undefined;
+  autocompleteNoDataText?: (field: Field, search: string) => string|undefined;
   button?: (field: Field) => Button|undefined;
   form?: (field: Field) => Promise<Form|undefined>|Form|undefined;
   headers?: (field: Field) => Promise<any[]|undefined>|any[]|undefined;
@@ -203,6 +240,16 @@ export class Field extends UIBase {
   private messageVisibleCount: Ref<number>;
   private messageContainer: Ref<HTMLElement|undefined>;
   private pendingMessageScrollRestore?: { scrollTop: number; scrollHeight: number };
+  private autocompleteSearchText: Ref<string>;
+  private autocompleteLoading: Ref<boolean>;
+  private autocompleteLoaded: Ref<boolean>;
+  private autocompletePage: Ref<number>;
+  private autocompleteTotal: Ref<number|undefined>;
+  private autocompleteHasMore: Ref<boolean>;
+  private autocompleteRequestId: Ref<number>;
+  private autocompleteCache: Map<string, { items: any[]; total?: number; page?: number; hasMore?: boolean }>;
+  private autocompleteDebounceTimer?: ReturnType<typeof setTimeout>;
+  private autocompleteAbortController?: AbortController;
 
   constructor(params?: FieldParams, options?: FieldOptions) {
     super();
@@ -236,6 +283,14 @@ export class Field extends UIBase {
     this.messageVisibleCount = this.$makeRef(0);
     this.messageContainer = this.$makeRef();
     this.pendingMessageScrollRestore = undefined;
+    this.autocompleteSearchText = this.$makeRef('');
+    this.autocompleteLoading = this.$makeRef(false);
+    this.autocompleteLoaded = this.$makeRef(false);
+    this.autocompletePage = this.$makeRef(1);
+    this.autocompleteTotal = this.$makeRef(undefined);
+    this.autocompleteHasMore = this.$makeRef(false);
+    this.autocompleteRequestId = this.$makeRef(0);
+    this.autocompleteCache = new Map();
   }
 
   static setDefault(value: FieldParams, reset?: boolean): void {
@@ -321,6 +376,9 @@ export class Field extends UIBase {
 
   setup(props: any, context: any) {
     this.$watch(this.modelValue, () => {
+      if (this.isServerAutocomplete()) {
+        void this.syncServerAutocompleteSelection();
+      }
       if (!this.changing) this.valueChanged();
     });
     if (this.options.setup) this.options.setup(this);
@@ -619,6 +677,300 @@ export class Field extends UIBase {
     }
   }
 
+  private isServerAutocomplete() {
+    return this.params.value.type === 'autocomplete' &&
+      this.params.value.serverSearch === true &&
+      !!this.options.autocompleteSearch;
+  }
+
+  private autocompleteMinSearchChars() {
+    return typeof this.params.value.minSearchChars === 'number' ? this.params.value.minSearchChars : 2;
+  }
+
+  private autocompleteDebounceMs() {
+    return typeof this.params.value.searchDebounceMs === 'number' ? this.params.value.searchDebounceMs : 300;
+  }
+
+  private autocompletePageSize() {
+    return typeof this.params.value.searchPageSize === 'number' ? this.params.value.searchPageSize : 25;
+  }
+
+  private shouldCacheAutocompleteResults() {
+    return this.params.value.cacheSearchResults !== false;
+  }
+
+  private shouldKeepSelectedAutocompleteItems() {
+    return this.params.value.keepSelectedItemsInOptions !== false;
+  }
+
+  private normalizeAutocompleteItems(value: any): any[] {
+    if (value === undefined || value === null) return [];
+    return Array.isArray(value) ? value.filter((item) => item !== undefined && item !== null) : [value];
+  }
+
+  private normalizeAutocompleteSearchResult(result: any): { items: any[]; total?: number; page?: number; hasMore?: boolean } {
+    if (Array.isArray(result)) {
+      return { items: result };
+    }
+
+    if (result?.data && Array.isArray(result?.data)) {
+      return {
+        items: result.data,
+        total: result.total,
+        page: result.page,
+        hasMore: result.hasMore,
+      };
+    }
+
+    if (result?.items && Array.isArray(result?.items)) {
+      return {
+        items: result.items,
+        total: result.total,
+        page: result.page,
+        hasMore: result.hasMore,
+      };
+    }
+
+    return { items: [] };
+  }
+
+  private autocompleteItemKey(item: any, index: number) {
+    if (item && typeof item === 'object') {
+      const itemId = Master.getItemId(item, this.params.value.itemValue || this.params.value.idField);
+      if (itemId || itemId === 0) {
+        return `id:${itemId.toString()}`;
+      }
+    }
+
+    if (item || item === 0 || item === '') {
+      return `value:${String(item)}`;
+    }
+
+    return `index:${index}`;
+  }
+
+  private mergeAutocompleteItems(baseItems: any[], extraItems: any[]) {
+    const merged: any[] = [];
+    const seen = new Set<string>();
+
+    [...(baseItems || []), ...(extraItems || [])].forEach((item, index) => {
+      if (item === undefined || item === null) {
+        return;
+      }
+
+      const key = this.autocompleteItemKey(item, index);
+      if (seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+      merged.push(item);
+    });
+
+    return merged;
+  }
+
+  private selectedAutocompleteObjects() {
+    if (!this.params.value.returnObject) {
+      return [];
+    }
+
+    return this.normalizeAutocompleteItems(this.modelValue.value).filter((item: any) => item && typeof item === 'object');
+  }
+
+  private selectedAutocompleteIds() {
+    if (this.params.value.returnObject) {
+      return [];
+    }
+
+    return this.normalizeAutocompleteItems(this.modelValue.value).filter((item: any) => item || item === 0 || item === '');
+  }
+
+  private hydratedAutocompleteSelection() {
+    if (this.params.value.returnObject) {
+      return this.selectedAutocompleteObjects();
+    }
+
+    const ids = this.selectedAutocompleteIds();
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return (this.selectItems.value || []).filter((item: any) =>
+      ids.some((id) => Master.matchesItemId(item, id, this.params.value.itemValue || this.params.value.idField)),
+    );
+  }
+
+  private retainSelectedAutocompleteItems(items: any[]) {
+    if (!this.shouldKeepSelectedAutocompleteItems()) {
+      return items;
+    }
+
+    return this.mergeAutocompleteItems(items, this.hydratedAutocompleteSelection());
+  }
+
+  private autocompleteCacheKey(search: string, page: number) {
+    return `${page}:${(search || '').trim().toLocaleLowerCase()}`;
+  }
+
+  private async syncServerAutocompleteSelection() {
+    if (!this.isServerAutocomplete()) {
+      return;
+    }
+
+    const selectedObjects = this.selectedAutocompleteObjects();
+    if (selectedObjects.length > 0) {
+      this.selectItems.value = this.mergeAutocompleteItems(this.selectItems.value, selectedObjects);
+      return;
+    }
+
+    const ids = this.selectedAutocompleteIds();
+    if (ids.length === 0) {
+      return;
+    }
+
+    if (this.hydratedAutocompleteSelection().length >= ids.length) {
+      return;
+    }
+
+    if (!this.options.autocompleteResolveValue) {
+      return;
+    }
+
+    try {
+      const resolved = await this.options.autocompleteResolveValue(this, this.params.value.multiple ? ids : ids[0], {
+        signal: this.autocompleteAbortController?.signal,
+      });
+      const resolvedItems = this.normalizeAutocompleteItems(resolved);
+      if (resolvedItems.length > 0) {
+        this.selectItems.value = this.mergeAutocompleteItems(this.selectItems.value, resolvedItems);
+      }
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        return;
+      }
+    }
+  }
+
+  private async applyServerAutocompleteSearch(search: string, page = 1, options?: { bypassMinChars?: boolean }) {
+    if (!this.isServerAutocomplete() || !this.options.autocompleteSearch) {
+      return;
+    }
+
+    const trimmedSearch = (search || '').trim();
+    const minChars = this.autocompleteMinSearchChars();
+    if (!options?.bypassMinChars && trimmedSearch.length < minChars) {
+      this.autocompleteLoaded.value = false;
+      this.autocompleteTotal.value = undefined;
+      this.autocompleteHasMore.value = false;
+      this.selectItems.value = this.shouldKeepSelectedAutocompleteItems() ? this.hydratedAutocompleteSelection() : [];
+      return;
+    }
+
+    const requestId = this.autocompleteRequestId.value + 1;
+    this.autocompleteRequestId.value = requestId;
+    this.autocompleteLoading.value = true;
+    this.autocompletePage.value = page;
+
+    if (this.autocompleteAbortController) {
+      this.autocompleteAbortController.abort();
+    }
+
+    this.autocompleteAbortController = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
+
+    const cacheKey = this.autocompleteCacheKey(trimmedSearch, page);
+
+    try {
+      let normalized: { items: any[]; total?: number; page?: number; hasMore?: boolean };
+
+      if (this.shouldCacheAutocompleteResults() && this.autocompleteCache.has(cacheKey)) {
+        normalized = this.autocompleteCache.get(cacheKey)!;
+      } else {
+        const result = await this.options.autocompleteSearch(this, trimmedSearch, {
+          page,
+          limit: this.autocompletePageSize(),
+          signal: this.autocompleteAbortController?.signal,
+        });
+        normalized = this.normalizeAutocompleteSearchResult(result);
+        if (this.shouldCacheAutocompleteResults()) {
+          this.autocompleteCache.set(cacheKey, normalized);
+        }
+      }
+
+      if (requestId !== this.autocompleteRequestId.value) {
+        return;
+      }
+
+      this.autocompleteLoaded.value = true;
+      this.autocompleteTotal.value = normalized.total;
+      this.autocompleteHasMore.value = normalized.hasMore === true;
+      this.selectItems.value = this.retainSelectedAutocompleteItems(normalized.items || []);
+      await this.syncServerAutocompleteSelection();
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        return;
+      }
+
+      if (requestId !== this.autocompleteRequestId.value) {
+        return;
+      }
+
+      this.autocompleteLoaded.value = true;
+      this.autocompleteTotal.value = 0;
+      this.autocompleteHasMore.value = false;
+      this.selectItems.value = this.shouldKeepSelectedAutocompleteItems() ? this.hydratedAutocompleteSelection() : [];
+    } finally {
+      if (requestId === this.autocompleteRequestId.value) {
+        this.autocompleteLoading.value = false;
+      }
+    }
+  }
+
+  private scheduleServerAutocompleteSearch(search: string, options?: { immediate?: boolean; bypassMinChars?: boolean }) {
+    this.autocompleteSearchText.value = search || '';
+
+    if (this.autocompleteDebounceTimer) {
+      clearTimeout(this.autocompleteDebounceTimer);
+      this.autocompleteDebounceTimer = undefined;
+    }
+
+    if (options?.immediate) {
+      void this.applyServerAutocompleteSearch(this.autocompleteSearchText.value, 1, {
+        bypassMinChars: options.bypassMinChars,
+      });
+      return;
+    }
+
+    this.autocompleteDebounceTimer = setTimeout(() => {
+      this.autocompleteDebounceTimer = undefined;
+      void this.applyServerAutocompleteSearch(this.autocompleteSearchText.value, 1, {
+        bypassMinChars: options?.bypassMinChars,
+      });
+    }, this.autocompleteDebounceMs());
+  }
+
+  private autocompleteNoDataText() {
+    const search = (this.autocompleteSearchText.value || '').trim();
+
+    if (!this.isServerAutocomplete()) {
+      return undefined;
+    }
+
+    if (search.length < this.autocompleteMinSearchChars()) {
+      if (this.options.autocompleteNoSearchText) {
+        return this.options.autocompleteNoSearchText(this);
+      }
+
+      return `Type at least ${this.autocompleteMinSearchChars()} character(s) to search`;
+    }
+
+    if (this.options.autocompleteNoDataText) {
+      return this.options.autocompleteNoDataText(this, search) || 'No matching records found';
+    }
+
+    return 'No matching records found';
+  }
+
   messageFormat(data: any): any[] {
     if (this.options.messageFormat) return this.options.messageFormat(this, data) || [];
     return data;
@@ -718,7 +1070,7 @@ export class Field extends UIBase {
       case 'select':
       case 'autocomplete':
         {
-          if (!this.optionLoaded.value) {
+          if (!this.optionLoaded.value && !(ftype === 'autocomplete' && this.isServerAutocomplete())) {
             this.optionLoaded.value = true;
             this.loadOptions();
           }
@@ -1019,13 +1371,20 @@ export class Field extends UIBase {
         itemValue: Master.resolveItemValueField(this.selectItems.value, this.params.value.itemValue || this.params.value.idField),
         readonly: this.$readonly,
         items: this.selectItems.value,
+        loading: this.autocompleteLoading.value,
         autoSelectFirst: true,
         returnObject: this.params.value.returnObject,
         multiple: this.params.value.multiple,
+        search: this.isServerAutocomplete() ? this.autocompleteSearchText.value : undefined,
+        noFilter: this.isServerAutocomplete(),
+        noDataText: this.autocompleteNoDataText(),
         class: this.params.value.class || [],
         style: this.params.value.style || {},
         rules: this.rules(),
-        "onUpdate:focused": (ev) => this.onFocusChanged(ev)
+        "onUpdate:focused": (ev) => this.onFocusChanged(ev),
+        "onUpdate:search": this.isServerAutocomplete()
+          ? (value: string) => this.scheduleServerAutocompleteSearch(value || '')
+          : undefined,
       },
     );
   }
@@ -2080,10 +2439,36 @@ export class Field extends UIBase {
     if(focused) this.handleOn('focus-gained')
     else this.handleOn('focus-lost')
     if (this.options?.focusChanged) this.options.focusChanged(this, focused)
+
+    if (focused && this.isServerAutocomplete()) {
+      void this.syncServerAutocompleteSelection();
+
+      if (this.params.value.searchOnFocus) {
+        this.scheduleServerAutocompleteSearch(this.autocompleteSearchText.value || '', {
+          immediate: true,
+          bypassMinChars: true,
+        });
+      }
+    }
   }
 
   mounted() {
     this.updateValue();
+    if (this.isServerAutocomplete()) {
+      void this.syncServerAutocompleteSelection();
+    }
+  }
+
+  destructor() {
+    if (this.autocompleteDebounceTimer) {
+      clearTimeout(this.autocompleteDebounceTimer);
+      this.autocompleteDebounceTimer = undefined;
+    }
+
+    if (this.autocompleteAbortController) {
+      this.autocompleteAbortController.abort();
+      this.autocompleteAbortController = undefined;
+    }
   }
 
 }

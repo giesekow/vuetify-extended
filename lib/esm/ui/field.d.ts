@@ -54,6 +54,13 @@ export interface FieldParams {
     mapApiKey?: any;
     mapOptions?: any;
     mapZoom?: number;
+    serverSearch?: boolean;
+    searchDebounceMs?: number;
+    minSearchChars?: number;
+    searchOnFocus?: boolean;
+    searchPageSize?: number;
+    cacheSearchResults?: boolean;
+    keepSelectedItemsInOptions?: boolean;
     hideMapText?: boolean;
     mapTextPageSize?: number;
     fileAccepts?: any;
@@ -123,6 +130,28 @@ export interface FieldOptions {
     modifies?: Ref<any>;
     datetimeOptions?: any | undefined;
     selectOptions?: (field: Field) => Promise<any[] | undefined> | any[] | undefined;
+    autocompleteSearch?: (field: Field, search: string, options?: {
+        page?: number;
+        limit?: number;
+        signal?: AbortSignal;
+    }) => Promise<any[] | {
+        items?: any[];
+        data?: any[];
+        total?: number;
+        page?: number;
+        hasMore?: boolean;
+    } | undefined> | any[] | {
+        items?: any[];
+        data?: any[];
+        total?: number;
+        page?: number;
+        hasMore?: boolean;
+    } | undefined;
+    autocompleteResolveValue?: (field: Field, value: any, options?: {
+        signal?: AbortSignal;
+    }) => Promise<any | any[] | undefined> | any | any[] | undefined;
+    autocompleteNoSearchText?: (field: Field) => string | undefined;
+    autocompleteNoDataText?: (field: Field, search: string) => string | undefined;
     button?: (field: Field) => Button | undefined;
     form?: (field: Field) => Promise<Form | undefined> | Form | undefined;
     headers?: (field: Field) => Promise<any[] | undefined> | any[] | undefined;
@@ -178,6 +207,16 @@ export declare class Field extends UIBase {
     private messageVisibleCount;
     private messageContainer;
     private pendingMessageScrollRestore?;
+    private autocompleteSearchText;
+    private autocompleteLoading;
+    private autocompleteLoaded;
+    private autocompletePage;
+    private autocompleteTotal;
+    private autocompleteHasMore;
+    private autocompleteRequestId;
+    private autocompleteCache;
+    private autocompleteDebounceTimer?;
+    private autocompleteAbortController?;
     constructor(params?: FieldParams, options?: FieldOptions);
     static setDefault(value: FieldParams, reset?: boolean): void;
     get $refs(): Refs;
@@ -214,6 +253,25 @@ export declare class Field extends UIBase {
     chartData(): Promise<any | undefined>;
     private loadChart;
     loadOptions(): Promise<void>;
+    private isServerAutocomplete;
+    private autocompleteMinSearchChars;
+    private autocompleteDebounceMs;
+    private autocompletePageSize;
+    private shouldCacheAutocompleteResults;
+    private shouldKeepSelectedAutocompleteItems;
+    private normalizeAutocompleteItems;
+    private normalizeAutocompleteSearchResult;
+    private autocompleteItemKey;
+    private mergeAutocompleteItems;
+    private selectedAutocompleteObjects;
+    private selectedAutocompleteIds;
+    private hydratedAutocompleteSelection;
+    private retainSelectedAutocompleteItems;
+    private autocompleteCacheKey;
+    private syncServerAutocompleteSelection;
+    private applyServerAutocompleteSearch;
+    private scheduleServerAutocompleteSearch;
+    private autocompleteNoDataText;
     messageFormat(data: any): any[];
     $reload(): Promise<void>;
     render(props: any, context: any): VNode | undefined;
@@ -338,6 +396,7 @@ export declare class Field extends UIBase {
     private handleOn;
     onFocusChanged(focused: any): void;
     mounted(): void;
+    destructor(): void;
 }
 export declare const $FD: {
     (params?: FieldParams, options?: FieldOptions): Field;
