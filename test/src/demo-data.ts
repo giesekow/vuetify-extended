@@ -204,6 +204,99 @@ export function createSeedStore() {
     },
   ];
 
+  const generatedNames = [
+    'Alan Turing',
+    'Margaret Hamilton',
+    'Donald Knuth',
+    'Barbara Liskov',
+    'Edsger Dijkstra',
+    'Radia Perlman',
+    'Linus Torvalds',
+    'Tim Berners-Lee',
+    'Guido van Rossum',
+    'James Gosling',
+    'Brendan Eich',
+    'Ken Thompson',
+    'Dennis Ritchie',
+    'John Carmack',
+    'Martin Fowler',
+    'Kent Beck',
+    'Bjarne Stroustrup',
+    'Anders Hejlsberg',
+  ];
+
+  const generatedRoles = [
+    'Senior Engineer',
+    'Frontend Engineer',
+    'Backend Engineer',
+    'Product Engineer',
+    'QA Lead',
+    'Technical Writer',
+    'UX Engineer',
+    'Platform Engineer',
+  ];
+
+  const generatedStatuses = ['active', 'paused', 'on-leave'];
+  const generatedPriorities = ['high', 'medium', 'low'];
+  const generatedSkills = [
+    ['typescript', 'vue'],
+    ['testing', 'api-design'],
+    ['ux', 'vuetify'],
+    ['typescript', 'testing', 'api-design'],
+    ['vue', 'vuetify', 'ux'],
+  ];
+
+  generatedNames.forEach((name, index) => {
+    const personNumber = index + 4;
+    const status = generatedStatuses[index % generatedStatuses.length];
+    const role = generatedRoles[index % generatedRoles.length];
+    const priority = generatedPriorities[index % generatedPriorities.length];
+    const skills = generatedSkills[index % generatedSkills.length];
+    const active = status === 'active';
+    const newsletter = index % 2 === 0;
+    const joinedMonth = String((index % 9) + 1).padStart(2, '0');
+    const joinedDay = String((index % 20) + 1).padStart(2, '0');
+    const meetingHour = String(9 + (index % 7)).padStart(2, '0');
+    const meetingMinute = index % 2 === 0 ? '15' : '45';
+    const colorPalette = ['#5b8def', '#2a9d8f', '#f4a261', '#e76f51', '#8d6cab'];
+
+    people.push({
+      _id: `person-${personNumber}`,
+      name,
+      email: name.toLowerCase().replace(/[^a-z]+/g, '.') + '@example.com',
+      role,
+      status,
+      managerId: index % 4 === 0 ? 'person-3' : 'person-1',
+      tags: [active ? 'delivery' : 'planning', `cohort-${(index % 3) + 1}`],
+      priority,
+      skills,
+      active,
+      newsletter,
+      age: 29 + (index % 17),
+      hourlyRate: 96 + (index * 4.5),
+      joinedDate: `2025-${joinedMonth}-${joinedDay}`,
+      meetingTime: `${meetingHour}:${meetingMinute}`,
+      appointment: `2026-04-${String((index % 18) + 1).padStart(2, '0')}T${meetingHour}:${meetingMinute}:00.000Z`,
+      bio: `${name} supports the extended demo dataset for remote autocomplete, paging, and table coverage.`,
+      favoriteColor: colorPalette[index % colorPalette.length],
+      notesHtml: `<p><strong>${name}</strong> is part of the expanded seed set used for paging and search demos.</p>`,
+      welcomeHtml: `<p>${name} can be found through autocomplete search by name or role.</p>`,
+      script: `export const owner = '${name}';\nexport const role = '${role}';`,
+      conversation: [
+        { user: name.split(' ')[0], message: `Checking autocomplete paging demo row ${personNumber}.`, color: 'grey-lighten-4', createdAt: `2026-03-${String((index % 20) + 1).padStart(2, '0')}T09:00:00.000Z` },
+      ],
+      lineItems: [
+        { _id: `line-${personNumber}-1`, name: 'Demo Review', quantity: 1 + (index % 3), price: 80 + (index * 5), total: (1 + (index % 3)) * (80 + (index * 5)), note: 'Expanded dataset support' },
+      ],
+      avatar: '',
+      resume: '',
+      teamSelection: [],
+      virtualSelection: [],
+      serverSelection: [],
+      reportSelection: [],
+    });
+  });
+
   return {
     people,
     udfs: [],

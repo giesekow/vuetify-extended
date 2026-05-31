@@ -101,12 +101,15 @@ export interface FieldParams {
   mapOptions?: any;
   mapZoom?: number;
   serverSearch?: boolean;
+  autocompleteLoadMore?: 'scroll'|'button';
   searchDebounceMs?: number;
   minSearchChars?: number;
   searchOnFocus?: boolean;
   searchPageSize?: number;
   cacheSearchResults?: boolean;
   keepSelectedItemsInOptions?: boolean;
+  autocompleteLoadMoreText?: string;
+  autocompleteLoadingMoreText?: string;
   hideMapText?: boolean;
   mapTextPageSize?: number;
   fileAccepts?: any;
@@ -242,14 +245,18 @@ export class Field extends UIBase {
   private pendingMessageScrollRestore?: { scrollTop: number; scrollHeight: number };
   private autocompleteSearchText: Ref<string>;
   private autocompleteLoading: Ref<boolean>;
+  private autocompleteLoadingMore: Ref<boolean>;
   private autocompleteLoaded: Ref<boolean>;
   private autocompletePage: Ref<number>;
   private autocompleteTotal: Ref<number|undefined>;
   private autocompleteHasMore: Ref<boolean>;
   private autocompleteRequestId: Ref<number>;
+  private autocompleteResultItems: Ref<any[]>;
+  private autocompleteResolvedItems: Ref<any[]>;
   private autocompleteCache: Map<string, { items: any[]; total?: number; page?: number; hasMore?: boolean }>;
   private autocompleteDebounceTimer?: ReturnType<typeof setTimeout>;
   private autocompleteAbortController?: AbortController;
+  private autocompleteMenuClass: string;
 
   constructor(params?: FieldParams, options?: FieldOptions) {
     super();
@@ -285,12 +292,16 @@ export class Field extends UIBase {
     this.pendingMessageScrollRestore = undefined;
     this.autocompleteSearchText = this.$makeRef('');
     this.autocompleteLoading = this.$makeRef(false);
+    this.autocompleteLoadingMore = this.$makeRef(false);
     this.autocompleteLoaded = this.$makeRef(false);
     this.autocompletePage = this.$makeRef(1);
     this.autocompleteTotal = this.$makeRef(undefined);
     this.autocompleteHasMore = this.$makeRef(false);
     this.autocompleteRequestId = this.$makeRef(0);
+    this.autocompleteResultItems = this.$makeRef([]);
+    this.autocompleteResolvedItems = this.$makeRef([]);
     this.autocompleteCache = new Map();
+    this.autocompleteMenuClass = `vef-autocomplete-menu-${Math.random().toString(36).slice(2, 10)}`;
   }
 
   static setDefault(value: FieldParams, reset?: boolean): void {
@@ -691,8 +702,24 @@ export class Field extends UIBase {
     return typeof this.params.value.searchDebounceMs === 'number' ? this.params.value.searchDebounceMs : 300;
   }
 
+  private autocompleteLoadMoreMode() {
+    return this.params.value.autocompleteLoadMore === 'button' ? 'button' : 'scroll';
+  }
+
   private autocompletePageSize() {
     return typeof this.params.value.searchPageSize === 'number' ? this.params.value.searchPageSize : 25;
+  }
+
+  private autocompleteMinScrollableItems() {
+    return Math.max(this.autocompletePageSize(), 20);
+  }
+
+  private findAutocompleteListElement() {
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+
+    return document.querySelector(`.${this.autocompleteMenuClass} .v-list`) as HTMLElement | null | undefined;
   }
 
   private shouldCacheAutocompleteResults() {
@@ -701,6 +728,22 @@ export class Field extends UIBase {
 
   private shouldKeepSelectedAutocompleteItems() {
     return this.params.value.keepSelectedItemsInOptions !== false;
+  }
+
+  private resolveAutocompleteHasMore(normalized: { items: any[]; total?: number; page?: number; hasMore?: boolean }, page: number) {
+    const resolvedPage = normalized.page || page;
+    if (normalized.hasMore === true) {
+      return true;
+    }
+
+    if (normalized.hasMore === false) {
+      return false;
+    }
+
+    return (
+      (typeof normalized.total === 'number' && ((resolvedPage * this.autocompletePageSize()) < normalized.total))
+      || ((normalized.items || []).length >= this.autocompletePageSize())
+    );
   }
 
   private normalizeAutocompleteItems(value: any): any[] {
@@ -786,6 +829,22 @@ export class Field extends UIBase {
     return this.normalizeAutocompleteItems(this.modelValue.value).filter((item: any) => item || item === 0 || item === '');
   }
 
+  private autocompleteItemMatchesValue(item: any, value: any) {
+    if (item && typeof item === 'object') {
+      return Master.matchesItemId(item, value, this.params.value.itemValue || this.params.value.idField);
+    }
+
+    return String(item) === String(value);
+  }
+
+  private filterAutocompleteItemsByValues(items: any[], values: any[]) {
+    if (!Array.isArray(items) || values.length === 0) {
+      return [];
+    }
+
+    return items.filter((item: any) => values.some((value) => this.autocompleteItemMatchesValue(item, value)));
+  }
+
   private hydratedAutocompleteSelection() {
     if (this.params.value.returnObject) {
       return this.selectedAutocompleteObjects();
@@ -796,9 +855,7 @@ export class Field extends UIBase {
       return [];
     }
 
-    return (this.selectItems.value || []).filter((item: any) =>
-      ids.some((id) => Master.matchesItemId(item, id, this.params.value.itemValue || this.params.value.idField)),
-    );
+    return this.filterAutocompleteItemsByValues(this.autocompleteResolvedItems.value || [], ids);
   }
 
   private retainSelectedAutocompleteItems(items: any[]) {
@@ -809,8 +866,64 @@ export class Field extends UIBase {
     return this.mergeAutocompleteItems(items, this.hydratedAutocompleteSelection());
   }
 
+  private refreshAutocompleteDisplayItems(items?: any[]) {
+    this.selectItems.value = this.retainSelectedAutocompleteItems(items || this.autocompleteResultItems.value || []);
+  }
+
+  private updateResolvedAutocompleteItems(items: any[]) {
+    this.autocompleteResolvedItems.value = this.mergeAutocompleteItems([], items || []);
+  }
+
+  private autocompleteDisplayItemForValue(value: any) {
+    if (value && typeof value === 'object') {
+      return value;
+    }
+
+    const candidates = [
+      ...(this.autocompleteResolvedItems.value || []),
+      ...(this.autocompleteResultItems.value || []),
+      ...(this.selectItems.value || []),
+    ];
+
+    return candidates.find((item: any) => this.autocompleteItemMatchesValue(item, value));
+  }
+
+  private autocompleteDisplayTitle(item: any) {
+    const fallback = item?.title ?? item?.value ?? item?.raw ?? '';
+    const resolvedItem = this.autocompleteDisplayItemForValue(item?.raw ?? item?.value ?? item);
+
+    if (!resolvedItem || typeof resolvedItem !== 'object') {
+      return String(resolvedItem ?? fallback ?? '');
+    }
+
+    const titleField = this.params.value.itemTitle || 'name';
+    const title = nestedProperty.get(resolvedItem, titleField);
+    return String(title ?? fallback ?? '');
+  }
+
   private autocompleteCacheKey(search: string, page: number) {
     return `${page}:${(search || '').trim().toLocaleLowerCase()}`;
+  }
+
+  private async fetchAutocompleteSearchPage(trimmedSearch: string, page: number) {
+    const cacheKey = this.autocompleteCacheKey(trimmedSearch, page);
+
+    if (this.shouldCacheAutocompleteResults() && this.autocompleteCache.has(cacheKey)) {
+      return this.autocompleteCache.get(cacheKey)!;
+    }
+
+    const result = await this.options.autocompleteSearch?.(this, trimmedSearch, {
+      page,
+      limit: this.autocompletePageSize(),
+      signal: this.autocompleteAbortController?.signal,
+    });
+    const normalized = this.normalizeAutocompleteSearchResult(result);
+
+    if (this.shouldCacheAutocompleteResults()) {
+      this.autocompleteCache.set(cacheKey, normalized);
+    }
+
+    return normalized;
   }
 
   private async syncServerAutocompleteSelection() {
@@ -820,20 +933,39 @@ export class Field extends UIBase {
 
     const selectedObjects = this.selectedAutocompleteObjects();
     if (selectedObjects.length > 0) {
-      this.selectItems.value = this.mergeAutocompleteItems(this.selectItems.value, selectedObjects);
+      this.updateResolvedAutocompleteItems(selectedObjects);
+      if (this.shouldKeepSelectedAutocompleteItems()) {
+        this.refreshAutocompleteDisplayItems();
+      }
       return;
     }
 
     const ids = this.selectedAutocompleteIds();
     if (ids.length === 0) {
+      this.updateResolvedAutocompleteItems([]);
+      if (this.shouldKeepSelectedAutocompleteItems()) {
+        this.refreshAutocompleteDisplayItems();
+      }
       return;
     }
 
-    if (this.hydratedAutocompleteSelection().length >= ids.length) {
+    const fromResults = this.filterAutocompleteItemsByValues(this.autocompleteResultItems.value || [], ids);
+    const existingResolved = this.filterAutocompleteItemsByValues(this.autocompleteResolvedItems.value || [], ids);
+    const mergedResolved = this.mergeAutocompleteItems(existingResolved, fromResults);
+
+    if (mergedResolved.length >= ids.length) {
+      this.updateResolvedAutocompleteItems(mergedResolved);
+      if (this.shouldKeepSelectedAutocompleteItems()) {
+        this.refreshAutocompleteDisplayItems();
+      }
       return;
     }
 
     if (!this.options.autocompleteResolveValue) {
+      this.updateResolvedAutocompleteItems(mergedResolved);
+      if (this.shouldKeepSelectedAutocompleteItems()) {
+        this.refreshAutocompleteDisplayItems();
+      }
       return;
     }
 
@@ -842,8 +974,9 @@ export class Field extends UIBase {
         signal: this.autocompleteAbortController?.signal,
       });
       const resolvedItems = this.normalizeAutocompleteItems(resolved);
-      if (resolvedItems.length > 0) {
-        this.selectItems.value = this.mergeAutocompleteItems(this.selectItems.value, resolvedItems);
+      this.updateResolvedAutocompleteItems(this.mergeAutocompleteItems(mergedResolved, resolvedItems));
+      if (this.shouldKeepSelectedAutocompleteItems()) {
+        this.refreshAutocompleteDisplayItems();
       }
     } catch (error: any) {
       if (error?.name === 'AbortError') {
@@ -852,7 +985,7 @@ export class Field extends UIBase {
     }
   }
 
-  private async applyServerAutocompleteSearch(search: string, page = 1, options?: { bypassMinChars?: boolean }) {
+  private async applyServerAutocompleteSearch(search: string, page = 1, options?: { bypassMinChars?: boolean; append?: boolean }) {
     if (!this.isServerAutocomplete() || !this.options.autocompleteSearch) {
       return;
     }
@@ -863,14 +996,21 @@ export class Field extends UIBase {
       this.autocompleteLoaded.value = false;
       this.autocompleteTotal.value = undefined;
       this.autocompleteHasMore.value = false;
-      this.selectItems.value = this.shouldKeepSelectedAutocompleteItems() ? this.hydratedAutocompleteSelection() : [];
+      this.autocompletePage.value = 1;
+      this.autocompleteResultItems.value = [];
+      this.refreshAutocompleteDisplayItems([]);
       return;
     }
 
     const requestId = this.autocompleteRequestId.value + 1;
     this.autocompleteRequestId.value = requestId;
-    this.autocompleteLoading.value = true;
-    this.autocompletePage.value = page;
+    const isAppend = options?.append === true;
+    if (isAppend) {
+      this.autocompleteLoadingMore.value = true;
+    } else {
+      this.autocompleteLoading.value = true;
+      this.autocompletePage.value = page;
+    }
 
     if (this.autocompleteAbortController) {
       this.autocompleteAbortController.abort();
@@ -878,22 +1018,32 @@ export class Field extends UIBase {
 
     this.autocompleteAbortController = typeof AbortController !== 'undefined' ? new AbortController() : undefined;
 
-    const cacheKey = this.autocompleteCacheKey(trimmedSearch, page);
-
     try {
-      let normalized: { items: any[]; total?: number; page?: number; hasMore?: boolean };
+      const previousCount = (this.autocompleteResultItems.value || []).length;
+      let normalized = await this.fetchAutocompleteSearchPage(trimmedSearch, page);
 
-      if (this.shouldCacheAutocompleteResults() && this.autocompleteCache.has(cacheKey)) {
-        normalized = this.autocompleteCache.get(cacheKey)!;
-      } else {
-        const result = await this.options.autocompleteSearch(this, trimmedSearch, {
-          page,
-          limit: this.autocompletePageSize(),
-          signal: this.autocompleteAbortController?.signal,
-        });
-        normalized = this.normalizeAutocompleteSearchResult(result);
-        if (this.shouldCacheAutocompleteResults()) {
-          this.autocompleteCache.set(cacheKey, normalized);
+      if (!isAppend && this.autocompleteLoadMoreMode() === 'scroll') {
+        let collectedItems = this.mergeAutocompleteItems([], normalized.items || []);
+        let currentPage = normalized.page || page;
+        let hasMore = this.resolveAutocompleteHasMore(normalized, currentPage);
+
+        while (hasMore && collectedItems.length < this.autocompleteMinScrollableItems()) {
+          const nextPage = currentPage + 1;
+          const nextNormalized = await this.fetchAutocompleteSearchPage(trimmedSearch, nextPage);
+
+          if (requestId !== this.autocompleteRequestId.value) {
+            return;
+          }
+
+          collectedItems = this.mergeAutocompleteItems(collectedItems, nextNormalized.items || []);
+          normalized = {
+            items: collectedItems,
+            total: nextNormalized.total ?? normalized.total,
+            page: nextNormalized.page || nextPage,
+            hasMore: nextNormalized.hasMore,
+          };
+          currentPage = normalized.page || nextPage;
+          hasMore = this.resolveAutocompleteHasMore(nextNormalized, currentPage);
         }
       }
 
@@ -901,11 +1051,18 @@ export class Field extends UIBase {
         return;
       }
 
+      const normalizedItems = this.mergeAutocompleteItems([], normalized.items || []);
+
       this.autocompleteLoaded.value = true;
       this.autocompleteTotal.value = normalized.total;
-      this.autocompleteHasMore.value = normalized.hasMore === true;
-      this.selectItems.value = this.retainSelectedAutocompleteItems(normalized.items || []);
+      this.autocompletePage.value = normalized.page || page;
+      this.autocompleteHasMore.value = this.resolveAutocompleteHasMore(normalized, this.autocompletePage.value);
+      this.autocompleteResultItems.value = isAppend
+        ? this.mergeAutocompleteItems(this.autocompleteResultItems.value, normalizedItems)
+        : normalizedItems;
+      this.refreshAutocompleteDisplayItems(this.autocompleteResultItems.value);
       await this.syncServerAutocompleteSelection();
+      await this.maybePrimeScrollableAutocompleteResults(previousCount, { append: isAppend });
     } catch (error: any) {
       if (error?.name === 'AbortError') {
         return;
@@ -918,10 +1075,17 @@ export class Field extends UIBase {
       this.autocompleteLoaded.value = true;
       this.autocompleteTotal.value = 0;
       this.autocompleteHasMore.value = false;
-      this.selectItems.value = this.shouldKeepSelectedAutocompleteItems() ? this.hydratedAutocompleteSelection() : [];
+      if (!isAppend) {
+        this.autocompleteResultItems.value = [];
+      }
+      this.refreshAutocompleteDisplayItems(this.autocompleteResultItems.value);
     } finally {
       if (requestId === this.autocompleteRequestId.value) {
-        this.autocompleteLoading.value = false;
+        if (isAppend) {
+          this.autocompleteLoadingMore.value = false;
+        } else {
+          this.autocompleteLoading.value = false;
+        }
       }
     }
   }
@@ -949,6 +1113,80 @@ export class Field extends UIBase {
     }, this.autocompleteDebounceMs());
   }
 
+  private canLoadMoreAutocompleteResults() {
+    return this.isServerAutocomplete()
+      && this.autocompleteHasMore.value
+      && !this.autocompleteLoading.value
+      && !this.autocompleteLoadingMore.value;
+  }
+
+  private loadMoreAutocompleteResults() {
+    if (!this.canLoadMoreAutocompleteResults()) {
+      return;
+    }
+
+    void this.applyServerAutocompleteSearch(this.autocompleteSearchText.value, this.autocompletePage.value + 1, {
+      bypassMinChars: true,
+      append: true,
+    });
+  }
+
+  private queueLoadMoreAutocompleteResults() {
+    setTimeout(() => {
+      this.loadMoreAutocompleteResults();
+    }, 0);
+  }
+
+  private async maybePrimeScrollableAutocompleteResults(previousCount: number, options?: { append?: boolean }) {
+    if (!this.isServerAutocomplete() || this.autocompleteLoadMoreMode() !== 'scroll') {
+      return;
+    }
+
+    const currentCount = (this.autocompleteResultItems.value || []).length;
+    const targetCount = this.autocompleteMinScrollableItems();
+
+    if (!this.autocompleteHasMore.value) {
+      return;
+    }
+
+    if (options?.append && currentCount <= previousCount) {
+      return;
+    }
+
+    if (currentCount < targetCount) {
+      this.queueLoadMoreAutocompleteResults();
+      return;
+    }
+
+    await nextTick();
+
+    const list = this.findAutocompleteListElement();
+    if (list && list.clientHeight > 0) {
+      if (list.scrollHeight <= list.clientHeight + 1) {
+        this.queueLoadMoreAutocompleteResults();
+      }
+      return;
+    }
+
+    this.queueLoadMoreAutocompleteResults();
+  }
+
+  private onAutocompleteListScroll(ev: Event) {
+    if (!this.isServerAutocomplete() || this.autocompleteLoadMoreMode() !== 'scroll') {
+      return;
+    }
+
+    const target = ev.target as HTMLElement | null;
+    if (!target) {
+      return;
+    }
+
+    const remaining = target.scrollHeight - (target.scrollTop + target.clientHeight);
+    if (remaining <= 32) {
+      this.loadMoreAutocompleteResults();
+    }
+  }
+
   private autocompleteNoDataText() {
     const search = (this.autocompleteSearchText.value || '').trim();
 
@@ -969,6 +1207,14 @@ export class Field extends UIBase {
     }
 
     return 'No matching records found';
+  }
+
+  private autocompleteLoadMoreText() {
+    return this.params.value.autocompleteLoadMoreText || 'Load more...';
+  }
+
+  private autocompleteLoadingMoreText() {
+    return this.params.value.autocompleteLoadingMoreText || 'Loading more...';
   }
 
   messageFormat(data: any): any[] {
@@ -1355,8 +1601,9 @@ export class Field extends UIBase {
 
   buildAutocomplete(props: any, context: any) {
     const h = this.$h;
+    const loadMoreMode = this.autocompleteLoadMoreMode();
     return h(
-      VAutocomplete,
+      VAutocomplete as any,
       {
         ...this.modelBinding(),
         autofocus: this.params.value.autofocus,
@@ -1378,14 +1625,90 @@ export class Field extends UIBase {
         search: this.isServerAutocomplete() ? this.autocompleteSearchText.value : undefined,
         noFilter: this.isServerAutocomplete(),
         noDataText: this.autocompleteNoDataText(),
+        menuProps: this.isServerAutocomplete()
+          ? {
+              contentClass: this.autocompleteMenuClass,
+            }
+          : undefined,
+        listProps: this.isServerAutocomplete() && loadMoreMode === 'scroll'
+          ? {
+              onScrollPassive: (ev: Event) => this.onAutocompleteListScroll(ev),
+            }
+          : undefined,
         class: this.params.value.class || [],
         style: this.params.value.style || {},
         rules: this.rules(),
-        "onUpdate:focused": (ev) => this.onFocusChanged(ev),
+        "onUpdate:focused": (ev: any) => this.onFocusChanged(ev),
         "onUpdate:search": this.isServerAutocomplete()
           ? (value: string) => this.scheduleServerAutocompleteSearch(value || '')
           : undefined,
       },
+      this.isServerAutocomplete() ? {
+        selection: ({ item, index }: any) => h(
+          'span',
+          {
+            class: 'v-autocomplete__selection-text',
+          },
+          [
+            this.autocompleteDisplayTitle(item),
+            this.params.value.multiple && index < ((this.modelValue.value || []).length - 1)
+              ? h(
+                  'span',
+                  {
+                    class: 'v-autocomplete__selection-comma',
+                  },
+                  ',',
+                )
+              : undefined,
+          ],
+        ),
+        'append-item': () => {
+          if (loadMoreMode === 'button' && (this.autocompleteHasMore.value || this.autocompleteLoadingMore.value)) {
+            return h(
+              'div',
+              {
+                style: {
+                  padding: '8px 12px 12px 12px',
+                  borderTop: '1px solid rgba(128,128,128,0.18)',
+                  display: 'flex',
+                  justifyContent: 'center',
+                },
+              },
+              [
+                h(
+                  VBtn,
+                  {
+                    variant: 'text',
+                    color: this.params.value.color || 'primary',
+                    disabled: this.autocompleteLoadingMore.value,
+                    prependIcon: this.autocompleteLoadingMore.value ? 'mdi-loading mdi-spin' : 'mdi-chevron-down',
+                    onClick: () => this.loadMoreAutocompleteResults(),
+                  },
+                  () => this.autocompleteLoadingMore.value ? this.autocompleteLoadingMoreText() : this.autocompleteLoadMoreText(),
+                ),
+              ],
+            );
+          }
+
+          if (loadMoreMode === 'scroll' && this.autocompleteLoadingMore.value) {
+            return h(
+              'div',
+              {
+                style: {
+                  padding: '8px 12px 12px 12px',
+                  borderTop: '1px solid rgba(128,128,128,0.18)',
+                  textAlign: 'center',
+                  fontSize: '0.9rem',
+                  opacity: 0.82,
+                },
+              },
+              this.autocompleteLoadingMoreText(),
+            );
+          }
+
+          return undefined;
+        },
+      } : undefined,
     );
   }
 

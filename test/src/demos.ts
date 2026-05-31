@@ -163,30 +163,42 @@ async function loadPeople(query?: any) {
   return Api.instance.service('people').findAll({ query: { ...(query || {}), $paginate: false } });
 }
 
-async function searchPeople(search: string, limit = 25) {
+async function searchPeople(search: string, page = 1, limit = 25) {
   const trimmed = (search || '').trim();
-
-  if (!trimmed) {
-    return loadPeople({
-      $limit: limit,
-      $sort: { name: 1 },
-      $select: ['name', 'role'],
-    });
-  }
-
-  const data =  await Api.instance.service('people').findAll({
+  const result = await Api.instance.service('people').find({
     query: {
       $limit: limit,
+      $skip: Math.max(page - 1, 0) * limit,
       $sort: { name: 1 },
       $select: ['name', 'role'],
-      $or: [
-        { name: { $regex: trimmed, $options: 'i' } },
-        { role: { $regex: trimmed, $options: 'i' } },
-      ],
-      $paginate: false,
+      ...(trimmed ? {
+        $or: [
+          { name: { $regex: trimmed, $options: 'i' } },
+          { role: { $regex: trimmed, $options: 'i' } },
+        ],
+      } : {}),
     },
   });
-  return data;
+  const items = Array.isArray(result) ? result : (result.data || []);
+  const total = Array.isArray(result) ? items.length : (result.total || items.length);
+
+  return {
+    items,
+    total,
+    page,
+    hasMore: (page * limit) < total,
+  };
+}
+
+async function resolvePeopleSelection(value: any) {
+  if (!value) return undefined;
+
+  const ids = Array.isArray(value) ? value : [value];
+  const items = await Promise.all(
+    ids.map(async (id) => Api.instance.service('people').get(id)),
+  );
+
+  return Array.isArray(value) ? items : items[0];
 }
 
 async function loadPeoplePage(page: number, itemsPerPage: number, query?: any) {
@@ -862,7 +874,7 @@ function buildBasicsForm() {
               new Field({ label: 'Tags', storage: 'tags', multiple: true, cols: 6, hint: 'Text field in combobox mode.' }),
               new Field({ label: 'Password', storage: 'password', type: 'password', cols: 6 }),
               new Field(
-                { label: 'Status', storage: 'status', type: 'select', itemTitle: 'name', itemValue: '_id', cols: 4 },
+                { label: 'Status', storage: 'status', type: 'select', itemTitle: 'name', itemValue: '_id', cols: 3 },
                 { selectOptions: () => STATUS_OPTIONS },
               ),
               new Field(
@@ -872,30 +884,52 @@ function buildBasicsForm() {
                   type: 'autocomplete',
                   itemTitle: 'name',
                   itemValue: '_id',
-                  cols: 4,
+                  cols: 6,
                   serverSearch: true,
+                  autocompleteLoadMore: 'button',
+                  autocompleteLoadMoreText: 'Show more matches...',
+                  autocompleteLoadingMoreText: 'Loading more matches...',
                   minSearchChars: 1,
                   searchDebounceMs: 250,
                   searchOnFocus: true,
-                  hint: 'Server-side autocomplete. Type a name or role to search people.',
+                  searchPageSize: 3,
+                  clearable: true,
+                  placeholder: 'Start typing a name or role',
+                  hint: 'Server-side autocomplete with an action row. Type a name or role, then use Show more matches... to page.',
                 },
                 {
-                  autocompleteSearch: async (_field, search, options) => ({
-                    items: await searchPeople(search, options?.limit || 25),
-                  }),
-                  autocompleteResolveValue: async (_field, value) => {
-                    if (!value) return undefined;
-
-                    const ids = Array.isArray(value) ? value : [value];
-                    const items = await Promise.all(
-                      ids.map(async (id) => Api.instance.service('people').get(id)),
-                    );
-                    return Array.isArray(value) ? items : items[0];
-                  },
+                  autocompleteSearch: async (_field, search, options) =>
+                    searchPeople(search, options?.page || 1, options?.limit || 25),
+                  autocompleteResolveValue: async (_field, value) => resolvePeopleSelection(value),
                 },
               ),
               new Field(
-                { label: 'Priority', storage: 'priority', type: 'listselect', itemTitle: 'name', itemValue: '_id', cols: 4 },
+                {
+                  label: 'Reviewer',
+                  storage: 'reviewerId',
+                  type: 'autocomplete',
+                  itemTitle: 'name',
+                  itemValue: '_id',
+                  cols: 6,
+                  serverSearch: true,
+                  autocompleteLoadMore: 'scroll',
+                  autocompleteLoadingMoreText: 'Loading more reviewers...',
+                  minSearchChars: 1,
+                  searchDebounceMs: 250,
+                  searchOnFocus: true,
+                  searchPageSize: 3,
+                  clearable: true,
+                  placeholder: 'Search reviewers by name or role',
+                  hint: 'Server-side autocomplete with infinite scroll. It preloads enough results to make the menu scrollable, then loads more as you scroll.',
+                },
+                {
+                  autocompleteSearch: async (_field, search, options) =>
+                    searchPeople(search, options?.page || 1, options?.limit || 25),
+                  autocompleteResolveValue: async (_field, value) => resolvePeopleSelection(value),
+                },
+              ),
+              new Field(
+                { label: 'Priority', storage: 'priority', type: 'listselect', itemTitle: 'name', itemValue: '_id', cols: 3 },
                 { selectOptions: () => PRIORITY_OPTIONS },
               ),
               new Field(

@@ -99,12 +99,15 @@ export interface FieldParams {
   mapOptions?: any;
   mapZoom?: number;
   serverSearch?: boolean;
+  autocompleteLoadMore?: 'scroll'|'button';
   searchDebounceMs?: number;
   minSearchChars?: number;
   searchOnFocus?: boolean;
   searchPageSize?: number;
   cacheSearchResults?: boolean;
   keepSelectedItemsInOptions?: boolean;
+  autocompleteLoadMoreText?: string;
+  autocompleteLoadingMoreText?: string;
   hideMapText?: boolean;
   mapTextPageSize?: number;
   fileAccepts?: any;
@@ -390,7 +393,7 @@ Each section below describes the stored datatype, relevant params, relevant opti
 - Widget:
   `VAutocomplete`
 - Relevant params:
-  `multiple`, `itemTitle`, `itemValue`, `idField`, `returnObject`, `clearable`, `serverSearch`, `searchDebounceMs`, `minSearchChars`, `searchOnFocus`, `searchPageSize`, `cacheSearchResults`, `keepSelectedItemsInOptions`
+  `multiple`, `itemTitle`, `itemValue`, `idField`, `returnObject`, `clearable`, `serverSearch`, `autocompleteLoadMore`, `searchDebounceMs`, `minSearchChars`, `searchOnFocus`, `searchPageSize`, `cacheSearchResults`, `keepSelectedItemsInOptions`, `autocompleteLoadMoreText`, `autocompleteLoadingMoreText`
 - Relevant options:
   `selectOptions(...)`, `autocompleteSearch(...)`, `autocompleteResolveValue(...)`, `autocompleteNoSearchText(...)`, `autocompleteNoDataText(...)`
 - Notes:
@@ -405,8 +408,13 @@ Each section below describes the stored datatype, relevant params, relevant opti
   - local filtering is disabled and the server result set is used directly
   - `minSearchChars` controls when searching starts
   - `searchOnFocus: true` allows loading an initial suggestion list even before typing
+  - `autocompleteLoadMore: 'button'` appends a clickable `Load more` row at the bottom of the menu
+  - `autocompleteLoadMore: 'scroll'` automatically requests the next page when the dropdown list is scrolled near the bottom
+  - `autocompleteLoadMoreText` customizes the button-mode action label. Default: `Load more...`
+  - `autocompleteLoadingMoreText` customizes the loading label used while extra pages are being fetched. Default: `Loading more...`
   - `cacheSearchResults` keeps per-search-term results in memory for the field instance
-  - `keepSelectedItemsInOptions` keeps already selected item(s) merged into the option list so the label/chip does not disappear when the latest result page does not include them
+  - `keepSelectedItemsInOptions` controls whether already selected item(s) are merged into the visible dropdown result list
+  - when `keepSelectedItemsInOptions` is `false`, the current selection still displays correctly because the field keeps a separate internal resolved-selection buffer for label rendering
   Hydrating existing values:
   - if `returnObject: true`, the stored object already contains the label data, so no extra hydration is usually needed
   - if `returnObject` is false, `Master` usually stores only the id/value
