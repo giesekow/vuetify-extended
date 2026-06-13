@@ -89,19 +89,27 @@ export interface EnvironmentTagParams extends ShellResponsiveVisibilityParams {
   color?: string;
   variant?: 'flat'|'text'|'outlined'|'plain'|'elevated'|'tonal';
   size?: 'x-small'|'small'|'default'|'large'|'x-large';
+  disabled?: boolean;
+  title?: string;
+}
+
+export interface EnvironmentTagOptions {
+  onClicked?: (widget: EnvironmentTag) => Promise<void> | void;
 }
 
 export class EnvironmentTag extends UIBase {
   private params: Ref<EnvironmentTagParams>;
+  private options: EnvironmentTagOptions;
   private static defaultParams: EnvironmentTagParams = {
     color: 'warning',
     variant: 'tonal',
     size: 'small',
   };
 
-  constructor(params?: EnvironmentTagParams) {
+  constructor(params?: EnvironmentTagParams, options?: EnvironmentTagOptions) {
     super();
     this.params = this.$makeRef({ ...EnvironmentTag.defaultParams, ...(params || {}) });
+    this.options = options || {};
   }
 
   static setDefault(value: EnvironmentTagParams, reset?: boolean) {
@@ -112,6 +120,18 @@ export class EnvironmentTag extends UIBase {
     return this.params.value;
   }
 
+  private async onClicked() {
+    if (this.$params.disabled) {
+      return;
+    }
+
+    if (this.options.onClicked) {
+      await this.options.onClicked(this);
+    }
+
+    this.emit('clicked', this);
+  }
+
   render(): VNode | undefined {
     if (!this.$params.text) return undefined;
     const h = this.$h;
@@ -120,6 +140,15 @@ export class EnvironmentTag extends UIBase {
       variant: this.$params.variant,
       size: this.$params.size,
       label: true,
+      disabled: this.$params.disabled,
+      title: this.$params.title,
+      clickable: !this.$params.disabled && !!this.options.onClicked,
+      style: {
+        cursor: !this.$params.disabled && !!this.options.onClicked ? 'pointer' : undefined,
+      },
+      onClick: () => {
+        void this.onClicked();
+      },
     }, () => this.$params.text || '');
   }
 }
@@ -552,7 +581,7 @@ export class UserArea extends UIBase {
 }
 
 export const $ATB = (params?: AppTitleBlockParams) => new AppTitleBlock(params || {});
-export const $ENV = (params?: EnvironmentTagParams) => new EnvironmentTag(params || {});
+export const $ENV = (params?: EnvironmentTagParams, options?: EnvironmentTagOptions) => new EnvironmentTag(params || {}, options || {});
 export const $STB = (params?: StatusBadgeParams) => new StatusBadge(params || {});
 export const $SIA = (params?: ShellIconActionParams, options?: ShellIconActionOptions) => new ShellIconAction(params || {}, options || {});
 export const $USR = (params?: UserAreaParams) => new UserArea(params || {});

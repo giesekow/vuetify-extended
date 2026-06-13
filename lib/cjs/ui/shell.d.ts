@@ -28,13 +28,20 @@ export interface EnvironmentTagParams extends ShellResponsiveVisibilityParams {
     color?: string;
     variant?: 'flat' | 'text' | 'outlined' | 'plain' | 'elevated' | 'tonal';
     size?: 'x-small' | 'small' | 'default' | 'large' | 'x-large';
+    disabled?: boolean;
+    title?: string;
+}
+export interface EnvironmentTagOptions {
+    onClicked?: (widget: EnvironmentTag) => Promise<void> | void;
 }
 export declare class EnvironmentTag extends UIBase {
     private params;
+    private options;
     private static defaultParams;
-    constructor(params?: EnvironmentTagParams);
+    constructor(params?: EnvironmentTagParams, options?: EnvironmentTagOptions);
     static setDefault(value: EnvironmentTagParams, reset?: boolean): void;
     get $params(): EnvironmentTagParams;
+    private onClicked;
     render(): VNode | undefined;
 }
 export interface StatusBadgeParams extends ShellResponsiveVisibilityParams {
@@ -123,7 +130,7 @@ export declare class UserArea extends UIBase {
     private initialsFromName;
 }
 export declare const $ATB: (params?: AppTitleBlockParams) => AppTitleBlock;
-export declare const $ENV: (params?: EnvironmentTagParams) => EnvironmentTag;
+export declare const $ENV: (params?: EnvironmentTagParams, options?: EnvironmentTagOptions) => EnvironmentTag;
 export declare const $STB: (params?: StatusBadgeParams) => StatusBadge;
 export declare const $SIA: (params?: ShellIconActionParams, options?: ShellIconActionOptions) => ShellIconAction;
 export declare const $USR: (params?: UserAreaParams) => UserArea;

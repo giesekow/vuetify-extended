@@ -62,6 +62,16 @@ export interface EnvironmentTagParams {
   color?: string;
   variant?: 'flat'|'text'|'outlined'|'plain'|'elevated'|'tonal';
   size?: 'x-small'|'small'|'default'|'large'|'x-large';
+  disabled?: boolean;
+  title?: string;
+}
+```
+
+### `EnvironmentTagOptions`
+
+```ts
+export interface EnvironmentTagOptions {
+  onClicked?: (widget: EnvironmentTag) => Promise<void> | void;
 }
 ```
 
@@ -155,6 +165,12 @@ export class EnvironmentTag extends UIBase {
 }
 ```
 
+Behavior:
+- renders as a `VChip`
+- when `onClicked(...)` is provided, the chip becomes clickable
+- emits `clicked` with the widget instance, so `environmentTag.on('clicked', ...)` also works
+- `disabled: true` blocks click handling
+
 ### `StatusBadge`
 
 ```ts
@@ -205,6 +221,27 @@ headerEnd: () => [
     mobileLocation: 'drawer',
   }),
 ],
+```
+
+## Clickable Environment Tag Example
+
+```ts
+const envTag = new EnvironmentTag(
+  {
+    text: 'Staging',
+    color: 'warning',
+    title: 'Open environment details',
+  },
+  {
+    onClicked: () => {
+      console.log('Environment tag clicked');
+    },
+  },
+)
+
+envTag.on('clicked', () => {
+  console.log('Clicked via event listener');
+})
 ```
 
 ## Key Methods
