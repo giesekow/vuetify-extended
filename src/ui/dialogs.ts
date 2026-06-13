@@ -1,5 +1,5 @@
-import { Ref, defineComponent, h, onMounted, onUnmounted, ref } from "vue";
-import { VBtn, VCard, VCardActions, VCardText, VCardTitle, VCol, VDialog, VLayout, VOverlay, VProgressCircular, VRow, VSnackbar, VSpacer } from 'vuetify/components';
+import { Ref, defineComponent, h, onMounted, onUnmounted, ref, watch } from "vue";
+import { VBtn, VCard, VCardActions, VCardText, VCardTitle, VCol, VDialog, VIcon, VLayout, VOverlay, VProgressCircular, VRow, VSnackbar, VSpacer } from 'vuetify/components';
 import { Master } from "../master";
 import type { DialogForm, DialogFormOptions, DialogParams } from "./dialogform";
 import type { Field, FieldOptions, FieldParams, FieldType } from "./field";
@@ -40,6 +40,11 @@ export interface DialogOptions {
   infoWindowHeight?: number|undefined;
 }
 
+export interface ImagePreviewOptions {
+  title?: string;
+  fullscreen?: boolean;
+}
+
 export class Dialogs {
 
   private static confirmDialog: Ref<boolean> = ref(false);
@@ -48,6 +53,7 @@ export class Dialogs {
   private static errorDialog: Ref<boolean> = ref(false);
   private static warningDialog: Ref<boolean> = ref(false);
   private static progressDialog: Ref<boolean> = ref(false);
+  private static imagePreviewDialog: Ref<boolean> = ref(false);
 
   private static confirmTitle: Ref<string> = ref('');
   private static confirmText: Ref<string> = ref('');
@@ -64,6 +70,9 @@ export class Dialogs {
   private static progressValue: Ref<number|undefined> = ref(0);
   private static progressText: Ref<string> = ref('');
   private static progressIndeterminate: Ref<boolean> = ref(true);
+  private static imagePreviewSrc: Ref<string> = ref('');
+  private static imagePreviewTitle: Ref<string> = ref('');
+  private static imagePreviewFullscreen: Ref<boolean> = ref(true);
 
   private static confirmYes: any = null;
   private static confirmNo: any = null;
@@ -103,11 +112,13 @@ export class Dialogs {
         const ProgressOverlay = Dialogs.progressComponent();
         const InfoDialog = Dialogs.infoComponent();
         const PromptDialog = Dialogs.promptComponent();
+        const ImagePreviewDialog = Dialogs.imagePreviewComponent();
 
         return () => [
           h(ConfirmDialog),
           h(InfoDialog),
           h(PromptDialog),
+          h(ImagePreviewDialog),
           h(SuccessSnackbar),
           h(ErrorSnackbar),
           h(WarningSnackbar),
@@ -245,6 +256,295 @@ export class Dialogs {
             key: Dialogs.promptVersion.value,
           });
         };
+      },
+    });
+  }
+
+  static imagePreviewComponent() {
+    return defineComponent({
+      name: 'VuetifyExtendedImagePreview',
+      setup: () => {
+        const scale = ref(1);
+        const translateX = ref(0);
+        const translateY = ref(0);
+        const dragging = ref(false);
+        const lastPointerX = ref(0);
+        const lastPointerY = ref(0);
+
+        const clampScale = (value: number) => Math.min(6, Math.max(0.5, value));
+        const resetView = () => {
+          scale.value = 1;
+          translateX.value = 0;
+          translateY.value = 0;
+          dragging.value = false;
+        };
+
+        const zoomTo = (nextScale: number) => {
+          scale.value = clampScale(nextScale);
+          if (scale.value <= 1) {
+            translateX.value = 0;
+            translateY.value = 0;
+          }
+        };
+
+        const zoomBy = (delta: number) => {
+          zoomTo(scale.value + delta);
+        };
+
+        const close = () => {
+          Dialogs.imagePreviewDialog.value = false;
+        };
+
+        const onPointerDown = (ev: PointerEvent) => {
+          if (scale.value <= 1) {
+            return;
+          }
+
+          dragging.value = true;
+          lastPointerX.value = ev.clientX;
+          lastPointerY.value = ev.clientY;
+        };
+
+        const onPointerMove = (ev: PointerEvent) => {
+          if (!dragging.value || scale.value <= 1) {
+            return;
+          }
+
+          translateX.value += ev.clientX - lastPointerX.value;
+          translateY.value += ev.clientY - lastPointerY.value;
+          lastPointerX.value = ev.clientX;
+          lastPointerY.value = ev.clientY;
+        };
+
+        const onPointerUp = () => {
+          dragging.value = false;
+        };
+
+        const onWheel = (ev: WheelEvent) => {
+          if (!Dialogs.imagePreviewDialog.value) {
+            return;
+          }
+
+          ev.preventDefault();
+          zoomBy(ev.deltaY < 0 ? 0.2 : -0.2);
+        };
+
+        const onKeydown = (ev: KeyboardEvent) => {
+          if (!Dialogs.imagePreviewDialog.value) {
+            return;
+          }
+
+          if (ev.key === 'Escape') {
+            ev.preventDefault();
+            close();
+            return;
+          }
+
+          if (ev.key === '+' || ev.key === '=') {
+            ev.preventDefault();
+            zoomBy(0.2);
+            return;
+          }
+
+          if (ev.key === '-') {
+            ev.preventDefault();
+            zoomBy(-0.2);
+            return;
+          }
+
+          if (ev.key === '0') {
+            ev.preventDefault();
+            resetView();
+          }
+        };
+
+        watch(
+          () => [Dialogs.imagePreviewDialog.value, Dialogs.imagePreviewSrc.value] as const,
+          ([open]) => {
+            if (open) {
+              resetView();
+            }
+          },
+          { immediate: true },
+        );
+
+        onMounted(() => {
+          window.addEventListener('pointermove', onPointerMove, true);
+          window.addEventListener('pointerup', onPointerUp, true);
+          window.addEventListener('wheel', onWheel, { passive: false, capture: true });
+          window.addEventListener('keydown', onKeydown, true);
+        });
+
+        onUnmounted(() => {
+          window.removeEventListener('pointermove', onPointerMove, true);
+          window.removeEventListener('pointerup', onPointerUp, true);
+          window.removeEventListener('wheel', onWheel, true);
+          window.removeEventListener('keydown', onKeydown, true);
+        });
+
+        return () => h(
+          VDialog,
+          {
+            modelValue: Dialogs.imagePreviewDialog.value,
+            fullscreen: Dialogs.imagePreviewFullscreen.value,
+            width: Dialogs.imagePreviewFullscreen.value ? undefined : 1100,
+            maxWidth: Dialogs.imagePreviewFullscreen.value ? undefined : '92vw',
+            persistent: false,
+            scrim: 'rgba(7, 10, 17, 0.88)',
+            transition: 'dialog-bottom-transition',
+            "onUpdate:modelValue": (v: boolean) => {
+              Dialogs.imagePreviewDialog.value = v;
+              if (!v) {
+                resetView();
+              }
+            },
+          },
+          () => h(
+            VCard,
+            {
+              style: {
+                background: '#0f172a',
+                color: 'white',
+                display: 'flex',
+                flexDirection: 'column',
+                height: Dialogs.imagePreviewFullscreen.value ? '100vh' : '88vh',
+                overflow: 'hidden',
+              },
+            },
+            () => [
+              h(
+                'div',
+                {
+                  style: {
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '12px 16px',
+                    borderBottom: '1px solid rgba(255,255,255,0.12)',
+                    background: 'rgba(15, 23, 42, 0.94)',
+                  },
+                },
+                [
+                  h(
+                    'div',
+                    {
+                      style: {
+                        fontWeight: '600',
+                        fontSize: '0.95rem',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        flex: '1 1 auto',
+                      },
+                    },
+                    Dialogs.imagePreviewTitle.value || 'Image Preview',
+                  ),
+                  h(
+                    VBtn,
+                    {
+                      icon: true,
+                      variant: 'text',
+                      color: 'white',
+                      title: 'Zoom out',
+                      onClick: () => zoomBy(-0.2),
+                    },
+                    () => h(VIcon, {}, () => 'mdi-magnify-minus-outline'),
+                  ),
+                  h(
+                    VBtn,
+                    {
+                      icon: true,
+                      variant: 'text',
+                      color: 'white',
+                      title: 'Reset zoom',
+                      onClick: () => resetView(),
+                    },
+                    () => h(VIcon, {}, () => 'mdi-fit-to-screen-outline'),
+                  ),
+                  h(
+                    VBtn,
+                    {
+                      icon: true,
+                      variant: 'text',
+                      color: 'white',
+                      title: 'Zoom in',
+                      onClick: () => zoomBy(0.2),
+                    },
+                    () => h(VIcon, {}, () => 'mdi-magnify-plus-outline'),
+                  ),
+                  h(
+                    VBtn,
+                    {
+                      icon: true,
+                      variant: 'text',
+                      color: 'white',
+                      title: 'Close preview',
+                      onClick: () => close(),
+                    },
+                    () => h(VIcon, {}, () => 'mdi-close'),
+                  ),
+                ],
+              ),
+              h(
+                'div',
+                {
+                  style: {
+                    position: 'relative',
+                    flex: '1 1 auto',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'radial-gradient(circle at top, rgba(30,41,59,0.75) 0%, rgba(2,6,23,0.96) 100%)',
+                    cursor: scale.value > 1 ? (dragging.value ? 'grabbing' : 'grab') : 'default',
+                    userSelect: 'none',
+                    touchAction: 'none',
+                  },
+                  onDblclick: () => {
+                    if (scale.value > 1) {
+                      resetView();
+                    } else {
+                      zoomTo(2);
+                    }
+                  },
+                  onPointerdown: onPointerDown,
+                },
+                [
+                  h('img', {
+                    src: Dialogs.imagePreviewSrc.value,
+                    alt: Dialogs.imagePreviewTitle.value || 'Image preview',
+                    draggable: false,
+                    style: {
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      objectFit: 'contain',
+                      transform: `translate(${translateX.value}px, ${translateY.value}px) scale(${scale.value})`,
+                      transformOrigin: 'center center',
+                      transition: dragging.value ? 'none' : 'transform 0.16s ease',
+                      boxShadow: scale.value > 1 ? '0 18px 48px rgba(0,0,0,0.38)' : '0 12px 30px rgba(0,0,0,0.26)',
+                    },
+                  }),
+                  h(
+                    'div',
+                    {
+                      style: {
+                        position: 'absolute',
+                        right: '16px',
+                        bottom: '16px',
+                        padding: '6px 10px',
+                        borderRadius: '999px',
+                        fontSize: '0.82rem',
+                        background: 'rgba(15,23,42,0.74)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                      },
+                    },
+                    `${Math.round(scale.value * 100)}%`,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
       },
     });
   }
@@ -453,7 +753,14 @@ export class Dialogs {
   }
 
   static hasBlockingDialog(): boolean {
-    return Dialogs.confirmDialog.value || Dialogs.progressDialog.value || !!Dialogs.promptForm.value;
+    return Dialogs.confirmDialog.value || Dialogs.progressDialog.value || !!Dialogs.promptForm.value || Dialogs.imagePreviewDialog.value;
+  }
+
+  static async $imagePreview(src: string, options?: ImagePreviewOptions): Promise<void> {
+    Dialogs.imagePreviewSrc.value = src;
+    Dialogs.imagePreviewTitle.value = options?.title || '';
+    Dialogs.imagePreviewFullscreen.value = options?.fullscreen !== false;
+    Dialogs.imagePreviewDialog.value = true;
   }
 
   static async $prompt(params?: PromptParams, options?: PromptOptions): Promise<any|undefined> {

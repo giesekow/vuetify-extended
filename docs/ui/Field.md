@@ -112,6 +112,7 @@ export interface FieldParams {
   mapTextPageSize?: number;
   fileAccepts?: any;
   fileMaxSize?: number;
+  previewFullscreen?: boolean;
   messageInitialCount?: number;
   messagePageSize?: number;
   bordered?: boolean;
@@ -604,11 +605,12 @@ new Field(
 - Widget:
   media upload/preview widget
 - Relevant params:
-  `fileAccepts`, `fileMaxSize`, `height`, `multiple`
+  `fileAccepts`, `fileMaxSize`, `height`, `multiple`, `previewFullscreen`
 - Relevant options:
   common hooks only
 - Notes:
   Values are usually base64/data URLs but can also be remote renderable URLs.
+  Clicking the preview opens the in-app image preview dialog. `previewFullscreen` defaults to `true`; set it to `false` to use the contained dialog mode instead.
 
 ### `document`
 

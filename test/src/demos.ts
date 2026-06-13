@@ -1007,7 +1007,7 @@ function buildRichWidgetsForm() {
                     })),
                 },
               ),
-              new Field({ label: 'Avatar Upload', storage: 'avatar', type: 'image', cols: 6, hint: 'Select an image file to test upload handling.' }),
+              new Field({ label: 'Avatar Upload', storage: 'avatar', type: 'image', cols: 6, previewFullscreen: false, hint: 'Select an image file to test upload handling. Preview opens in the in-app zoomable dialog.' }),
               new Field({ label: 'Resume Upload', storage: 'resume', type: 'document', cols: 6, hint: 'Select a PDF or document to test file conversion.' }),
             ],
           },

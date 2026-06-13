@@ -64,6 +64,7 @@ export interface FieldParams {
     keepSelectedItemsInOptions?: boolean;
     autocompleteLoadMoreText?: string;
     autocompleteLoadingMoreText?: string;
+    previewFullscreen?: boolean;
     hideMapText?: boolean;
     mapTextPageSize?: number;
     fileAccepts?: any;

@@ -34,6 +34,10 @@ export interface DialogOptions {
     infoWindowWidth?: number | undefined;
     infoWindowHeight?: number | undefined;
 }
+export interface ImagePreviewOptions {
+    title?: string;
+    fullscreen?: boolean;
+}
 export declare class Dialogs {
     private static confirmDialog;
     private static infoDialog;
@@ -41,6 +45,7 @@ export declare class Dialogs {
     private static errorDialog;
     private static warningDialog;
     private static progressDialog;
+    private static imagePreviewDialog;
     private static confirmTitle;
     private static confirmText;
     private static infoTitle;
@@ -53,6 +58,9 @@ export declare class Dialogs {
     private static progressValue;
     private static progressText;
     private static progressIndeterminate;
+    private static imagePreviewSrc;
+    private static imagePreviewTitle;
+    private static imagePreviewFullscreen;
     private static confirmYes;
     private static confirmNo;
     private static infoClose;
@@ -76,6 +84,9 @@ export declare class Dialogs {
     static promptComponent(): import("vue").DefineComponent<Readonly<{}>, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }> | undefined, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<Readonly<{}>>>, {}, {}>;
+    static imagePreviewComponent(): import("vue").DefineComponent<{}, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
+        [key: string]: any;
+    }>, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<{}>>, {}, {}>;
     static successComponent(): import("vue").DefineComponent<Readonly<{}>, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<Readonly<{}>>>, {}, {}>;
@@ -94,6 +105,7 @@ export declare class Dialogs {
         height?: number;
     }): Promise<void>;
     static hasBlockingDialog(): boolean;
+    static $imagePreview(src: string, options?: ImagePreviewOptions): Promise<void>;
     static $prompt(params?: PromptParams, options?: PromptOptions): Promise<any | undefined>;
     private static installConfirmKeydownHandler;
     private static removeConfirmKeydownHandler;

@@ -110,6 +110,7 @@ export interface FieldParams {
   keepSelectedItemsInOptions?: boolean;
   autocompleteLoadMoreText?: string;
   autocompleteLoadingMoreText?: string;
+  previewFullscreen?: boolean;
   hideMapText?: boolean;
   mapTextPageSize?: number;
   fileAccepts?: any;
@@ -2501,11 +2502,24 @@ export class Field extends UIBase {
   }
 
   private showFullscreen (data: string) {
-    const pdfWindow = window.open("")
+    const isImageData = typeof data === 'string' && (
+      data.startsWith('data:image/')
+      || /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(data)
+    );
+
+    if (isImageData) {
+      void Dialogs.$imagePreview(data, {
+        title: this.params.value.label,
+        fullscreen: this.params.value.previewFullscreen !== false,
+      });
+      return;
+    }
+
+    const pdfWindow = window.open("");
     if (!pdfWindow) return;
     pdfWindow.document.write(
-        `<iframe width='100%' height='100%' src='${data}' frameBorder="0"></iframe>`
-    )
+      `<iframe width='100%' height='100%' src='${data}' frameBorder="0"></iframe>`
+    );
   }
 
   private async loadCollectionInformation() {
