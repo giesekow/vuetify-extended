@@ -16,9 +16,9 @@ import 'ace-builds/src-noconflict/worker-javascript';
 import 'ace-builds/src-noconflict/worker-html';
 import VueApexCharts from 'vue3-apexcharts';
 import { GoogleMap, Marker, Polygon, Polyline, Circle, Rectangle, MarkerCluster, CustomMarker } from "vue3-google-map";
-import VueEditor from '@tinymce/tinymce-vue';
 import { fileToBase64, selectFile } from "../../misc";
 import { Dialogs } from "../dialogs";
+import { TiptapHtmlEditor } from "../tiptap-editor";
 
 export interface RichWidgetContext {
   $h: any;
@@ -34,7 +34,7 @@ export interface RichWidgetContext {
   chartLoaded: Ref<boolean>;
   chartOpts: Ref<any>;
   chartValue: Ref<any>;
-  renderMathInHtml: (html: string) => string;
+  renderMathInHtml: (html: string, output?: 'htmlAndMathml'|'html'|'mathml') => string;
   showPreviewFullscreen: (html: string) => void;
   registerHtmlEditor: (editor: any) => void;
   onHtmlEditorReady: (editor: any) => void;
@@ -196,23 +196,17 @@ export function buildHTMLWidget(field: RichWidgetContext): VNode {
   const h = field.$h;
 
   const editor = h(
-    VueEditor,
+    TiptapHtmlEditor,
     {
-      apiKey: 'ee1xu2usg9edqb2dtfggyg50ghsc6snlrhdkagr9425luz2a',
       modelValue: field.modelValue.value,
       readonly: field.$readonly,
       disabled: field.$readonly,
-      init: {
-        plugins: 'lists link table image emoticons autoresize',
-        setup: (editor: any) => {
-          field.registerHtmlEditor(editor);
-        }
-      },
       placeholder: field.params.value.placeholder,
       height: field.params.value.height || 300,
       class: field.params.value.class || [],
       style: field.params.value.style || {},
-      onInit: (_evt: any, editor: any) => {
+      onReady: (editor: any) => {
+        field.registerHtmlEditor(editor);
         field.onHtmlEditorReady(editor);
       },
       "onUpdate:modelValue": (v: any) => {
@@ -234,9 +228,8 @@ export function buildHTMLWidget(field: RichWidgetContext): VNode {
         <head>
           <meta charset="utf-8">
           <title>Preview</title>
-          <link rel="stylesheet" href="katex/dist/katex.min.css">
         </head>
-        <bod>${field.renderMathInHtml(field.modelValue.value ?? "")}</body>
+        <body>${field.renderMathInHtml(field.modelValue.value ?? "", 'mathml')}</body>
         </html>
         `;
       field.showPreviewFullscreen(html);
@@ -729,12 +722,7 @@ function openAttachment(field: RichWidgetContext, attachment: any) {
     return;
   }
 
-  if (attachment.url.startsWith('data:')) {
-    field.showMediaFullscreen(attachment.url);
-    return;
-  }
-
-  window.open(attachment.url, '_blank', 'noopener');
+  field.showMediaFullscreen(attachment.url);
 }
 
 function isImageAttachment(attachment: any) {
@@ -743,6 +731,17 @@ function isImageAttachment(attachment: any) {
   }
 
   return typeof attachment?.url === 'string' && attachment.url.startsWith('data:image/');
+}
+
+function isPdfAttachment(attachment: any) {
+  if (attachment?.type && typeof attachment.type === 'string') {
+    return attachment.type === 'application/pdf';
+  }
+
+  return typeof attachment?.url === 'string' && (
+    attachment.url.startsWith('data:application/pdf')
+    || /\.pdf(\?.*)?$/i.test(attachment.url)
+  );
 }
 
 function attachmentIcon(attachment: any) {

@@ -54,14 +54,166 @@
   font-weight: bold;
 }
 
-.tox.tox-tinymce-aux {
-  z-index: 4000;
-}
-
 .vef-radio-select .v-label {
   opacity: 1.0 !important;
 }
 
 .vef-check-select .v-label {
   opacity: 1.0 !important;
+}
+
+.vef-tiptap {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: rgb(var(--v-theme-surface));
+}
+
+.vef-tiptap__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  background: rgba(var(--v-theme-surface-variant), 0.18);
+}
+
+.vef-tiptap__tool-btn,
+.vef-tiptap__menu-btn {
+  min-width: unset !important;
+}
+
+.vef-tiptap__tool-btn {
+  width: 30px !important;
+  height: 30px !important;
+}
+
+.vef-tiptap__menu-btn {
+  height: 30px !important;
+  padding-inline: 6px !important;
+}
+
+.vef-tiptap__menu-btn .v-btn__content {
+  font-size: 0.74rem;
+  gap: 4px;
+}
+
+.vef-tiptap__host {
+  flex: 1;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+.vef-tiptap__host--source {
+  padding: 12px 16px 16px;
+}
+
+.vef-tiptap__content {
+  min-height: 100%;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 16px;
+  outline: none;
+  line-height: 1.6;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.vef-tiptap__content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.vef-tiptap__content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+
+.vef-tiptap__content th,
+.vef-tiptap__content td {
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  padding: 8px 10px;
+  vertical-align: top;
+}
+
+.vef-tiptap__content blockquote {
+  margin: 12px 0;
+  padding-left: 12px;
+  border-left: 4px solid rgba(var(--v-theme-primary), 0.45);
+  opacity: 0.92;
+}
+
+.vef-tiptap__content ul,
+.vef-tiptap__content ol {
+  padding-left: 22px;
+}
+
+.vef-tiptap__content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.vef-tiptap__embedded-video {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin: 16px auto;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.vef-tiptap__embedded-video-frame {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 240px;
+  border: 0;
+}
+
+.vef-tiptap__embedded-video-file {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  background: black;
+}
+
+.vef-tiptap__source textarea {
+  min-height: inherit;
+  font-family: "Fira Code", "JetBrains Mono", monospace;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.vef-tiptap__fullscreen-shell {
+  height: 100vh;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.22);
+  box-sizing: border-box;
+}
+
+.vef-tiptap__fullscreen-close {
+  position: fixed !important;
+  top: 20px;
+  right: 20px;
+  z-index: 20;
 }

@@ -356,7 +356,7 @@ The dependency list shows this package is designed for rich enterprise-style scr
 - Socket.IO
 - axios
 - Keycloak auth
-- TinyMCE
+- Tiptap
 - Ace Editor
 - ApexCharts
 - Google Maps
@@ -376,7 +376,7 @@ It covers:
 - dense tables
 - bordered tables
 - report-table behavior
-- editor z-index fixes
+- Tiptap editor layout and embedded media styling
 - select label fixes
 
 Host applications should import the CSS if they use these features.

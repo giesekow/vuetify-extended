@@ -1,4 +1,5 @@
 import { Master } from "../master";
+import { Button } from "./button";
 import type { DialogFormOptions, DialogParams } from "./dialogform";
 import type { Field, FieldOptions, FieldParams, FieldType } from "./field";
 import type { FormOptions, FormParams } from "./form";
@@ -38,6 +39,33 @@ export interface ImagePreviewOptions {
     title?: string;
     fullscreen?: boolean;
 }
+export type IframeSkin = 'inherit' | 'light' | 'dark';
+export interface IframeParams {
+    src?: string;
+    srcdoc?: string;
+    title?: string;
+    fullscreen?: boolean;
+    openUrl?: string;
+    downloadUrl?: string;
+    prependActions?: boolean;
+    skin?: IframeSkin;
+    width?: number | string;
+    maxWidth?: number | string;
+    height?: number | string;
+    scrim?: string;
+    backgroundColor?: string;
+    toolbarBackground?: string;
+    contentBackground?: string;
+    textColor?: string;
+    cardStyle?: any;
+    toolbarStyle?: any;
+    frameStyle?: any;
+}
+export interface IframeOptions {
+    actions?: (params: IframeParams) => Promise<Button[] | undefined> | Button[] | undefined;
+}
+export interface DocumentPreviewParams extends Omit<IframeParams, 'src' | 'srcdoc' | 'openUrl' | 'downloadUrl'> {
+}
 export declare class Dialogs {
     private static confirmDialog;
     private static infoDialog;
@@ -46,6 +74,7 @@ export declare class Dialogs {
     private static warningDialog;
     private static progressDialog;
     private static imagePreviewDialog;
+    private static documentPreviewDialog;
     private static confirmTitle;
     private static confirmText;
     private static infoTitle;
@@ -61,6 +90,28 @@ export declare class Dialogs {
     private static imagePreviewSrc;
     private static imagePreviewTitle;
     private static imagePreviewFullscreen;
+    private static documentPreviewSrc;
+    private static documentPreviewSrcdoc;
+    private static documentPreviewRenderSrc;
+    private static documentPreviewOpenUrl;
+    private static documentPreviewDownloadUrl;
+    private static documentPreviewPrependActions;
+    private static documentPreviewSkin;
+    private static documentPreviewWidth;
+    private static documentPreviewMaxWidth;
+    private static documentPreviewHeight;
+    private static documentPreviewScrim;
+    private static documentPreviewBackgroundColor;
+    private static documentPreviewToolbarBackground;
+    private static documentPreviewContentBackground;
+    private static documentPreviewTextColor;
+    private static documentPreviewCardStyle;
+    private static documentPreviewToolbarStyle;
+    private static documentPreviewFrameStyle;
+    private static documentPreviewActions;
+    private static documentPreviewTitle;
+    private static documentPreviewFullscreen;
+    private static documentPreviewObjectUrl?;
     private static confirmYes;
     private static confirmNo;
     private static infoClose;
@@ -87,6 +138,9 @@ export declare class Dialogs {
     static imagePreviewComponent(): import("vue").DefineComponent<{}, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<{}>>, {}, {}>;
+    static iframeComponent(): import("vue").DefineComponent<{}, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
+        [key: string]: any;
+    }>, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<{}>>, {}, {}>;
     static successComponent(): import("vue").DefineComponent<Readonly<{}>, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<Readonly<{}>>>, {}, {}>;
@@ -106,6 +160,8 @@ export declare class Dialogs {
     }): Promise<void>;
     static hasBlockingDialog(): boolean;
     static $imagePreview(src: string, options?: ImagePreviewOptions): Promise<void>;
+    static $iframe(params?: IframeParams, options?: IframeOptions): Promise<void>;
+    static $documentPreview(src: string, params?: DocumentPreviewParams, options?: IframeOptions): Promise<void>;
     static $prompt(params?: PromptParams, options?: PromptOptions): Promise<any | undefined>;
     private static installConfirmKeydownHandler;
     private static removeConfirmKeydownHandler;
@@ -118,4 +174,7 @@ export declare class Dialogs {
     private static closePrompt;
     private static createPromptMaster;
     private static clonePromptData;
+    private static createDocumentPreviewRenderSrc;
+    private static releaseDocumentPreviewObjectUrl;
+    private static decodeDataUrl;
 }

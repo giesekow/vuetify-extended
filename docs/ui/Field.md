@@ -564,13 +564,13 @@ new Field(
 - Stored datatype:
   `string`
 - Widget:
-  TinyMCE editor
+  Tiptap-based rich HTML editor
 - Relevant params:
   `placeholder`, `height`, `class`, `style`
 - Relevant options:
   none special beyond common hooks
 - Notes:
-  Supports fullscreen preview and formula rendering helpers.
+  Supports fullscreen editing, source HTML mode, formula helpers, tables, media embeds, and responsive toolbar overflow.
 
 ### `htmlview`
 
@@ -619,11 +619,12 @@ new Field(
 - Widget:
   document upload/preview widget
 - Relevant params:
-  `fileAccepts`, `fileMaxSize`, `height`, `multiple`
+  `fileAccepts`, `fileMaxSize`, `height`, `multiple`, `previewFullscreen`
 - Relevant options:
   common hooks only
 - Notes:
   Defaults accepted types to PDF-related values when not explicitly set.
+  PDF previews now open in the in-app document preview dialog. `previewFullscreen` defaults to `true`; set it to `false` for the contained dialog mode. Viewer controls such as zoom or page navigation depend on the browser's embedded PDF/document renderer.
 
 ### `messagingbox`
 

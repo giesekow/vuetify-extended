@@ -25,7 +25,7 @@ export interface RichWidgetContext {
     chartLoaded: Ref<boolean>;
     chartOpts: Ref<any>;
     chartValue: Ref<any>;
-    renderMathInHtml: (html: string) => string;
+    renderMathInHtml: (html: string, output?: 'htmlAndMathml' | 'html' | 'mathml') => string;
     showPreviewFullscreen: (html: string) => void;
     registerHtmlEditor: (editor: any) => void;
     onHtmlEditorReady: (editor: any) => void;

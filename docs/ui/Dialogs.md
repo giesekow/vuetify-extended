@@ -12,6 +12,8 @@ Global modal/dialog manager for alerts, confirms, progress, prompts, and other b
 - Confirm dialogs support keyboard shortcuts like Enter/Y for yes and Escape/N for no.
 - `$prompt(...)` uses an internal `DialogForm`, so it supports normal `Field`, `Form`, `Part`, and `Master` behavior instead of a one-off input control.
 - `$imagePreview(...)` opens an in-app zoomable image viewer with pan support.
+- `$iframe(...)` opens a generic embedded iframe dialog for browser-renderable content.
+- `$documentPreview(...)` opens an in-app document dialog for PDFs.
 
 ## Reference
 
@@ -70,6 +72,48 @@ export interface ImagePreviewOptions {
 }
 ```
 
+### `IframeParams`
+
+```ts
+export type IframeSkin = 'inherit'|'light'|'dark';
+
+export interface IframeParams {
+  src?: string;
+  srcdoc?: string;
+  title?: string;
+  fullscreen?: boolean;
+  openUrl?: string;
+  downloadUrl?: string;
+  prependActions?: boolean;
+  skin?: IframeSkin;
+  width?: number|string;
+  maxWidth?: number|string;
+  height?: number|string;
+  scrim?: string;
+  backgroundColor?: string;
+  toolbarBackground?: string;
+  contentBackground?: string;
+  textColor?: string;
+  cardStyle?: any;
+  toolbarStyle?: any;
+  frameStyle?: any;
+}
+```
+
+### `IframeOptions`
+
+```ts
+export interface IframeOptions {
+  actions?: (params: IframeParams) => Promise<Button[]|undefined>|Button[]|undefined;
+}
+```
+
+### `DocumentPreviewParams`
+
+```ts
+export interface DocumentPreviewParams extends Omit<IframeParams, 'src'|'srcdoc'|'openUrl'|'downloadUrl'> {}
+```
+
 ### `Dialogs`
 
 ```ts
@@ -85,6 +129,8 @@ export class Dialogs {
 - `static $info(text: string, title?: string, options?: { width?: number; height?: number }): Promise<void>`
 - `static $prompt(params?: PromptParams, options?: PromptOptions): Promise<any | undefined>`
 - `static $imagePreview(src: string, options?: ImagePreviewOptions): Promise<void>`
+- `static $iframe(params?: IframeParams, options?: IframeOptions): Promise<void>`
+- `static $documentPreview(src: string, params?: DocumentPreviewParams, options?: IframeOptions): Promise<void>`
 - `static $warning(text: string)`
 - `static $error(text: string)`
 - `static $success(text: string)`
@@ -213,3 +259,80 @@ Notes:
 - `fullscreen` defaults to `true`
 - this helper is designed for image content
 - non-image document preview behavior is still handled separately by the field/document flow
+
+## `$documentPreview(...)`
+
+`Dialogs.$documentPreview(...)` opens a PDF/document preview inside the app instead of using a new browser tab.
+
+Features:
+
+- embedded dialog viewer using the browser's built-in document/PDF renderer
+- powered by the same generic iframe dialog used by `Dialogs.$iframe(...)`
+- `Esc` to close
+- `Open` action for browser-tab fallback
+- `Download` action
+- supports fullscreen and contained dialog modes
+
+Example:
+
+```ts
+await Dialogs.$documentPreview(
+  pdfUrl,
+  {
+    title: 'Resume',
+    fullscreen: false,
+  },
+)
+```
+
+Notes:
+
+- `fullscreen` defaults to `true`
+- the current implementation is aimed at PDF preview
+- zoom, paging, print, and similar controls come from the embedded browser viewer when supported
+- non-previewable document types can still fall back to browser open/download flows
+
+## `$iframe(...)`
+
+`Dialogs.$iframe(...)` is the generic embedded-content preview helper used for document previews and any other browser-renderable iframe content.
+
+Features:
+
+- accepts either `src` or `srcdoc`
+- shows content inside an in-app dialog
+- supports optional `Open` and `Download` actions
+- always uses an overflow menu for toolbar actions
+- supports styling the dialog shell, toolbar, content area, and iframe surface
+
+Example:
+
+```ts
+await Dialogs.$iframe(
+  {
+    src: previewUrl,
+    title: 'Embedded Preview',
+    fullscreen: false,
+    prependActions: true,
+  },
+  {
+    actions: async (params) => [
+      new Button({ text: 'About', icon: 'mdi-information-outline' }, {
+        onClicked: () => {
+          void Dialogs.$info(`Preview title: ${params.title || 'Embedded Preview'}`);
+        },
+      }),
+    ],
+  },
+)
+```
+
+Styling notes:
+
+- `skin` defaults to `'inherit'`
+- `'inherit'` means the dialog follows the active Vuetify theme and default surface styling
+- use `skin: 'dark'` for a dark dialog shell
+- use `skin: 'light'` when you want to force a light presentation
+- `backgroundColor`, `toolbarBackground`, `contentBackground`, and `textColor` override the selected skin
+- `cardStyle`, `toolbarStyle`, and `frameStyle` provide fine-grained inline styling hooks
+- `prependActions: true` inserts custom `actions(...)` before the built-in `Open` / `Download` entries
+- when `prependActions` is omitted or `false`, built-in actions appear first and custom actions are appended

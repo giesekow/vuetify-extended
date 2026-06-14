@@ -477,13 +477,27 @@ export class Field extends UIBase {
     }
   }
 
-  private renderMathInHtml(html: string): string {
+  private renderMathInHtml(html: string, output: 'htmlAndMathml'|'html'|'mathml' = 'htmlAndMathml'): string {
     // Render display math first ($$...$$)
     if(!html) return html
+
+    html = html.replace(
+      /<(p|div)>\s*\$\$\s*<\/\1>([\s\S]*?)<(p|div)>\s*\$\$\s*<\/\3>/gi,
+      (_match, _startTag, math) => {
+        const normalizedMath = String(math)
+          .replace(/<\/(p|div)>\s*<(p|div)>/gi, '\n')
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<\/?(p|div)>/gi, '')
+          .replace(/&nbsp;/gi, ' ')
+          .trim();
+
+        return `$$${normalizedMath}$$`;
+      },
+    );
     
     html = html.replace(/\$\$([\s\S]+?)\$\$/g, (_, math) => {
       try {
-        return katex.renderToString(math, { displayMode: true });
+        return katex.renderToString(math, { displayMode: true, output });
       } catch (err) {
         return `<span class="katex-error">${math}</span>`;
       }
@@ -492,7 +506,7 @@ export class Field extends UIBase {
     // Render inline math ($...$)
     html = html.replace(/\$([^\$]+?)\$/g, (_, math) => {
       try {
-        return katex.renderToString(math, { displayMode: false });
+        return katex.renderToString(math, { displayMode: false, output });
       } catch (err) {
         return `<span class="katex-error">${math}</span>`;
       }
@@ -533,11 +547,11 @@ export class Field extends UIBase {
   }
 
   private showPreviewFullscreen(html: string) {
-    const newWindow = window.open('', '_blank')
-    if (!newWindow) return
-    newWindow.document.open()
-    newWindow.document.write(html)
-    newWindow.document.close()
+    void Dialogs.$iframe({
+      srcdoc: html,
+      title: this.params.value.label || 'Preview',
+      fullscreen: true,
+    });
   }
 
   private isEqual(value1: any, value2: any) {
@@ -1737,7 +1751,7 @@ export class Field extends UIBase {
       chartLoaded: this.chartLoaded,
       chartOpts: this.chartOpts,
       chartValue: this.chartValue,
-      renderMathInHtml: (html: string) => this.renderMathInHtml(html),
+      renderMathInHtml: (html: string, output?: 'htmlAndMathml'|'html'|'mathml') => this.renderMathInHtml(html, output),
       showPreviewFullscreen: (html: string) => this.showPreviewFullscreen(html),
       registerHtmlEditor: (editor: any) => this.registerHtmlEditor(editor),
       onHtmlEditorReady: (editor: any) => {
@@ -1873,15 +1887,23 @@ export class Field extends UIBase {
   private registerHtmlEditor(editor: any) {
     this.htmlEditor = editor;
 
-    editor.on('init', () => {
+    const onInit = () => {
       if (this.params.value.autofocus) {
         this.focusHtmlEditor();
       }
-    });
+    };
 
-    editor.on('keydown', (ev: KeyboardEvent) => {
-      this.onHtmlEditorKeydown(ev);
-    });
+    if (typeof editor?.on === 'function') {
+      editor.on('init', onInit);
+      editor.on('keydown', (ev: KeyboardEvent) => {
+        this.onHtmlEditorKeydown(ev);
+      });
+      return;
+    }
+
+    if (editor?.isReady) {
+      onInit();
+    }
   }
 
   private async onHtmlEditorKeydown(ev: KeyboardEvent) {
@@ -1911,8 +1933,8 @@ export class Field extends UIBase {
     setTimeout(() => {
       editor.focus?.();
       const body = editor.getBody?.();
-      body?.focus?.();
       if (body && typeof editor.selection?.select === 'function' && typeof editor.selection?.collapse === 'function') {
+        body.focus?.();
         editor.selection.select(body, true);
         editor.selection.collapse(true);
       }
@@ -2506,6 +2528,10 @@ export class Field extends UIBase {
       data.startsWith('data:image/')
       || /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(data)
     );
+    const isPdfData = typeof data === 'string' && (
+      data.startsWith('data:application/pdf')
+      || /\.pdf(\?.*)?$/i.test(data)
+    );
 
     if (isImageData) {
       void Dialogs.$imagePreview(data, {
@@ -2515,11 +2541,20 @@ export class Field extends UIBase {
       return;
     }
 
-    const pdfWindow = window.open("");
-    if (!pdfWindow) return;
-    pdfWindow.document.write(
-      `<iframe width='100%' height='100%' src='${data}' frameBorder="0"></iframe>`
-    );
+    if (isPdfData) {
+      void Dialogs.$documentPreview(data, {
+        title: this.params.value.label,
+        fullscreen: this.params.value.previewFullscreen !== false,
+      });
+      return;
+    }
+
+    void Dialogs.$iframe({
+      src: data,
+      title: this.params.value.label,
+      fullscreen: this.params.value.previewFullscreen !== false,
+      downloadUrl: data,
+    });
   }
 
   private async loadCollectionInformation() {

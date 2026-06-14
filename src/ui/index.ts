@@ -16,3 +16,4 @@ export * from './appmanager';
 export * from './shell';
 export * from './dashboard';
 export * from './fullscreen';
+export * from './tiptap-editor';

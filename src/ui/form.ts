@@ -354,7 +354,7 @@ export class Form extends UIBase {
       'textarea[autofocus]:not([disabled]):not([readonly])',
       '.v-field input:not([type="hidden"]):not([disabled]):not([readonly])',
       '.v-autocomplete input:not([type="hidden"]):not([disabled]):not([readonly])',
-      'iframe.tox-edit-area__iframe',
+      '.ProseMirror',
       'textarea:not([disabled]):not([readonly])',
     ];
 

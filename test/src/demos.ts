@@ -1008,7 +1008,98 @@ function buildRichWidgetsForm() {
                 },
               ),
               new Field({ label: 'Avatar Upload', storage: 'avatar', type: 'image', cols: 6, previewFullscreen: false, hint: 'Select an image file to test upload handling. Preview opens in the in-app zoomable dialog.' }),
-              new Field({ label: 'Resume Upload', storage: 'resume', type: 'document', cols: 6, hint: 'Select a PDF or document to test file conversion.' }),
+              new Field({ label: 'Resume Upload', storage: 'resume', type: 'document', cols: 6, previewFullscreen: false, hint: 'Select a PDF or document to test file conversion. PDF preview opens in the in-app document dialog.' }),
+              new Field(
+                { label: 'Iframe Action Demo', type: 'button', cols: 12, hint: 'Opens a generic iframe preview dialog with custom menu actions prepended ahead of the built-in Open/Download items.' },
+                {
+                  button: () =>
+                    new Button(
+                      { text: 'Open Iframe Action Demo', color: 'primary', variant: 'elevated', icon: 'mdi-open-in-app' },
+                      {
+                        onClicked: async () => {
+                          const previewHtml = `
+                            <html>
+                              <head>
+                                <meta charset="utf-8" />
+                                <meta name="viewport" content="width=device-width, initial-scale=1" />
+                                <style>
+                                  body {
+                                    margin: 0;
+                                    font-family: Roboto, sans-serif;
+                                    background: linear-gradient(145deg, #f8fafc 0%, #e2e8f0 100%);
+                                    color: #0f172a;
+                                  }
+                                  main {
+                                    max-width: 760px;
+                                    margin: 0 auto;
+                                    padding: 32px 24px 56px;
+                                  }
+                                  h1 {
+                                    margin: 0 0 12px;
+                                    font-size: 2rem;
+                                  }
+                                  p {
+                                    margin: 0 0 16px;
+                                    line-height: 1.6;
+                                  }
+                                  .card {
+                                    margin-top: 24px;
+                                    padding: 20px;
+                                    border-radius: 18px;
+                                    background: rgba(255,255,255,0.84);
+                                    box-shadow: 0 18px 40px rgba(15,23,42,0.12);
+                                  }
+                                </style>
+                              </head>
+                              <body>
+                                <main>
+                                  <h1>Iframe Action Demo</h1>
+                                  <p>This embedded page is rendered through <code>Dialogs.$iframe(...)</code>.</p>
+                                  <p>Open the menu in the toolbar to try custom iframe actions alongside the built-in preview actions.</p>
+                                  <div class="card">
+                                    <strong>Included custom actions</strong>
+                                    <p>Show a success toast, open a nested info dialog, and demonstrate <code>prependActions</code>.</p>
+                                  </div>
+                                </main>
+                              </body>
+                            </html>
+                          `;
+
+                          await Dialogs.$iframe(
+                            {
+                              srcdoc: previewHtml,
+                              title: 'Iframe Custom Actions',
+                              fullscreen: false,
+                              width: 980,
+                              height: '78vh',
+                              prependActions: true,
+                            },
+                            {
+                              actions: async (params) => [
+                                new Button(
+                                  { text: 'About Preview', icon: 'mdi-information-outline' },
+                                  {
+                                    onClicked: () => {
+                                      void Dialogs.$info(`Custom iframe actions are active for "${params.title || 'Preview'}".`, 'Iframe Actions');
+                                    },
+                                  },
+                                ),
+                                new Button(
+                                  { text: 'Show Success', icon: 'mdi-check-circle-outline' },
+                                  {
+                                    onClicked: () => {
+                                      Dialogs.$success('Custom iframe action executed successfully.');
+                                    },
+                                  },
+                                ),
+                              ],
+                            },
+                          );
+                        },
+                      },
+                    ),
+                },
+              ),
             ],
           },
         ),
@@ -1273,7 +1364,7 @@ function buildFullReport(params?: { objectId?: string; mode?: 'create' | 'edit' 
       mode: params?.mode || 'edit',
       horizontalAlign: 'center',
       verticalAlign: 'center',
-      //fluid: true,
+      fluid: true,
       sideButtonPosition: 'right',
     },
     {

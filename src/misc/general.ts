@@ -393,6 +393,22 @@ export const computeFunctionalCode = (code: string, options: computeFunctionOpti
 }
 
 export const renderMathInHtml = (html: string): string => {
+  if (!html) return html;
+
+  html = html.replace(
+    /<(p|div)>\s*\$\$\s*<\/\1>([\s\S]*?)<(p|div)>\s*\$\$\s*<\/\3>/gi,
+    (_match, _startTag, math) => {
+      const normalizedMath = String(math)
+        .replace(/<\/(p|div)>\s*<(p|div)>/gi, '\n')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/?(p|div)>/gi, '')
+        .replace(/&nbsp;/gi, ' ')
+        .trim();
+
+      return `$$${normalizedMath}$$`;
+    },
+  );
+
   // Render display math first ($$...$$)
   html = html.replace(/\$\$([\s\S]+?)\$\$/g, (_, math) => {
     try {
