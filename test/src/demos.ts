@@ -55,6 +55,7 @@ import {
   STATUS_OPTIONS,
 } from './demo-data';
 import { MemoryApi } from './mock-api';
+import type { Vuetify } from 'vuetify';
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
@@ -66,6 +67,85 @@ function money(value: number) {
 
 function totalLineItems(items: any[]) {
   return items.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
+}
+
+type DemoThemeMode = 'light' | 'dark';
+
+const DEMO_THEME_STORAGE_KEY = 'vuetify-extended-demo-theme';
+const DEMO_LIGHT_BACKGROUND = {
+  backgroundColor: '#dfe7ef',
+  backgroundGradient: 'linear-gradient(145deg, rgba(255,255,255,0.86) 0%, rgba(219,231,242,0.74) 45%, rgba(199,219,237,0.82) 100%)',
+  backgroundImage: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1600&q=80',
+  backgroundSize: 'cover',
+  backgroundPosition: 'center center',
+  backgroundRepeat: 'no-repeat',
+  backgroundAttachment: 'fixed',
+  backgroundOverlay: 'linear-gradient(180deg, rgba(247,250,252,0.78) 0%, rgba(237,243,248,0.88) 100%)',
+} as const;
+const DEMO_DARK_BACKGROUND = {
+  backgroundColor: '#0f172a',
+  backgroundGradient: 'linear-gradient(145deg, rgba(15,23,42,0.92) 0%, rgba(15,23,42,0.78) 45%, rgba(30,41,59,0.88) 100%)',
+  backgroundImage: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1600&q=80',
+  backgroundSize: 'cover',
+  backgroundPosition: 'center center',
+  backgroundRepeat: 'no-repeat',
+  backgroundAttachment: 'fixed',
+  backgroundOverlay: 'linear-gradient(180deg, rgba(2,6,23,0.76) 0%, rgba(15,23,42,0.88) 100%)',
+} as const;
+
+let demoThemeMode: DemoThemeMode = resolveInitialDemoTheme();
+let demoThemeApp: AppMain | undefined;
+let demoThemeVuetify: Vuetify | undefined;
+
+function resolveInitialDemoTheme(): DemoThemeMode {
+  if (typeof window === 'undefined') return 'light';
+
+  const storedTheme = window.localStorage.getItem(DEMO_THEME_STORAGE_KEY);
+  if (storedTheme === 'light' || storedTheme === 'dark') {
+    return storedTheme;
+  }
+
+  return 'light';
+}
+
+function getDemoBackgroundParams(theme: DemoThemeMode) {
+  return theme === 'dark' ? DEMO_DARK_BACKGROUND : DEMO_LIGHT_BACKGROUND;
+}
+
+export function getDemoThemeMode(): DemoThemeMode {
+  return demoThemeMode;
+}
+
+export function applyDemoTheme(theme: DemoThemeMode, options?: { notify?: boolean }) {
+  demoThemeMode = theme;
+
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(DEMO_THEME_STORAGE_KEY, theme);
+  }
+
+  const vuetifyTheme = demoThemeVuetify?.theme as any;
+  if (vuetifyTheme?.global?.name) {
+    vuetifyTheme.global.name.value = theme;
+  }
+
+  if (demoThemeApp) {
+    demoThemeApp.setParams(getDemoBackgroundParams(theme));
+    demoThemeApp.forceRender();
+  }
+
+  if (options?.notify) {
+    Notifications.$success(`Switched to ${theme} mode.`, { title: 'Theme Updated' });
+  }
+}
+
+export function toggleDemoTheme(options?: { notify?: boolean }) {
+  applyDemoTheme(demoThemeMode === 'dark' ? 'light' : 'dark', options);
+}
+
+export function registerDemoThemeRuntime(vuetify: Vuetify, app: AppMain) {
+  demoThemeVuetify = vuetify;
+  demoThemeApp = app;
+  applyDemoTheme(demoThemeMode);
 }
 
 const DEMO_MAP_API_KEY = (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY || '';
@@ -868,7 +948,7 @@ function buildBasicsForm() {
           { cols: 12, dense: true },
           {
             children: () => [
-              buildInfoLabel('Basic input coverage: text, password, select, autocomplete, list select, numeric, date, time, datetime, boolean, textarea, color, and button fields.'),
+              buildInfoLabel('Basic input coverage: text, password, select, autocomplete, list select, numeric, date, time, datetime, boolean, textarea, color, OTP, and button fields.'),
               new Field({ label: 'Name', storage: 'name', required: true, cols: 6 }),
               new Field({ label: 'Email', storage: 'email', required: true, cols: 6 }),
               new Field({ label: 'Tags', storage: 'tags', multiple: true, cols: 6, hint: 'Text field in combobox mode.' }),
@@ -946,6 +1026,23 @@ function buildBasicsForm() {
               new Field({ label: 'Bio', storage: 'bio', type: 'textarea', cols: 8 }),
               new Field({ label: 'Favorite Color', storage: 'favoriteColor', type: 'color', cols: 4 }),
               new Field(
+                {
+                  label: 'Verification OTP',
+                  storage: 'verificationOtp',
+                  type: 'otp',
+                  cols: 4,
+                  length: 6,
+                  otpType: 'number',
+                  placeholder: '0',
+                  hint: 'Uses Vuetify OTP input and emits a finish event when all digits are entered.',
+                },
+                {
+                  finished: (_field, value) => {
+                    Notifications.$success(`OTP completed with value: ${value}`, { title: 'OTP Finished' });
+                  },
+                },
+              ),
+              new Field(
                 { label: 'Action Field', type: 'button', cols: 12 },
                 {
                   button: () =>
@@ -980,7 +1077,7 @@ function buildRichWidgetsForm() {
           { cols: 12, dense: true },
           {
             children: () => [
-              buildInfoLabel('Rich widget coverage: HTML, HTML view, code editor, chart, message box, image, and document fields.'),
+              buildInfoLabel('Rich widget coverage: HTML, HTML view, code editor, chart, message box, image, document, and file-upload fields.'),
               new Field({ label: 'Notes HTML', storage: 'notesHtml', type: 'html', height: 260, cols: 12 }),
               new Field({ label: 'HTML Preview', storage: 'welcomeHtml', type: 'htmlview', cols: 12 }),
               new Field({ label: 'Script', storage: 'script', type: 'code', lang: 'javascript', height: 260, cols: 6 }),
@@ -1009,6 +1106,58 @@ function buildRichWidgetsForm() {
               ),
               new Field({ label: 'Avatar Upload', storage: 'avatar', type: 'image', cols: 6, previewFullscreen: false, hint: 'Select an image file to test upload handling. Preview opens in the in-app zoomable dialog.' }),
               new Field({ label: 'Resume Upload', storage: 'resume', type: 'document', cols: 6, previewFullscreen: false, hint: 'Select a PDF or document to test file conversion. PDF preview opens in the in-app document dialog.' }),
+              new Field(
+                {
+                  label: 'Generic Upload (Base64)',
+                  storage: 'genericUploadBase64',
+                  type: 'file-upload',
+                  cols: 6,
+                  multiple: true,
+                  clearable: true,
+                  fileAccepts: 'image/*,.pdf,application/pdf',
+                  hint: 'Uses Vuetify file upload and stores selected files as base64 strings by default.',
+                },
+                {
+                  fileSelected: (_field, payload) => {
+                    Notifications.$info(`Selected ${payload.files.length} file(s) for base64 storage.`, { title: 'File Selected' });
+                  },
+                },
+              ),
+              new Field(
+                {
+                  label: 'Generic Upload (Metadata)',
+                  storage: 'genericUploadMetadata',
+                  type: 'file-upload',
+                  cols: 6,
+                  multiple: true,
+                  clearable: true,
+                  uploadType: 'metadata',
+                  fileAccepts: 'image/*,.pdf,application/pdf',
+                  hint: 'Stores file metadata in the master while still exposing the raw File objects through fileSelected and $selectedFiles.',
+                },
+                {
+                  fileSelected: (field, payload) => {
+                    Notifications.$success(`Metadata captured for ${payload.files.map((file) => file.name).join(', ')}.`, { title: `${field.$params.label}` });
+                  },
+                },
+              ),
+              new Field(
+                {
+                  label: 'Generic Upload (File Objects)',
+                  storage: 'genericUploadFiles',
+                  type: 'file-upload',
+                  cols: 12,
+                  clearable: true,
+                  uploadType: 'file',
+                  fileAccepts: 'image/*,.pdf,application/pdf',
+                  hint: 'Stores File objects directly in the field value for same-session workflows, while still exposing them through fileSelected and $selectedFiles.',
+                },
+                {
+                  fileSelected: (_field, payload) => {
+                    Notifications.$warning(`Stored ${payload.files.length} raw File object(s) in the field value.`, { title: 'File Upload (file)' });
+                  },
+                },
+              ),
               new Field(
                 { label: 'Iframe Action Demo', type: 'button', cols: 12, hint: 'Opens a generic iframe preview dialog with custom menu actions prepended ahead of the built-in Open/Download items.' },
                 {
@@ -1743,7 +1892,7 @@ function buildNestedMenu() {
             action: 'function',
             text: 'Push Mailbox Item',
             subText: 'Adds a new mailbox item using the delegated mailbox API.',
-            icon: 'mdi-mail-plus-outline',
+            icon: 'mdi-email-plus-outline',
             color: 'secondary',
           },
           {
@@ -2024,7 +2173,7 @@ export function installDemoApi() {
 
 export function createDemoApp() {
   configureDemoMailbox();
-  return new AppMain(
+  const app = new AppMain(
     {
       ref: 'demo-app',
       title: 'Vuetify Extended Demo Workspace',
@@ -2039,14 +2188,7 @@ export function createDemoApp() {
       fabColor: 'primary',
       fabLabel: 'Quick Actions',
       fabShortcut: 'CTRL+SHIFT+F8',
-      backgroundColor: '#dfe7ef',
-      backgroundGradient: 'linear-gradient(145deg, rgba(255,255,255,0.86) 0%, rgba(219,231,242,0.74) 45%, rgba(199,219,237,0.82) 100%)',
-      backgroundImage: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1600&q=80',
-      backgroundSize: 'cover',
-      backgroundPosition: 'center center',
-      backgroundRepeat: 'no-repeat',
-      backgroundAttachment: 'fixed',
-      backgroundOverlay: 'linear-gradient(180deg, rgba(247,250,252,0.78) 0%, rgba(237,243,248,0.88) 100%)',
+      ...getDemoBackgroundParams(demoThemeMode),
     },
     {
       menu: async () => buildHomeMenu(),
@@ -2106,16 +2248,29 @@ export function createDemoApp() {
           {
             buttons: async () => [
               new Button(
-                { text: 'Mailbox', icon: 'mdi-email-outline', variant: 'text', block: true },
+                { text: 'Mailbox', icon: 'mdi-email', variant: 'text', block: true },
                 { onClicked: () => { AppManager.showUI(new MailboxView({ title: Mailbox.$title, width: 980 })); } },
               ),
               new Button(
-                { text: 'Profile', icon: 'mdi-cog', variant: 'text', block: true },
+                { text: 'Profile', icon: 'mdi-account-cog', variant: 'text', block: true },
                 { onClicked: () => { Notifications.$info('Profile action triggered from UserArea.', { title: 'User Area' }); } },
+              ),
+              new Button(
+                {
+                  text: demoThemeMode === 'dark' ? 'Switch To Light Mode' : 'Switch To Dark Mode',
+                  icon: demoThemeMode === 'dark' ? 'mdi-weather-sunny' : 'mdi-weather-night',
+                  variant: 'text',
+                  block: true,
+                },
+                {
+                  onClicked: () => {
+                    toggleDemoTheme({ notify: true });
+                  },
+                },
               ),
               { type: 'separator', label: 'Session' },
               new Button(
-                { text: 'Logout', icon: 'mdi-lock-outline', variant: 'text', block: true },
+                { text: 'Logout', icon: 'mdi-lock', variant: 'text', block: true },
                 { onClicked: async () => {
                   const confirmed = await Dialogs.$confirm('Sign out from the demo user area?');
                   if (confirmed) {
@@ -2138,4 +2293,7 @@ export function createDemoApp() {
       ],
     },
   );
+
+  demoThemeApp = app;
+  return app;
 }

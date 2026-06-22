@@ -297,7 +297,7 @@ export class Selector extends UIBase {
       VCardText,
       {},
       () => h(
-        VRow,
+        VRow as any,
         {
           justify: this.params.value.justify,
           align: this.params.value.align,

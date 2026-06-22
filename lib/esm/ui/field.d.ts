@@ -7,7 +7,21 @@ import { Report } from "./report";
 import '@vuepic/vue-datepicker/dist/main.css';
 import { OnHandler } from "./lib";
 import 'katex/dist/katex.min.css';
-export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagingbox' | 'chart' | 'viewtable' | 'map' | 'map-line' | 'map-circle' | 'map-rectangle' | 'map-polygon' | 'map-heatmap' | 'map-cluster' | 'map-geojson' | 'code' | 'color' | 'html' | 'htmlview' | 'listselect' | 'time' | 'date' | 'datetime' | 'button' | 'image' | 'document' | 'password' | 'float' | 'integer' | 'decimal' | 'collection' | 'textarea' | 'boolean' | 'table' | 'reporttable' | 'servertable';
+export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagingbox' | 'chart' | 'viewtable' | 'map' | 'map-line' | 'map-circle' | 'map-rectangle' | 'map-polygon' | 'map-heatmap' | 'map-cluster' | 'map-geojson' | 'code' | 'color' | 'html' | 'htmlview' | 'listselect' | 'otp' | 'file-upload' | 'time' | 'date' | 'datetime' | 'button' | 'image' | 'document' | 'password' | 'float' | 'integer' | 'decimal' | 'collection' | 'textarea' | 'boolean' | 'table' | 'reporttable' | 'servertable';
+export type FieldUploadType = 'base64' | 'file' | 'metadata';
+export interface UploadedFileMetadata {
+    name: string;
+    size: number;
+    type: string;
+    lastModified: number;
+    extension?: string;
+}
+export interface FieldSelectedFilePayload {
+    files: File[];
+    file?: File;
+    multiple: boolean;
+    uploadType: FieldUploadType;
+}
 export declare const fieldTypeOptions: {
     name: string;
     _id: string;
@@ -75,6 +89,9 @@ export interface FieldParams {
     default?: any;
     required?: boolean;
     decimalPlaces?: number;
+    length?: number;
+    otpType?: string;
+    uploadType?: FieldUploadType;
     collectionStart?: number;
     collectionEnd?: number;
     collectionDisableAdd?: boolean;
@@ -167,6 +184,8 @@ export interface FieldOptions {
     messageFormat?: (field: Field, data: any) => any[];
     rules?: (field: Field) => any[];
     changed?: (field: Field) => void;
+    finished?: (field: Field, value: string) => Promise<void> | void;
+    fileSelected?: (field: Field, payload: FieldSelectedFilePayload) => Promise<void> | void;
     focusChanged?: (field: Field, focused: boolean) => void;
     setup?: (field: Field) => void;
     validate?: (field: Field) => Promise<string | undefined> | string | undefined;
@@ -225,6 +244,8 @@ export declare class Field extends UIBase {
     private autocompleteDebounceTimer?;
     private autocompleteAbortController?;
     private autocompleteMenuClass;
+    private selectedFiles;
+    private fileUploadLoading;
     constructor(params?: FieldParams, options?: FieldOptions);
     static setDefault(value: FieldParams, reset?: boolean): void;
     get $refs(): Refs;
@@ -238,9 +259,25 @@ export declare class Field extends UIBase {
     get $value(): any;
     get $options(): any[];
     get $collectionForm(): Form | undefined;
+    get $selectedFiles(): File[];
     props(): never[];
     setup(props: any, context: any): void;
     private modelBinding;
+    private componentOptions;
+    private isFileUploadField;
+    private resolvedUploadType;
+    private setSelectedFiles;
+    private clearSelectedFiles;
+    private normalizedSelectedFilePayload;
+    private buildFileMetadata;
+    private normalizeFilesInput;
+    private normalizeFileUploadValue;
+    private filterValidSelectedFiles;
+    private createStoredUploadValue;
+    private uploadDisplayItems;
+    private emitFileSelected;
+    private onOtpFinished;
+    private onFileUploadChanged;
     valueChanged(newValue?: any): void;
     attachEventListeners(): void;
     removeEventListeners(): void;
@@ -352,6 +389,12 @@ export declare class Field extends UIBase {
         [key: string]: any;
     }>[];
     buildColor(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
+        [key: string]: any;
+    }>;
+    buildOtp(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
+        [key: string]: any;
+    }>;
+    buildFileUpload(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;
     buildTime(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {

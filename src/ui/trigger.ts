@@ -379,7 +379,7 @@ export class Trigger extends UIBase {
           fullHeight: true,
         },
         () => h(
-          VRow,
+          VRow as any,
           {
             class: ['fill-height'],
             align: this.outerAlign(),
@@ -494,7 +494,7 @@ export class Trigger extends UIBase {
       VCardText,
       {},
       () => h(
-        VRow,
+        VRow as any,
         {
           justify: this.params.value.justify,
           align: this.params.value.align,

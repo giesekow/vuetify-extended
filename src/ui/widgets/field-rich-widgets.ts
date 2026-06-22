@@ -377,7 +377,7 @@ export function buildMessageBoxWidget(field: RichWidgetContext): VNode {
             style: {
               minHeight: '220px',
               maxHeight: `${field.params.value.height || 340}px`,
-              background: 'rgba(var(--v-theme-surface), 0.7)',
+              background: 'color-mix(in srgb, rgb(var(--v-theme-surface)) 84%, rgb(var(--v-theme-surface-light)) 16%)',
             }
           },
           () => [
@@ -414,7 +414,7 @@ export function buildMessageBoxWidget(field: RichWidgetContext): VNode {
                   class: ['d-flex', 'align-center', 'my-4']
                 },
                 [
-                  h('div', { class: ['flex-grow-1'], style: { height: '1px', background: 'rgba(0,0,0,0.12)' } }),
+                  h('div', { class: ['flex-grow-1'], style: { height: '1px', background: 'rgba(var(--v-border-color), var(--v-border-opacity))' } }),
                   h(
                     'div',
                     {
@@ -422,7 +422,7 @@ export function buildMessageBoxWidget(field: RichWidgetContext): VNode {
                     },
                     item.label
                   ),
-                  h('div', { class: ['flex-grow-1'], style: { height: '1px', background: 'rgba(0,0,0,0.12)' } }),
+                  h('div', { class: ['flex-grow-1'], style: { height: '1px', background: 'rgba(var(--v-border-color), var(--v-border-opacity))' } }),
                 ]
               );
             }

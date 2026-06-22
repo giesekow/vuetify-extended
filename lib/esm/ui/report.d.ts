@@ -106,8 +106,8 @@ export declare class Report extends UIBase {
     setParams(params: ReportParams): void;
     get $params(): ReportParams;
     get $access(): boolean;
-    get currentStepRef(): Ref<number>;
-    get totalStepsRef(): Ref<number>;
+    get currentStepRef(): Ref<number, number>;
+    get totalStepsRef(): Ref<number, number>;
     private syncStepRefs;
     private initialize;
     private runAccess;

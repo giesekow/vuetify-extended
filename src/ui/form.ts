@@ -451,7 +451,7 @@ export class Form extends UIBase {
         () => [
           this.buildValidationSummary(),
           h(
-            VRow,
+            VRow as any,
             {
               justify: this.params.value.justify,
               align: this.params.value.align,
