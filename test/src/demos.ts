@@ -4,6 +4,8 @@ import {
   Api,
   AppMain,
   AppManager,
+  type AssetAdapter,
+  type AssetRecord,
   Button,
   Collection,
   DialogForm,
@@ -237,6 +239,61 @@ const DEMO_POLYGON_LOCATION = {
     [10.8842, 48.3598],
     [10.8842, 48.3701],
   ]],
+};
+
+const demoAssetStore = new Map<string, AssetRecord & { objectUrl?: string }>();
+let demoAssetCounter = 0;
+
+function demoAssetId() {
+  demoAssetCounter += 1;
+  return `asset-${demoAssetCounter}`;
+}
+
+function demoAssetExtension(name?: string) {
+  const value = String(name || '');
+  const parts = value.split('.');
+  return parts.length > 1 ? parts.pop()?.toLowerCase() : undefined;
+}
+
+function normalizeDemoAssetUrl(asset: AssetRecord & { objectUrl?: string }) {
+  return asset.previewUrl || asset.downloadUrl || asset.objectUrl;
+}
+
+const DEMO_ASSET_ADAPTER: AssetAdapter = {
+  upload: async (payload) => {
+    return payload.files.map((file) => {
+      const id = demoAssetId();
+      const objectUrl = URL.createObjectURL(file);
+      const record: AssetRecord & { objectUrl?: string } = {
+        id,
+        name: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        size: file.size,
+        extension: demoAssetExtension(file.name),
+        previewUrl: objectUrl,
+        downloadUrl: objectUrl,
+        objectUrl,
+      };
+
+      demoAssetStore.set(id, record);
+      return record;
+    });
+  },
+  resolve: async (payload) => {
+    return payload.ids
+      .map((id) => demoAssetStore.get(String(id)))
+      .filter((asset): asset is AssetRecord => !!asset);
+  },
+  remove: async (assets) => {
+    assets.forEach((asset) => {
+      const existing = demoAssetStore.get(String(asset.id));
+      const previewUrl = existing ? normalizeDemoAssetUrl(existing) : undefined;
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      demoAssetStore.delete(String(asset.id));
+    });
+  },
 };
 
 async function loadPeople(query?: any) {
@@ -1077,7 +1134,7 @@ function buildRichWidgetsForm() {
           { cols: 12, dense: true },
           {
             children: () => [
-              buildInfoLabel('Rich widget coverage: HTML, HTML view, code editor, chart, message box, image, document, and file-upload fields.'),
+              buildInfoLabel('Rich widget coverage: HTML, HTML view, code editor, chart, message box, direct media fields, and asset-backed uploads that store only asset ids in the master.'),
               new Field({ label: 'Notes HTML', storage: 'notesHtml', type: 'html', height: 260, cols: 12 }),
               new Field({ label: 'HTML Preview', storage: 'welcomeHtml', type: 'htmlview', cols: 12 }),
               new Field({ label: 'Script', storage: 'script', type: 'code', lang: 'javascript', height: 260, cols: 6 }),
@@ -1104,60 +1161,44 @@ function buildRichWidgetsForm() {
                     })),
                 },
               ),
-              new Field({ label: 'Avatar Upload', storage: 'avatar', type: 'image', cols: 6, previewFullscreen: false, hint: 'Select an image file to test upload handling. Preview opens in the in-app zoomable dialog.' }),
-              new Field({ label: 'Resume Upload', storage: 'resume', type: 'document', cols: 6, previewFullscreen: false, hint: 'Select a PDF or document to test file conversion. PDF preview opens in the in-app document dialog.' }),
-              new Field(
-                {
-                  label: 'Generic Upload (Base64)',
-                  storage: 'genericUploadBase64',
-                  type: 'file-upload',
-                  cols: 6,
-                  multiple: true,
-                  clearable: true,
-                  fileAccepts: 'image/*,.pdf,application/pdf',
-                  hint: 'Uses Vuetify file upload and stores selected files as base64 strings by default.',
-                },
-                {
-                  fileSelected: (_field, payload) => {
-                    Notifications.$info(`Selected ${payload.files.length} file(s) for base64 storage.`, { title: 'File Selected' });
-                  },
-                },
-              ),
-              new Field(
-                {
-                  label: 'Generic Upload (Metadata)',
-                  storage: 'genericUploadMetadata',
-                  type: 'file-upload',
-                  cols: 6,
-                  multiple: true,
-                  clearable: true,
-                  uploadType: 'metadata',
-                  fileAccepts: 'image/*,.pdf,application/pdf',
-                  hint: 'Stores file metadata in the master while still exposing the raw File objects through fileSelected and $selectedFiles.',
-                },
-                {
-                  fileSelected: (field, payload) => {
-                    Notifications.$success(`Metadata captured for ${payload.files.map((file) => file.name).join(', ')}.`, { title: `${field.$params.label}` });
-                  },
-                },
-              ),
-              new Field(
-                {
-                  label: 'Generic Upload (File Objects)',
-                  storage: 'genericUploadFiles',
-                  type: 'file-upload',
-                  cols: 12,
-                  clearable: true,
-                  uploadType: 'file',
-                  fileAccepts: 'image/*,.pdf,application/pdf',
-                  hint: 'Stores File objects directly in the field value for same-session workflows, while still exposing them through fileSelected and $selectedFiles.',
-                },
-                {
-                  fileSelected: (_field, payload) => {
-                    Notifications.$warning(`Stored ${payload.files.length} raw File object(s) in the field value.`, { title: 'File Upload (file)' });
-                  },
-                },
-              ),
+              new Field({ label: 'Avatar Upload (Direct)', storage: 'avatar', type: 'image', cols: 6, previewFullscreen: false, hint: 'Direct mode converts the selected image into base64 and stores it directly in the master.' }),
+              new Field({ label: 'Resume Upload (Direct)', storage: 'resume', type: 'document', cols: 6, previewFullscreen: false, hint: 'Direct mode converts the selected document into base64 and stores it directly in the master.' }),
+              new Field({
+                label: 'Asset Avatar Upload',
+                storage: 'assetAvatarId',
+                type: 'image',
+                cols: 6,
+                previewFullscreen: false,
+                assetMode: true,
+                assetAdapter: DEMO_ASSET_ADAPTER,
+                removeAssetOnClear: true,
+                hint: 'Asset mode uploads immediately through the demo adapter and stores only the asset id in the master.',
+              }),
+              new Field({
+                label: 'Asset Resume Upload',
+                storage: 'assetResumeId',
+                type: 'document',
+                cols: 6,
+                previewFullscreen: false,
+                assetMode: true,
+                assetAdapter: DEMO_ASSET_ADAPTER,
+                autoUpload: false,
+                removeAssetOnClear: true,
+                hint: 'Stages the document locally first. Use Upload to persist it, or Clear Selected to discard the pending file before upload.',
+              }),
+              new Field({
+                label: 'Shared Attachments',
+                storage: 'attachmentAssetIds',
+                type: 'file-upload',
+                cols: 12,
+                multiple: true,
+                assetMode: true,
+                assetAdapter: DEMO_ASSET_ADAPTER,
+                autoUpload: false,
+                removeAssetOnClear: true,
+                fileAccepts: 'image/*,.pdf,.doc,.docx,.txt',
+                hint: 'Generic file-upload in asset mode. Before upload, the selected File objects are staged on the field. After upload, the master stores an array of asset ids.',
+              }),
               new Field(
                 { label: 'Iframe Action Demo', type: 'button', cols: 12, hint: 'Opens a generic iframe preview dialog with custom menu actions prepended ahead of the built-in Open/Download items.' },
                 {

@@ -4,7 +4,7 @@ import { VAutocomplete, VBtn, VCard, VCheckboxBtn, VCol, VColorInput, VCombobox,
 import { Master } from "../master";
 import { Button } from "./button";
 import * as webtex from 'webtex';
-import { fileToBase64, SimpleDate, SimpleTime, sleep } from "../misc";
+import { fileToBase64, selectFile, SimpleDate, SimpleTime, sleep } from "../misc";
 import { VDataTable, VDataTableFooter } from "vuetify/components";
 import Datepicker from '@vuepic/vue-datepicker';
 import { Form } from "./form";
@@ -29,6 +29,40 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
                         'collection'|'textarea'|'boolean'|'table'|'reporttable'|'servertable';
 
 export type FieldUploadType = 'base64'|'file'|'metadata';
+
+export interface AssetRecord {
+  id: string;
+  name: string;
+  mimeType?: string;
+  size?: number;
+  previewUrl?: string;
+  downloadUrl?: string;
+  thumbnailUrl?: string;
+  extension?: string;
+  [key: string]: any;
+}
+
+export interface AssetFieldUploadPayload {
+  files: File[];
+  file?: File;
+  multiple: boolean;
+  fieldType: 'image' | 'document' | 'file-upload';
+}
+
+export interface AssetResolvePayload {
+  ids: string[];
+  multiple: boolean;
+  fieldType: 'image' | 'document' | 'file-upload';
+}
+
+export interface AssetAdapter {
+  upload: (payload: AssetFieldUploadPayload, field: Field) => Promise<AssetRecord[]>;
+  resolve: (payload: AssetResolvePayload, field: Field) => Promise<AssetRecord[]>;
+  remove?: (assets: AssetRecord[], field: Field) => Promise<void>;
+  replace?: (asset: AssetRecord, file: File, field: Field) => Promise<AssetRecord>;
+  getPreviewUrl?: (asset: AssetRecord, field: Field) => Promise<string> | string;
+  getDownloadUrl?: (asset: AssetRecord, field: Field) => Promise<string> | string;
+}
 
 export interface UploadedFileMetadata {
   name: string;
@@ -68,7 +102,7 @@ export const fieldTypeOptions = [
   {name: 'Text', _id: 'text', id: 'text'}, {name: 'Select', _id: 'select', id: 'select'}, {name: 'Autocomplete', _id: 'autocomplete', id: 'autocomplete'},
   {name: 'Label', _id: 'label', id: 'label'}, {name: 'Messaging Box', _id: 'messagingbox', id: 'messagingbox'}, {name: 'Chart', _id: 'chart', id: 'chart'},
   {name: 'View Table', _id: 'viewtable', id: 'viewtable'}, {name: 'Map', _id: 'map', id: 'map'}, {name: 'Map Line', _id: 'map-line', id: 'map-line'}, {name: 'Map Circle', _id: 'map-circle', id: 'map-circle'}, {name: 'Map Rectangle', _id: 'map-rectangle', id: 'map-rectangle'}, {name: 'Map Polygon', _id: 'map-polygon', id: 'map-polygon'}, {name: 'Map Heatmap', _id: 'map-heatmap', id: 'map-heatmap'}, {name: 'Map Cluster', _id: 'map-cluster', id: 'map-cluster'}, {name: 'Map GeoJSON', _id: 'map-geojson', id: 'map-geojson'}, {name: 'Code', _id: 'code', id: 'code'},
-  {name: 'Color', _id: 'color', id: 'color'}, {name: 'HTML', _id: 'html', id: 'html'}, {name: 'Time', _id: 'time', id: 'time'},
+  {name: 'Color', _id: 'color', id: 'color'}, {name: 'HTML', _id: 'html', id: 'html'}, {name: 'HTML View', _id: 'htmlview', id: 'htmlview'}, {name: 'Time', _id: 'time', id: 'time'},
   {name: 'Date', _id: 'date', id: 'date'}, {name: 'Datetime', _id: 'datetime', id: 'datetime'}, {name: 'Button', _id: 'button', id: 'button'},
   {name: 'Image', _id: 'image', id: 'image'}, {name: 'Document', _id: 'document', id: 'document'}, {name: 'Password', _id: 'password', id: 'password'},
   {name: 'Float', _id: 'float', id: 'float'}, {name: 'Integer', _id: 'integer', id: 'integer'}, {name: 'Decimal', _id: 'decimal', id: 'decimal'},
@@ -88,7 +122,7 @@ export interface FieldParams {
   readonly?: boolean;
   invisible?: boolean;
   idField?: string;
-  lang?: 'html'|'json'|'javascript'|'python'|'python'|'text'|'ejs'|'latex';
+  lang?: 'html'|'json'|'javascript'|'python'|'text'|'ejs'|'latex';
   codeTheme?: 'chrome'|'xcode';
   hint?: string;
   icon?: string;
@@ -131,8 +165,19 @@ export interface FieldParams {
   previewFullscreen?: boolean;
   hideMapText?: boolean;
   mapTextPageSize?: number;
+  uploadType?: FieldUploadType;
   fileAccepts?: any;
   fileMaxSize?: number; // In KB
+  assetMode?: boolean;
+  assetAdapter?: AssetAdapter;
+  assetIdField?: string;
+  assetPreviewField?: string;
+  assetDownloadField?: string;
+  assetNameField?: string;
+  assetMimeTypeField?: string;
+  assetSizeField?: string;
+  autoUpload?: boolean;
+  removeAssetOnClear?: boolean;
   messageInitialCount?: number;
   messagePageSize?: number;
   bordered?: boolean;
@@ -141,7 +186,6 @@ export interface FieldParams {
   decimalPlaces?: number;
   length?: number;
   otpType?: string;
-  uploadType?: FieldUploadType;
   collectionStart?: number;
   collectionEnd?: number;
   collectionDisableAdd?: boolean;
@@ -215,8 +259,11 @@ export interface FieldOptions {
   messageFormat?: (field: Field, data: any) => any[];
   rules?: (field: Field) => any[];
   changed?: (field: Field) => void;
-  finished?: (field: Field, value: string) => Promise<void>|void;
   fileSelected?: (field: Field, payload: FieldSelectedFilePayload) => Promise<void>|void;
+  assetUploaded?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
+  assetsResolved?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
+  assetRemoved?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
+  finished?: (field: Field, value: string) => Promise<void>|void;
   focusChanged?: (field: Field, focused: boolean) => void;
   setup?: (field: Field) => void;
   validate?: (field: Field) => Promise<string|undefined>|string|undefined;
@@ -282,6 +329,10 @@ export class Field extends UIBase {
   private autocompleteAbortController?: AbortController;
   private autocompleteMenuClass: string;
   private selectedFiles: Ref<File[]>;
+  private resolvedAssets: Ref<AssetRecord[]>;
+  private assetResolveRequestId: Ref<number>;
+  private assetUploadPending: Ref<boolean>;
+  private assetUploading: Ref<boolean>;
   private fileUploadLoading: Ref<boolean>;
 
   constructor(params?: FieldParams, options?: FieldOptions) {
@@ -329,6 +380,10 @@ export class Field extends UIBase {
     this.autocompleteCache = new Map();
     this.autocompleteMenuClass = `vef-autocomplete-menu-${Math.random().toString(36).slice(2, 10)}`;
     this.selectedFiles = this.$makeRef([]);
+    this.resolvedAssets = this.$makeRef([]);
+    this.assetResolveRequestId = this.$makeRef(0);
+    this.assetUploadPending = this.$makeRef(false);
+    this.assetUploading = this.$makeRef(false);
     this.fileUploadLoading = this.$makeRef(false);
   }
 
@@ -413,12 +468,23 @@ export class Field extends UIBase {
     return [...(this.selectedFiles.value || [])];
   }
 
+  get $resolvedAssets(): AssetRecord[] {
+    return [...(this.resolvedAssets.value || [])];
+  }
+
+  get $hasPendingUpload(): boolean {
+    return this.assetUploadPending.value === true;
+  }
+
   props() {
     return []
   }
 
   setup(props: any, context: any) {
     this.$watch(this.modelValue, () => {
+      if (this.isAssetMode()) {
+        void this.syncResolvedAssets();
+      }
       if (this.isServerAutocomplete()) {
         void this.syncServerAutocompleteSelection();
       }
@@ -441,30 +507,296 @@ export class Field extends UIBase {
     return this.params.value.options || {};
   }
 
-  private isFileUploadField() {
-    return this.params.value.type === 'file-upload';
+  private inputIconProps() {
+    return this.params.value.icon ? { prependInnerIcon: this.params.value.icon } : {};
+  }
+
+  private mediaFieldType(): 'image'|'document'|'file-upload'|undefined {
+    const type = this.params.value.type;
+    if (type === 'image' || type === 'document' || type === 'file-upload') {
+      return type;
+    }
+    return undefined;
+  }
+
+  private isMediaField() {
+    return !!this.mediaFieldType();
+  }
+
+  private isAssetMode() {
+    return this.isMediaField() && this.params.value.assetMode === true && !!this.assetAdapter();
+  }
+
+  private assetAdapter() {
+    return this.params.value.assetAdapter || Field.defaultParams.assetAdapter;
+  }
+
+  private assetIdField() {
+    return this.params.value.assetIdField || 'id';
+  }
+
+  private assetPreviewField() {
+    return this.params.value.assetPreviewField || 'previewUrl';
+  }
+
+  private assetDownloadField() {
+    return this.params.value.assetDownloadField || 'downloadUrl';
+  }
+
+  private assetNameField() {
+    return this.params.value.assetNameField || 'name';
+  }
+
+  private assetMimeTypeField() {
+    return this.params.value.assetMimeTypeField || 'mimeType';
+  }
+
+  private assetSizeField() {
+    return this.params.value.assetSizeField || 'size';
   }
 
   private resolvedUploadType(): FieldUploadType {
     return this.params.value.uploadType || 'base64';
   }
 
+  private normalizeFiles(files?: File[] | FileList | null) {
+    if (!files) {
+      return [];
+    }
+
+    if (Array.isArray(files)) {
+      return files.filter((file): file is File => file instanceof File);
+    }
+
+    if (files instanceof File) {
+      return [files];
+    }
+
+    return Array.from(files);
+  }
+
+  private normalizeStoredAssetIds(value: any): string[] {
+    if (value === undefined || value === null || value === '') {
+      return [];
+    }
+
+    const values = Array.isArray(value) ? value : [value];
+    return values
+      .map((item) => item === undefined || item === null ? undefined : String(item))
+      .filter((item): item is string => !!item && item !== '');
+  }
+
+  private assetValueFromRecords(records: AssetRecord[]) {
+    const ids = records
+      .map((record) => nestedProperty.get(record, this.assetIdField()))
+      .filter((value) => value !== undefined && value !== null && value !== '');
+
+    if (this.params.value.multiple) {
+      return ids;
+    }
+
+    return ids[0];
+  }
+
+  private buildAssetRecordMetadata(record: AssetRecord) {
+    const name = nestedProperty.get(record, this.assetNameField()) || 'Asset';
+    const mimeType = nestedProperty.get(record, this.assetMimeTypeField()) || '';
+    const size = nestedProperty.get(record, this.assetSizeField());
+    const previewUrl = nestedProperty.get(record, this.assetPreviewField());
+    const downloadUrl = nestedProperty.get(record, this.assetDownloadField());
+
+    return {
+      key: String(nestedProperty.get(record, this.assetIdField()) || name),
+      label: String(name),
+      mimeType: mimeType ? String(mimeType) : '',
+      size: typeof size === 'number' ? size : undefined,
+      previewUrl: previewUrl ? String(previewUrl) : undefined,
+      downloadUrl: downloadUrl ? String(downloadUrl) : (previewUrl ? String(previewUrl) : undefined),
+      raw: record,
+      uploaded: true,
+      pending: false,
+    };
+  }
+
+  private async hydrateAssetRecords(records: AssetRecord[]) {
+    const adapter = this.assetAdapter();
+    if (!adapter || records.length === 0) {
+      return records;
+    }
+
+    return Promise.all(records.map(async (record) => {
+      const nextRecord = { ...record };
+
+      if (adapter.getPreviewUrl && !nestedProperty.get(nextRecord, this.assetPreviewField())) {
+        const previewUrl = await adapter.getPreviewUrl(record, this);
+        if (previewUrl) {
+          nestedProperty.set(nextRecord, this.assetPreviewField(), previewUrl);
+        }
+      }
+
+      if (adapter.getDownloadUrl && !nestedProperty.get(nextRecord, this.assetDownloadField())) {
+        const downloadUrl = await adapter.getDownloadUrl(record, this);
+        if (downloadUrl) {
+          nestedProperty.set(nextRecord, this.assetDownloadField(), downloadUrl);
+        }
+      }
+
+      return nextRecord;
+    }));
+  }
+
+  private buildSelectedFileMetadata(file: File, index: number) {
+    const name = file?.name || `File ${index + 1}`;
+    return {
+      key: `${name}-${index}`,
+      label: name,
+      mimeType: file?.type || '',
+      size: file?.size,
+      previewUrl: undefined,
+      downloadUrl: undefined,
+      raw: file,
+      uploaded: false,
+      pending: true,
+    };
+  }
+
+  private directStoredMediaItems() {
+    const value = this.modelValue.value;
+    if (value === undefined || value === null || value === '') {
+      return [];
+    }
+
+    const values = Array.isArray(value) ? value : [value];
+    return values.map((item: any, index: number) => {
+      if (item instanceof File) {
+        return this.buildSelectedFileMetadata(item, index);
+      }
+
+      if (item && typeof item === 'object' && typeof item.name === 'string') {
+        return {
+          key: `${item.name}-${index}`,
+          label: item.name,
+          mimeType: item.type || item.mimeType || '',
+          size: item.size,
+          previewUrl: undefined,
+          downloadUrl: undefined,
+          raw: item,
+          uploaded: false,
+          pending: false,
+        };
+      }
+
+      const str = String(item || '');
+      const isImage = str.includes('image');
+      return {
+        key: `${index}-${str.slice(0, 24)}`,
+        label: values.length > 1 ? `File ${index + 1}` : (this.params.value.label || 'File'),
+        mimeType: isImage ? 'image/*' : '',
+        size: undefined,
+        previewUrl: str,
+        downloadUrl: str,
+        raw: item,
+        uploaded: true,
+        pending: false,
+      };
+    });
+  }
+
+  mediaItems() {
+    if (this.isAssetMode()) {
+      if (this.selectedFiles.value.length > 0 && this.assetUploadPending.value) {
+        if (this.params.value.multiple) {
+          return [
+            ...this.resolvedAssets.value.map((record) => this.buildAssetRecordMetadata(record)),
+            ...this.selectedFiles.value.map((file, index) => this.buildSelectedFileMetadata(file, index)),
+          ];
+        }
+        return this.selectedFiles.value.map((file, index) => this.buildSelectedFileMetadata(file, index));
+      }
+
+      return this.resolvedAssets.value.map((record) => this.buildAssetRecordMetadata(record));
+    }
+
+    return this.directStoredMediaItems();
+  }
+
   private setSelectedFiles(files?: File[] | FileList | null) {
-    this.selectedFiles.value = Array.from(files || []);
+    this.selectedFiles.value = this.normalizeFiles(files);
+  }
+
+  private mergeDirectMediaValues(nextValue: any) {
+    if (!this.params.value.multiple) {
+      return nextValue;
+    }
+
+    const current = this.modelValue.value;
+    const currentItems = current === undefined || current === null || current === ''
+      ? []
+      : (Array.isArray(current) ? [...current] : [current]);
+    const nextItems = nextValue === undefined || nextValue === null || nextValue === ''
+      ? []
+      : (Array.isArray(nextValue) ? nextValue : [nextValue]);
+
+    return currentItems.concat(nextItems);
+  }
+
+  async $clearSelectedFiles() {
+    this.clearSelectedFiles();
   }
 
   private clearSelectedFiles() {
     this.selectedFiles.value = [];
+    this.assetUploadPending.value = false;
   }
 
-  private normalizedSelectedFilePayload(): FieldSelectedFilePayload {
-    const files = this.$selectedFiles;
-    return {
-      files,
-      file: files[0],
+  private async emitFileSelected(files?: File[] | FileList | null) {
+    const normalizedFiles = files ? this.normalizeFiles(files) : this.$selectedFiles;
+    const payload: FieldSelectedFilePayload = {
+      files: normalizedFiles,
+      file: normalizedFiles[0],
       multiple: !!this.params.value.multiple,
       uploadType: this.resolvedUploadType(),
     };
+
+    if (this.options.fileSelected) {
+      await this.options.fileSelected(this, payload);
+    }
+    this.handleOn('fileSelected', payload);
+  }
+
+  private async emitAssetUploaded(records: AssetRecord[]) {
+    if (this.options.assetUploaded) {
+      await this.options.assetUploaded(this, records);
+    }
+    this.handleOn('assetUploaded', records);
+  }
+
+  private async emitAssetsResolved(records: AssetRecord[]) {
+    if (this.options.assetsResolved) {
+      await this.options.assetsResolved(this, records);
+    }
+    this.handleOn('assetsResolved', records);
+  }
+
+  private async emitAssetRemoved(records: AssetRecord[]) {
+    if (this.options.assetRemoved) {
+      await this.options.assetRemoved(this, records);
+    }
+    this.handleOn('assetRemoved', records);
+  }
+
+  private async removeAssets(records: AssetRecord[]) {
+    if (!records.length || !this.isAssetMode() || this.params.value.removeAssetOnClear !== true) {
+      return;
+    }
+
+    const adapter = this.assetAdapter();
+    if (!adapter?.remove) {
+      return;
+    }
+
+    await adapter.remove(records, this);
+    await this.emitAssetRemoved(records);
   }
 
   private buildFileMetadata(file: File): UploadedFileMetadata {
@@ -482,26 +814,10 @@ export class Field extends UIBase {
   }
 
   private normalizeFilesInput(value: any): File[] {
-    if (!value) {
-      return [];
-    }
-
-    if (Array.isArray(value)) {
-      return value.filter((item) => item instanceof File);
-    }
-
-    return value instanceof File ? [value] : [];
+    return this.normalizeFiles(value).filter((item) => item instanceof File);
   }
 
-  private normalizeFileUploadValue(value: any) {
-    if (value === undefined || value === null) {
-      return this.params.value.multiple ? [] : undefined;
-    }
-
-    return value;
-  }
-
-  private async filterValidSelectedFiles(files: File[]) {
+  private async validateSelectedFiles(files: File[]) {
     const validFiles: File[] = [];
     const maxSize = Number(this.params.value.fileMaxSize || 0);
 
@@ -517,14 +833,22 @@ export class Field extends UIBase {
     return validFiles;
   }
 
-  private async createStoredUploadValue(files: File[]) {
-    const uploadType = this.resolvedUploadType();
+  private async createDirectUploadValue(files: File[]) {
+    const mediaType = this.mediaFieldType();
 
-    if (uploadType === 'file') {
+    if (mediaType === 'image' || mediaType === 'document') {
+      const data = [];
+      for (const file of files) {
+        data.push(await fileToBase64(file, this.params.value.fileMaxSize || 500));
+      }
+      return this.params.value.multiple ? data : data[0];
+    }
+
+    if (this.resolvedUploadType() === 'file') {
       return this.params.value.multiple ? files : files[0];
     }
 
-    if (uploadType === 'metadata') {
+    if (this.resolvedUploadType() === 'metadata') {
       const metadata = files.map((file) => this.buildFileMetadata(file));
       return this.params.value.multiple ? metadata : metadata[0];
     }
@@ -537,46 +861,220 @@ export class Field extends UIBase {
     return this.params.value.multiple ? encoded : encoded[0];
   }
 
-  private uploadDisplayItems() {
-    if (this.selectedFiles.value.length > 0) {
-      return this.selectedFiles.value.map((file) => this.buildFileMetadata(file));
-    }
-
-    const value = this.modelValue.value;
-    if (value === undefined || value === null || value === '') {
+  async $uploadAssets() {
+    if (!this.isAssetMode()) {
       return [];
     }
 
-    const values = Array.isArray(value) ? value : [value];
-    return values
-      .map((item: any, index: number) => {
-        if (item instanceof File) {
-          return this.buildFileMetadata(item);
-        }
+    const adapter = this.assetAdapter();
+    const files = this.$selectedFiles;
+    const fieldType = this.mediaFieldType();
 
-        if (item && typeof item === 'object' && typeof item.name === 'string' && typeof item.size === 'number') {
-          return item as UploadedFileMetadata;
-        }
+    if (!adapter || !fieldType || files.length === 0) {
+      return [];
+    }
 
-        if (typeof item === 'string') {
-          return {
-            name: values.length > 1 ? `Stored file ${index + 1}` : 'Stored file',
-            size: 0,
-            type: 'stored',
-          } as UploadedFileMetadata;
-        }
+    this.assetUploading.value = true;
+    try {
+      const existingRecords = this.params.value.multiple ? [...this.resolvedAssets.value] : [];
+      const records = await adapter.upload({
+        files,
+        file: files[0],
+        multiple: !!this.params.value.multiple,
+        fieldType,
+      }, this);
 
-        return undefined;
-      })
-      .filter((item: any) => !!item);
+      const safeRecords = await this.hydrateAssetRecords(Array.isArray(records) ? records : []);
+      const nextRecords = this.params.value.multiple ? existingRecords.concat(safeRecords) : safeRecords;
+      this.resolvedAssets.value = nextRecords;
+      this.modelValue.value = this.assetValueFromRecords(nextRecords);
+      this.clearSelectedFiles();
+      await this.emitAssetUploaded(safeRecords);
+      return safeRecords;
+    } catch (error: any) {
+      Dialogs.$error(error?.message || 'Failed to upload asset files.');
+      throw error;
+    } finally {
+      this.assetUploading.value = false;
+    }
   }
 
-  private async emitFileSelected() {
-    const payload = this.normalizedSelectedFilePayload();
-    if (this.options.fileSelected) {
-      await this.options.fileSelected(this, payload);
+  async handleSelectedFiles(files?: File[] | FileList | null) {
+    const normalized = await this.validateSelectedFiles(this.normalizeFiles(files));
+
+    if (normalized.length === 0) {
+      if (this.isAssetMode()) {
+        await this.$clearSelectedFiles();
+      } else {
+        this.clearSelectedFiles();
+        this.modelValue.value = this.params.value.multiple ? [] : null;
+      }
+      return;
     }
-    this.handleOn('fileSelected', payload);
+
+    if (this.isAssetMode()) {
+      const mergedFiles = this.params.value.multiple && this.assetUploadPending.value
+        ? [...this.selectedFiles.value, ...normalized]
+        : normalized;
+      this.setSelectedFiles(mergedFiles);
+      this.assetUploadPending.value = true;
+      await this.emitFileSelected(mergedFiles);
+      if (this.params.value.autoUpload !== false) {
+        await this.$uploadAssets();
+      }
+      return;
+    }
+
+    try {
+      const nextValue = await this.createDirectUploadValue(normalized);
+      this.setSelectedFiles(normalized);
+      this.modelValue.value = this.mergeDirectMediaValues(nextValue);
+      await this.emitFileSelected(normalized);
+    } catch (error: any) {
+      Dialogs.$error(error?.message || 'Failed to process selected files.');
+    }
+  }
+
+  private async syncResolvedAssets() {
+    if (!this.isAssetMode()) {
+      return;
+    }
+
+    const adapter = this.assetAdapter();
+    const ids = this.normalizeStoredAssetIds(this.modelValue.value);
+    const fieldType = this.mediaFieldType();
+
+    if (!adapter || !fieldType) {
+      this.resolvedAssets.value = [];
+      return;
+    }
+
+    if (ids.length === 0) {
+      this.resolvedAssets.value = [];
+      return;
+    }
+
+    const requestId = this.assetResolveRequestId.value + 1;
+    this.assetResolveRequestId.value = requestId;
+
+    try {
+      const records = await adapter.resolve({
+        ids,
+        multiple: !!this.params.value.multiple,
+        fieldType,
+      }, this);
+
+      if (requestId !== this.assetResolveRequestId.value) {
+        return;
+      }
+
+      this.resolvedAssets.value = await this.hydrateAssetRecords(Array.isArray(records) ? records : []);
+      await this.emitAssetsResolved(this.resolvedAssets.value);
+    } catch (error: any) {
+      if (requestId === this.assetResolveRequestId.value) {
+        this.resolvedAssets.value = [];
+      }
+      Dialogs.$error(error?.message || 'Failed to resolve asset references.');
+    }
+  }
+
+  private async clearMediaValue() {
+    const resolved = this.$resolvedAssets;
+    this.modelValue.value = this.params.value.multiple ? [] : null;
+    this.resolvedAssets.value = [];
+    await this.$clearSelectedFiles();
+    await this.removeAssets(resolved);
+  }
+
+  private async clearMediaItem(index: number) {
+    if (this.isAssetMode()) {
+      if (this.assetUploadPending.value && this.selectedFiles.value.length > 0) {
+        if (this.params.value.multiple && this.resolvedAssets.value.length > 0) {
+          if (index < this.resolvedAssets.value.length) {
+            const records = [...this.resolvedAssets.value];
+            const [removed] = records.splice(index, 1);
+            this.resolvedAssets.value = records;
+            this.modelValue.value = this.assetValueFromRecords(records);
+            if (removed) {
+              await this.removeAssets([removed]);
+            }
+            return;
+          }
+
+          const pendingIndex = index - this.resolvedAssets.value.length;
+          const files = [...this.selectedFiles.value];
+          files.splice(pendingIndex, 1);
+          this.setSelectedFiles(files);
+          this.assetUploadPending.value = files.length > 0;
+          return;
+        }
+
+        const files = [...this.selectedFiles.value];
+        files.splice(index, 1);
+        this.setSelectedFiles(files);
+        this.assetUploadPending.value = files.length > 0;
+        return;
+      }
+
+      const records = [...this.resolvedAssets.value];
+      const [removed] = records.splice(index, 1);
+      this.resolvedAssets.value = records;
+      this.modelValue.value = this.assetValueFromRecords(records);
+      if (removed) {
+        await this.removeAssets([removed]);
+      }
+      return;
+    }
+
+    if (this.params.value.multiple) {
+      const items = Array.isArray(this.modelValue.value) ? [...this.modelValue.value] : [];
+      items.splice(index, 1);
+      this.modelValue.value = items;
+    } else {
+      this.modelValue.value = null;
+    }
+  }
+
+  private async openMediaItem(item: any) {
+    if (!item) {
+      return;
+    }
+
+    if (item.previewUrl || item.downloadUrl) {
+      this.showFullscreen(item.previewUrl || item.downloadUrl);
+      return;
+    }
+
+    if (typeof item.raw === 'string') {
+      this.showFullscreen(item.raw);
+      return;
+    }
+
+    if (item.raw instanceof File) {
+      const objectUrl = URL.createObjectURL(item.raw);
+      if (item.raw.type.startsWith('image/')) {
+        void Dialogs.$imagePreview(objectUrl, {
+          title: item.label || this.params.value.label,
+          fullscreen: this.params.value.previewFullscreen !== false,
+        });
+        return;
+      }
+
+      if (item.raw.type === 'application/pdf') {
+        void Dialogs.$documentPreview(objectUrl, {
+          title: item.label || this.params.value.label,
+          fullscreen: this.params.value.previewFullscreen !== false,
+        });
+        return;
+      }
+
+      void Dialogs.$iframe({
+        src: objectUrl,
+        title: item.label || this.params.value.label,
+        fullscreen: this.params.value.previewFullscreen !== false,
+        downloadUrl: objectUrl,
+      });
+    }
   }
 
   private async onOtpFinished(value: string) {
@@ -587,19 +1085,16 @@ export class Field extends UIBase {
   }
 
   private async onFileUploadChanged(value: any) {
-    const files = await this.filterValidSelectedFiles(this.normalizeFilesInput(value));
+    const files = this.normalizeFilesInput(value);
 
-    if (files.length === 0) {
-      this.setSelectedFiles([]);
-      this.modelValue.value = this.normalizeFileUploadValue(undefined);
+    if (this.isAssetMode()) {
+      await this.handleSelectedFiles(files);
       return;
     }
 
     this.fileUploadLoading.value = true;
     try {
-      this.setSelectedFiles(files);
-      this.modelValue.value = this.normalizeFileUploadValue(await this.createStoredUploadValue(files));
-      await this.emitFileSelected();
+      await this.handleSelectedFiles(files);
     } finally {
       this.fileUploadLoading.value = false;
     }
@@ -655,7 +1150,7 @@ export class Field extends UIBase {
           return;
         }
         this.modelValue.value = value;
-        if (this.isFileUploadField()) {
+        if (this.isMediaField()) {
           this.clearSelectedFiles();
         }
         if (this.options.modifies) {
@@ -670,7 +1165,7 @@ export class Field extends UIBase {
             return;
           }
           this.modelValue.value = value;
-          if (this.isFileUploadField()) {
+          if (this.isMediaField()) {
             this.clearSelectedFiles();
           }
           if (this.options.modifies) {
@@ -1569,6 +2064,8 @@ export class Field extends UIBase {
           }
           return this.buildImage(props, context);
         }
+      case 'file-upload':
+        return this.buildFileUpload(props, context);
       case 'float':
       case 'decimal':
         return this.buildText(props, context, 'number');
@@ -1594,8 +2091,6 @@ export class Field extends UIBase {
         }
       case 'integer':
         return this.buildInteger(props, context);
-      case 'file-upload':
-        return this.buildFileUpload(props, context);
       case 'messagingbox':
         return this.buildMessageBox(props, context);
       case 'table':
@@ -1630,6 +2125,7 @@ export class Field extends UIBase {
         VCombobox,
         {
           ...this.modelBinding(),
+          ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -1654,6 +2150,7 @@ export class Field extends UIBase {
         VTextField,
         {
           ...this.modelBinding(),
+          ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -1703,6 +2200,7 @@ export class Field extends UIBase {
       VSelect,
       {
         ...this.modelBinding(),
+        ...this.inputIconProps(),
         autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         hint: this.params.value.hint || "",
@@ -1830,6 +2328,7 @@ export class Field extends UIBase {
       VAutocomplete as any,
       {
         ...this.modelBinding(),
+        ...this.inputIconProps(),
         autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         hint: this.params.value.hint || "",
@@ -1973,6 +2472,30 @@ export class Field extends UIBase {
       loadChart: () => this.loadChart(),
       messageFormat: (data: any) => this.messageFormat(data),
       showMediaFullscreen: (data: string) => this.showFullscreen(data),
+      mediaItems: () => this.mediaItems(),
+      selectMediaFiles: async () => {
+        try {
+          const files = await selectFile(this.params.value.fileAccepts, !!this.params.value.multiple);
+          await this.handleSelectedFiles(files);
+        } catch (error: any) {
+          if (error?.message !== 'No File Selected!') {
+            Dialogs.$error(error?.message || 'Failed to select files.');
+          }
+        }
+      },
+      clearMediaItem: async (index: number) => {
+        await this.clearMediaItem(index);
+      },
+      clearMediaItems: async () => {
+        await this.clearMediaValue();
+      },
+      openMediaItem: async (item: any) => {
+        await this.openMediaItem(item);
+      },
+      isAssetMode: () => this.isAssetMode(),
+      hasPendingUpload: () => this.$hasPendingUpload,
+      uploadAssets: async () => this.$uploadAssets(),
+      clearSelectedFiles: async () => this.$clearSelectedFiles(),
       getMessageWindow: (items: any[]) => this.getMessageWindow(items),
       loadEarlierMessages: (total: number) => this.loadEarlierMessages(total),
       setMessageScrollContainer: (el: Element | any) => this.setMessageScrollContainer(el),
@@ -2192,6 +2715,7 @@ export class Field extends UIBase {
       {
         ...this.componentOptions(),
         ...this.modelBinding(),
+        ...this.inputIconProps(),
         autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         hint: this.params.value.hint || "",
@@ -2225,6 +2749,7 @@ export class Field extends UIBase {
       {
         ...this.componentOptions(),
         ...this.modelBinding(),
+        ...this.inputIconProps(),
         autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         placeholder: this.params.value.placeholder || "",
@@ -2244,83 +2769,6 @@ export class Field extends UIBase {
     );
   }
 
-  buildFileUpload(props: any, context: any) {
-    const h = this.$h;
-    const displayItems = this.uploadDisplayItems().filter((item): item is UploadedFileMetadata => !!item);
-
-    return h(
-      VRow,
-      {
-        class: ['vef-file-upload'],
-      },
-      () => [
-        h(
-          VCol,
-          {
-            cols: 12,
-          },
-          () => h(
-            VFileUpload as any,
-            {
-              ...this.componentOptions(),
-              modelValue: this.selectedFiles.value,
-              autofocus: this.params.value.autofocus,
-              title: this.params.value.label || '',
-              subtitle: this.params.value.hint || this.params.value.placeholder || '',
-              color: this.params.value.color || "primary",
-              variant: this.params.value.variant || Field.defaultParams?.variant,
-              readonly: this.$readonly,
-              disabled: this.$readonly,
-              class: this.params.value.class || [],
-              style: this.params.value.style || {},
-              clearable: this.params.value.clearable !== false,
-              multiple: this.params.value.multiple,
-              filterByType: this.params.value.fileAccepts,
-              loading: this.fileUploadLoading.value,
-              showSize: true,
-              "onUpdate:modelValue": (value: any) => {
-                void this.onFileUploadChanged(value);
-              },
-              onRejected: (files: File[]) => {
-                if (files?.length) {
-                  Dialogs.$error(`Unsupported file type: ${files.map((file) => file.name).join(', ')}`);
-                }
-              },
-              "onUpdate:focused": (ev: any) => this.onFocusChanged(ev),
-            },
-          ),
-        ),
-        ...(displayItems.length > 0 ? [
-          h(
-            VCol,
-            {
-              cols: 12,
-            },
-            () => h(
-              'div',
-              {
-                style: {
-                  fontSize: '0.9rem',
-                  opacity: 0.82,
-                },
-              },
-              displayItems.map((item, index) => h(
-                'div',
-                {
-                  key: `${item.name}-${index}`,
-                  style: {
-                    marginTop: index === 0 ? '0' : '6px',
-                  },
-                },
-                `${item.name}${item.size ? ` (${Math.max(1, Math.round(item.size / 1024))} KB)` : ''}`,
-              )),
-            ),
-          ),
-        ] : []),
-      ],
-    );
-  }
-
   buildTime(props: any, context: any) {
     const h = this.$h;
     if (this.params.value.multiple) {
@@ -2328,6 +2776,7 @@ export class Field extends UIBase {
         VCombobox,
         {
           ...this.modelBinding(),
+          ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -2352,6 +2801,7 @@ export class Field extends UIBase {
         VTextField,
         {
           ...this.modelBinding(),
+          ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -2378,6 +2828,7 @@ export class Field extends UIBase {
         VCombobox,
         {
           modelValue: this.modelValue.value,
+          ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -2405,6 +2856,7 @@ export class Field extends UIBase {
         VTextField,
         {
           modelValue: this.modelValue.value,
+          ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -2472,9 +2924,10 @@ export class Field extends UIBase {
     const h = this.$h;
     return h(
       VTextField,
-      {
-        ...this.modelBinding(),
-        autofocus: this.params.value.autofocus,
+        {
+          ...this.modelBinding(),
+          ...this.inputIconProps(),
+          autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         hint: this.params.value.hint || "",
         persistentHint: this.params.value.hint ? true : false,
@@ -2498,6 +2951,7 @@ export class Field extends UIBase {
       VTextField,
       {
         ...this.modelBinding(),
+        ...this.inputIconProps(),
         autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         hint: this.params.value.hint || "",
@@ -2735,6 +3189,172 @@ export class Field extends UIBase {
 
   buildImage(props: any, context: any) {
     return buildImageWidget(this.richWidgetContext());
+  }
+
+  buildFileUpload(props: any, context: any) {
+    const h = this.$h;
+    const items = this.mediaItems();
+
+    return h(
+      VRow,
+      {},
+      () => [
+        h(
+          VCol,
+          {
+            cols: 12,
+          },
+          () => h(
+            VFileUpload as any,
+            {
+              ...this.componentOptions(),
+              modelValue: this.selectedFiles.value,
+              title: this.params.value.label || '',
+              subtitle: this.params.value.hint || this.params.value.placeholder || '',
+              autofocus: this.params.value.autofocus,
+              clearable: this.params.value.clearable !== false,
+              disabled: this.$readonly,
+              readonly: this.$readonly,
+              multiple: this.params.value.multiple,
+              filterByType: this.params.value.fileAccepts,
+              color: this.params.value.color || "primary",
+              class: this.params.value.class || [],
+              style: this.params.value.style || {},
+              loading: this.assetUploading.value || this.fileUploadLoading.value,
+              showSize: true,
+              "onUpdate:modelValue": (value: any) => {
+                void this.onFileUploadChanged(value);
+              },
+              onRejected: (files: File[]) => {
+                if (files?.length) {
+                  Dialogs.$error(`Unsupported file type: ${files.map((file) => file.name).join(', ')}`);
+                }
+              },
+              "onUpdate:focused": (ev: any) => this.onFocusChanged(ev),
+            },
+          ),
+        ),
+        ...(items.length > 0 ? [
+          h(
+            VCol,
+            {
+              cols: 12,
+            },
+            () => items.map((item, index) => h(
+              VCard,
+              {
+                key: item.key,
+                class: ['mb-2'],
+                variant: 'outlined',
+              },
+              () => h(
+                'div',
+                {
+                  style: {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    padding: '12px 16px',
+                  },
+                },
+                [
+                  h(
+                    'div',
+                    {
+                      style: {
+                        minWidth: 0,
+                        flex: '1 1 auto',
+                      },
+                    },
+                    [
+                      h('div', { style: { fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, item.label),
+                      h('div', { style: { fontSize: '0.85rem', opacity: 0.72 } }, [
+                        item.mimeType || 'file',
+                        item.size ? ` • ${Math.max(1, Math.round(item.size / 1024))} KB` : '',
+                        item.pending ? ' • pending upload' : '',
+                      ].join('')),
+                    ],
+                  ),
+                  h(
+                    'div',
+                    {
+                      style: {
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                      },
+                    },
+                    [
+                      ...((item.previewUrl || item.downloadUrl || typeof item.raw === 'string' || item.raw instanceof File) ? [
+                        h(
+                          VBtn,
+                          {
+                            color: 'success',
+                            icon: true,
+                            size: 'small',
+                            onClick: () => {
+                              void this.openMediaItem(item);
+                            },
+                          },
+                          () => h(VIcon, {}, () => 'mdi-eye'),
+                        ),
+                      ] : []),
+                      ...(!this.$readonly ? [
+                        h(
+                          VBtn,
+                          {
+                            color: 'error',
+                            icon: true,
+                            size: 'small',
+                            onClick: () => {
+                              void this.clearMediaItem(index);
+                            },
+                          },
+                          () => h(VIcon, {}, () => 'mdi-delete'),
+                        ),
+                      ] : []),
+                    ],
+                  ),
+                ],
+              ),
+            )),
+          ),
+        ] : []),
+        ...(!this.$readonly && this.isAssetMode() && this.$hasPendingUpload ? [
+          h(
+            VCol,
+            {
+              cols: 12,
+              class: ['d-flex', 'justify-center', 'ga-3'],
+            },
+            () => [
+              h(
+                VBtn,
+                {
+                  color: 'primary',
+                  onClick: () => {
+                    void this.$uploadAssets();
+                  },
+                },
+                () => 'Upload Selected Files',
+              ),
+              h(
+                VBtn,
+                {
+                  color: 'error',
+                  variant: 'outlined',
+                  onClick: () => {
+                    void this.$clearSelectedFiles();
+                  },
+                },
+                () => 'Clear Selected Files',
+              ),
+            ],
+          ),
+        ] : []),
+      ],
+    );
   }
 
   private showFullscreen (data: string) {
@@ -3040,6 +3660,9 @@ export class Field extends UIBase {
 
   mounted() {
     this.updateValue();
+    if (this.isAssetMode()) {
+      void this.syncResolvedAssets();
+    }
     if (this.isServerAutocomplete()) {
       void this.syncServerAutocompleteSelection();
     }

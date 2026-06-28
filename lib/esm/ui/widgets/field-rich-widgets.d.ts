@@ -11,6 +11,17 @@ import 'ace-builds/src-noconflict/theme-xcode';
 import 'ace-builds/src-noconflict/worker-json';
 import 'ace-builds/src-noconflict/worker-javascript';
 import 'ace-builds/src-noconflict/worker-html';
+export interface MediaDisplayItem {
+    key: string;
+    label: string;
+    mimeType?: string;
+    size?: number;
+    previewUrl?: string;
+    downloadUrl?: string;
+    raw?: any;
+    uploaded?: boolean;
+    pending?: boolean;
+}
 export interface RichWidgetContext {
     $h: any;
     $readonly: boolean;
@@ -33,6 +44,15 @@ export interface RichWidgetContext {
     loadChart: () => void;
     messageFormat: (data: any) => any[];
     showMediaFullscreen: (data: string) => void;
+    mediaItems: () => MediaDisplayItem[];
+    selectMediaFiles: () => Promise<void>;
+    clearMediaItem: (index: number) => Promise<void>;
+    clearMediaItems: () => Promise<void>;
+    openMediaItem: (item: MediaDisplayItem) => Promise<void>;
+    isAssetMode: () => boolean;
+    hasPendingUpload: () => boolean;
+    uploadAssets: () => Promise<any[]>;
+    clearSelectedFiles: () => Promise<void>;
     getMessageWindow: (items: any[]) => {
         items: any[];
         hasEarlier: boolean;
