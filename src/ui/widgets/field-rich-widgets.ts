@@ -16,9 +16,20 @@ import 'ace-builds/src-noconflict/worker-javascript';
 import 'ace-builds/src-noconflict/worker-html';
 import VueApexCharts from 'vue3-apexcharts';
 import { GoogleMap, Marker, Polygon, Polyline, Circle, Rectangle, MarkerCluster, CustomMarker } from "vue3-google-map";
-import { fileToBase64, selectFile } from "../../misc";
 import { Dialogs } from "../dialogs";
 import { TiptapHtmlEditor } from "../tiptap-editor";
+
+export interface MediaDisplayItem {
+  key: string;
+  label: string;
+  mimeType?: string;
+  size?: number;
+  previewUrl?: string;
+  downloadUrl?: string;
+  raw?: any;
+  uploaded?: boolean;
+  pending?: boolean;
+}
 
 export interface RichWidgetContext {
   $h: any;
@@ -42,6 +53,15 @@ export interface RichWidgetContext {
   loadChart: () => void;
   messageFormat: (data: any) => any[];
   showMediaFullscreen: (data: string) => void;
+  mediaItems: () => MediaDisplayItem[];
+  selectMediaFiles: () => Promise<void>;
+  clearMediaItem: (index: number) => Promise<void>;
+  clearMediaItems: () => Promise<void>;
+  openMediaItem: (item: MediaDisplayItem) => Promise<void>;
+  isAssetMode: () => boolean;
+  hasPendingUpload: () => boolean;
+  uploadAssets: () => Promise<any[]>;
+  clearSelectedFiles: () => Promise<void>;
   getMessageWindow: (items: any[]) => { items: any[]; hasEarlier: boolean; earlierCount: number; pageSize: number };
   loadEarlierMessages: (total: number) => void | Promise<void>;
   setMessageScrollContainer: (el: Element | any) => void;
@@ -2326,143 +2346,9 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
 
 export function buildImageWidget(field: RichWidgetContext): VNode {
   const h = field.$h;
-  if (field.params.value.multiple) {
-    if (!field.modelValue.value) field.modelValue.value = [];
-    if (!Array.isArray(field.modelValue.value)) field.modelValue.value = [field.modelValue.value];
+  const items = field.mediaItems();
+  const multiple = !!field.params.value.multiple;
 
-    return h(
-      VRow,
-      {},
-      () => [
-        h(
-          VCol,
-          {
-            cols: 12
-          },
-          () => h(
-            'div',
-            {},
-            field.params.value.label
-          )
-        ),
-        ...(field.modelValue.value || []).map((item: any, index: number) => 
-        h(
-          VCol,
-          {
-            cols: 12,
-            md: 6,
-            lg: 4,
-            align: 'center'
-          },
-          () => [
-            item.indexOf('image') !== -1 ? h(
-              VImg,
-              {
-                src: item,
-                height: item ? (field.params.value.height === undefined ? 300 : field.params.value.height) : 10,
-                onClick: () => {
-                  field.showMediaFullscreen(item);
-                }
-              }
-            ) : (item ? h(
-              'div',
-              {
-                class: ['py-auto'],
-                style: {
-                  height: `${item ? (field.params.value.height === undefined ? 300 : field.params.value.height) : 10}px`,
-                  'max-width': '200px',
-                  border: 'thin solid black',
-                },
-                onClick: () => {
-                  field.showMediaFullscreen(item);
-                }
-              },
-              'No Preview'
-            ) : undefined),
-            ...(field.$readonly ? [] : [
-              h(
-                VIcon,
-                {
-                  icon: 'mdi-delete',
-                  color: 'error',
-                  flat: true,
-                  size: 'small',
-                  class: ['mt-1'],
-                  onClick: () => {
-                    const items = field.modelValue.value || [];
-                    items.splice(index, 1);
-                    field.modelValue.value = items;
-                  }
-                }
-              )
-            ])
-          ]
-        )
-        ),
-        h(
-          VCol,
-          {
-            cols: 12,
-            align: "center"
-          },
-          () => field.$readonly ? [] : [
-            h(
-              VBtn,
-              {
-                color: 'primary',
-                onClick: async () => {
-                  try {
-                    const files: FileList = await selectFile(field.params.value.fileAccepts, true);
-                    const data: any[] = [];
-                    for (let i = 0; i < files.length; i++) {
-                      try {
-                        const base64 = await fileToBase64(files[i], field.params.value.fileMaxSize || 500);
-                        data.push(base64);
-                      } catch (error) {
-                        Dialogs.$error((error as any).message);
-                      }
-                    }
-                    if (!field.modelValue.value) {
-                      field.modelValue.value = data;
-                    } else if (!Array.isArray(field.modelValue.value)) {
-                      field.modelValue.value = [field.modelValue.value].concat(data);
-                    } else {
-                      const value = field.modelValue.value || [];
-                      field.modelValue.value = value.concat(data);
-                    }
-                  } catch (error) {
-                    Dialogs.$error((error as any).message);
-                  }
-                }
-              },
-              () => h(
-                VIcon,
-                {},
-                () => 'mdi-upload'
-              ),
-            ),
-            ...(field.modelValue.value && field.modelValue.value.length > 0 ? [
-              h(
-                VBtn,
-                {
-                  color: 'error',
-                  class: ['ml-4'],
-                  onClick: async () => {
-                    field.modelValue.value = [];
-                  }
-                },
-                () => h(
-                  VIcon,
-                  {},
-                  () => 'mdi-delete'
-                )
-              ),
-            ] : [])
-          ]
-        )
-      ]
-    );  
-  }
   return h(
     VRow,
     {},
@@ -2478,41 +2364,84 @@ export function buildImageWidget(field: RichWidgetContext): VNode {
           field.params.value.label
         )
       ),
-      h(
+      ...items.map((item, index) => h(
         VCol,
         {
+          key: item.key,
           cols: 12,
-          align: 'center'
+          md: multiple ? 6 : 12,
+          lg: multiple ? 4 : 12,
+          align: 'center',
         },
-        () => field.modelValue.value && field.modelValue.value.indexOf('image') !== -1 ? h(
-          VImg,
-          {
-            src: field.modelValue.value,
-            height: field.modelValue.value ? (field.params.value.height === undefined ? 300 : field.params.value.height) : 10,
-            style: {
-              cursor: 'pointer'
-            },
-            onClick: () => {
-              field.showMediaFullscreen(field.modelValue.value);
+        () => [
+          item.previewUrl && item.mimeType?.includes('image') ? h(
+            VImg,
+            {
+              src: item.previewUrl,
+              height: field.params.value.height === undefined ? 300 : field.params.value.height,
+              style: {
+                cursor: 'pointer'
+              },
+              onClick: () => {
+                void field.openMediaItem(item);
+              }
             }
-          }
-        ) : (field.modelValue.value ? h(
-          'div',
-          {
-            class: ['py-auto'],
-            style: {
-              height: `${field.modelValue.value ? (field.params.value.height === undefined ? 300 : field.params.value.height) : 10}px`,
-              'max-width': '200px',
-              border: 'thin solid black',
-              cursor: 'pointer'
+          ) : h(
+            'div',
+            {
+              class: ['py-auto'],
+              style: {
+                height: `${field.params.value.height === undefined ? 300 : field.params.value.height}px`,
+                maxWidth: '240px',
+                border: 'thin solid black',
+                cursor: (item.previewUrl || item.downloadUrl || typeof item.raw === 'string') ? 'pointer' : 'default',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '12px',
+                textAlign: 'center',
+                margin: '0 auto',
+              },
+              onClick: () => {
+                if (item.previewUrl || item.downloadUrl || typeof item.raw === 'string') {
+                  void field.openMediaItem(item);
+                }
+              }
             },
-            onClick: () => {
-              field.showMediaFullscreen(field.modelValue.value);
-            }
-          },
-          'No Preview'
-        ) : undefined)
-      ),
+            item.pending ? `${item.label} (pending upload)` : item.label
+          ),
+          h(
+            'div',
+            {
+              style: {
+                marginTop: '8px',
+                fontSize: '0.85rem',
+                opacity: 0.78,
+              },
+            },
+            [
+              item.mimeType || 'file',
+              item.size ? ` • ${Math.max(1, Math.round(item.size / 1024))} KB` : '',
+              item.pending ? ' • pending upload' : '',
+            ].join(''),
+          ),
+          ...(field.$readonly ? [] : [
+            h(
+              VBtn,
+              {
+                color: 'error',
+                icon: true,
+                size: 'small',
+                class: ['mt-2'],
+                onClick: () => {
+                  void field.clearMediaItem(index);
+                }
+              },
+              () => h(VIcon, {}, () => 'mdi-delete')
+            )
+          ]),
+        ]
+      )),
       h(
         VCol,
         {
@@ -2525,13 +2454,7 @@ export function buildImageWidget(field: RichWidgetContext): VNode {
             {
               color: 'primary',
               onClick: async () => {
-                try {
-                  const files: FileList = await selectFile(field.params.value.fileAccepts);
-                  const base64 = await fileToBase64(files[0], field.params.value.fileMaxSize || 500);
-                  field.modelValue.value = base64;
-                } catch (error) {
-                  Dialogs.$error((error as any).message);
-                }
+                await field.selectMediaFiles();
               }
             },
             () => h(
@@ -2540,14 +2463,14 @@ export function buildImageWidget(field: RichWidgetContext): VNode {
               () => 'mdi-upload'
             ),
           ),
-          ...(field.modelValue.value ? [
+          ...(items.length > 0 ? [
             h(
               VBtn,
               {
                 color: 'error',
                 class: ['ml-4'],
                 onClick: async () => {
-                  field.modelValue.value = null;
+                  await field.clearMediaItems();
                 }
               },
               () => h(
@@ -2556,13 +2479,38 @@ export function buildImageWidget(field: RichWidgetContext): VNode {
                 () => 'mdi-delete'
               )
             ),
-            h(
+            ...((field.isAssetMode() && field.hasPendingUpload()) ? [
+              h(
+                VBtn,
+                {
+                  color: 'primary',
+                  class: ['ml-4'],
+                  onClick: async () => {
+                    await field.uploadAssets();
+                  }
+                },
+                () => 'Upload',
+              ),
+              h(
+                VBtn,
+                {
+                  color: 'warning',
+                  variant: 'outlined',
+                  class: ['ml-4'],
+                  onClick: async () => {
+                    await field.clearSelectedFiles();
+                  }
+                },
+                () => 'Clear Selected',
+              ),
+            ] : []),
+            ...(items.length === 1 && (items[0].previewUrl || items[0].downloadUrl || typeof items[0].raw === 'string') ? [h(
               VBtn,
               {
                 color: 'success',
                 class: ['ml-4'],
                 onClick: () => {
-                  field.showMediaFullscreen(field.modelValue.value);
+                  void field.openMediaItem(items[0]);
                 }
               },
               () => h(
@@ -2570,7 +2518,7 @@ export function buildImageWidget(field: RichWidgetContext): VNode {
                 {},
                 () => 'mdi-eye'
               )
-            )
+            )] : [])
           ] : [])
         ]
       )
