@@ -1,0 +1,7 @@
+interface:
+  display_name: "Vuetify Extended"
+  short_description: "Build apps with vuetify-extended."
+  default_prompt: "Use $vuetify-extended to implement or debug UI built with this library."
+
+policy:
+  allow_implicit_invocation: true

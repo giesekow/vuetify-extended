@@ -29,7 +29,7 @@ export type FieldType =
   'text'|'select'|'autocomplete'|'label'|
   'messagingbox'|'chart'|'viewtable'|
   'map'|'map-line'|'map-circle'|'map-rectangle'|'map-polygon'|'map-heatmap'|'map-cluster'|'map-geojson'|
-  'code'|'color'|'html'|'htmlview'|'listselect'|
+  'code'|'color'|'html'|'htmlview'|'listselect'|'file-upload'|
   'time'|'date'|'datetime'|'button'|'image'|
   'document'|'password'|'float'|'integer'|'decimal'|
   'collection'|'textarea'|'boolean'|'table'|'reporttable'|'servertable';
@@ -46,7 +46,7 @@ Use this mental split when designing a field:
 - Display fields:
   `label`, `htmlview`, `chart`
 - Rich editor/media fields:
-  `html`, `code`, `image`, `document`, `messagingbox`
+  `html`, `code`, `image`, `document`, `file-upload`, `messagingbox`
 - Dataset widgets:
   `table`, `viewtable`, `reporttable`, `servertable`, `collection`
 - Geo widgets:
@@ -108,11 +108,22 @@ export interface FieldParams {
   keepSelectedItemsInOptions?: boolean;
   autocompleteLoadMoreText?: string;
   autocompleteLoadingMoreText?: string;
+  previewFullscreen?: boolean;
   hideMapText?: boolean;
   mapTextPageSize?: number;
+  uploadType?: 'base64'|'file'|'metadata';
   fileAccepts?: any;
   fileMaxSize?: number;
-  previewFullscreen?: boolean;
+  assetMode?: boolean;
+  assetAdapter?: AssetAdapter;
+  assetIdField?: string;
+  assetPreviewField?: string;
+  assetDownloadField?: string;
+  assetNameField?: string;
+  assetMimeTypeField?: string;
+  assetSizeField?: string;
+  autoUpload?: boolean;
+  removeAssetOnClear?: boolean;
   messageInitialCount?: number;
   messagePageSize?: number;
   bordered?: boolean;
@@ -181,6 +192,10 @@ export interface FieldOptions {
   messageFormat?: (field: Field, data: any) => any[];
   rules?: (field: Field) => any[];
   changed?: (field: Field) => void;
+  fileSelected?: (field: Field, payload: FieldSelectedFilePayload) => Promise<void>|void;
+  assetUploaded?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
+  assetsResolved?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
+  assetRemoved?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
   focusChanged?: (field: Field, focused: boolean) => void;
   setup?: (field: Field) => void;
   validate?: (field: Field) => Promise<string|undefined>|string|undefined;
@@ -207,6 +222,24 @@ export interface FieldOptions {
   Adds built-in range/comparison/length/regex validators.
 - `multiple`
   Switches many field types from scalar to array storage.
+- `uploadType`
+  Applies to `file-upload` in direct mode. Controls whether the stored value is base64 content, raw `File` objects, or metadata-only objects.
+- `fileAccepts`
+  Passed to the native picker / upload widget to constrain allowed file types.
+- `fileMaxSize`
+  Max allowed file size in KB for selected files.
+- `previewFullscreen`
+  Controls whether image/document previews open fullscreen or in a contained dialog.
+- `assetMode`
+  Enables asset-backed storage for `image`, `document`, and `file-upload`. In this mode the field stores asset ids in `Master` instead of storing file payloads directly.
+- `assetAdapter`
+  Required for `assetMode`. Provides the upload/resolve/remove integration with your asset service.
+- `assetIdField`, `assetPreviewField`, `assetDownloadField`, `assetNameField`, `assetMimeTypeField`, `assetSizeField`
+  Map your asset record shape into the fields used by the library for storage, preview, and display.
+- `autoUpload`
+  Asset-mode only. Defaults to `true`. When `false`, files are staged first and uploaded only when `field.$uploadAssets()` is called.
+- `removeAssetOnClear`
+  Asset-mode only. When `true`, clearing/removing uploaded items also calls the adapter `remove(...)` hook.
 - `class`, `style`, `height`, `minHeight`, `maxHeight`, `minWidth`
   Standard layout/appearance hooks that apply directly to the underlying widget.
 - grid params `cols`, `xs`, `sm`, `md`, `lg`, `xl`, `xxl`
@@ -232,6 +265,14 @@ export interface FieldOptions {
   Extra custom validation beyond the built-in `validation` object.
 - `changed(...)`
   Runs after the field has pushed its new value back into `Master`.
+- `fileSelected(...)`
+  Runs after file selection has updated the field state. In direct mode this happens after `modelValue` is updated. In asset mode this happens after files are staged locally.
+- `assetUploaded(...)`
+  Runs after asset-mode upload succeeds. Receives the newly uploaded batch of asset records.
+- `assetsResolved(...)`
+  Runs after stored asset ids are resolved into asset records for display/preview.
+- `assetRemoved(...)`
+  Runs after adapter-backed asset removal when `removeAssetOnClear: true`.
 - `focusChanged(...)`
   Focus gain/loss callback.
 - `on(...)`
@@ -246,6 +287,10 @@ export interface FieldOptions {
 - `focus-changed`
 - `focus-gained`
 - `focus-lost`
+- `fileSelected`
+- `assetUploaded`
+- `assetsResolved`
+- `assetRemoved`
 
 Collection fields also emit:
 
@@ -279,8 +324,9 @@ This is the most important quick reference when binding a field to `Master`.
 | `html` | `string` |
 | `htmlview` | `string` if bound |
 | `code` | `string` |
-| `image` | `string` or `string[]` when `multiple: true` |
-| `document` | `string` or `string[]` when `multiple: true` |
+| `image` | direct mode: base64/URL `string` or `string[]`; asset mode: asset id `string` or `string[]` |
+| `document` | direct mode: base64/URL `string` or `string[]`; asset mode: asset id `string` or `string[]` |
+| `file-upload` | direct mode: base64 `string`/`string[]`, `File`/`File[]`, or metadata object/object[] depending on `uploadType`; asset mode: asset id `string` or `string[]` |
 | `messagingbox` | `any[]` |
 | `chart` | no fixed stored datatype; usually driven by `chartData(...)` / `chartOptions(...)` |
 | `table` | usually `any[]` |
@@ -297,6 +343,70 @@ This is the most important quick reference when binding a field to `Master`.
 | `map-heatmap` | array of weighted point objects |
 | `map-cluster` | array of point objects |
 | `map-geojson` | GeoJSON `Feature`, `FeatureCollection`, or geometry object |
+
+## Media Field Workflow
+
+`image`, `document`, and `file-upload` support both direct-storage mode and asset-backed mode.
+
+### Direct mode
+
+This is the default/legacy behavior.
+
+- `assetMode` is omitted or `false`
+- file payloads are stored directly in `Master`
+- `image` and `document` store base64/data URL strings
+- `file-upload` stores values according to `uploadType`
+
+### Asset mode
+
+This is the centralized-assets workflow.
+
+- `assetMode: true`
+- `assetAdapter` must be provided
+- the field stores only asset ids in `Master`
+- asset records are resolved separately for preview/display
+
+Typical sequence when `autoUpload: true`:
+
+1. user selects file(s)
+2. field stages `File[]` internally
+3. `fileSelected` fires
+4. adapter `upload(...)` runs
+5. returned asset ids are written to `Master`
+6. `assetUploaded` fires
+
+Typical sequence when `autoUpload: false`:
+
+1. user selects file(s)
+2. field stages `File[]` internally
+3. `fileSelected` fires
+4. `Master` is not updated yet
+5. app or UI later calls `field.$uploadAssets()`
+6. uploaded asset ids are then written to `Master`
+
+### Field helpers exposed by the media workflow
+
+- `field.$selectedFiles`
+  Always returns a `File[]`. Empty when no files are currently staged.
+- `field.$clearSelectedFiles()`
+  Clears only staged files. It does not clear already stored/uploaded asset ids.
+- `field.$resolvedAssets`
+  Asset-mode cache of resolved asset records currently being displayed.
+- `field.$uploadAssets()`
+  Manual asset-mode upload trigger, mainly useful when `autoUpload: false`.
+
+### Asset adapter contract
+
+- `upload(payload, field)`
+  Upload the selected file batch and return asset records.
+- `resolve(payload, field)`
+  Resolve stored asset ids back into asset records.
+- `remove?(assets, field)`
+  Optional cleanup hook used when `removeAssetOnClear: true`.
+- `getPreviewUrl?(asset, field)`
+  Optional helper to derive a preview URL when it is not already included on the asset record.
+- `getDownloadUrl?(asset, field)`
+  Optional helper to derive a download URL when it is not already included on the asset record.
 
 ## Field-Type Reference
 
@@ -601,30 +711,55 @@ new Field(
 ### `image`
 
 - Stored datatype:
-  `string`, or `string[]` when `multiple: true`
+  direct mode: base64/URL `string`, or `string[]` when `multiple: true`
+  asset mode: asset id `string`, or `string[]` when `multiple: true`
 - Widget:
   media upload/preview widget
 - Relevant params:
-  `fileAccepts`, `fileMaxSize`, `height`, `multiple`, `previewFullscreen`
+  `fileAccepts`, `fileMaxSize`, `height`, `multiple`, `previewFullscreen`, `assetMode`, `assetAdapter`, `autoUpload`, `removeAssetOnClear`
 - Relevant options:
-  common hooks only
+  `fileSelected(...)`, `assetUploaded(...)`, `assetsResolved(...)`, `assetRemoved(...)`
 - Notes:
-  Values are usually base64/data URLs but can also be remote renderable URLs.
+  In direct mode values are usually base64/data URLs but can also be remote renderable URLs.
+  In asset mode the field stores only asset ids in `Master`, while preview/display is driven by resolved asset records.
   Clicking the preview opens the in-app image preview dialog. `previewFullscreen` defaults to `true`; set it to `false` to use the contained dialog mode instead.
 
 ### `document`
 
 - Stored datatype:
-  `string`, or `string[]` when `multiple: true`
+  direct mode: base64/URL `string`, or `string[]` when `multiple: true`
+  asset mode: asset id `string`, or `string[]` when `multiple: true`
 - Widget:
   document upload/preview widget
 - Relevant params:
-  `fileAccepts`, `fileMaxSize`, `height`, `multiple`, `previewFullscreen`
+  `fileAccepts`, `fileMaxSize`, `height`, `multiple`, `previewFullscreen`, `assetMode`, `assetAdapter`, `autoUpload`, `removeAssetOnClear`
 - Relevant options:
-  common hooks only
+  `fileSelected(...)`, `assetUploaded(...)`, `assetsResolved(...)`, `assetRemoved(...)`
 - Notes:
   Defaults accepted types to PDF-related values when not explicitly set.
+  In asset mode the stored `Master` value becomes the asset id or asset id array, not the document content itself.
   PDF previews now open in the in-app document preview dialog. `previewFullscreen` defaults to `true`; set it to `false` for the contained dialog mode. Viewer controls such as zoom or page navigation depend on the browser's embedded PDF/document renderer.
+
+### `file-upload`
+
+- Stored datatype:
+  direct mode:
+  `uploadType: 'base64'` => base64 `string` or `string[]`
+  `uploadType: 'file'` => `File` or `File[]`
+  `uploadType: 'metadata'` => metadata object or metadata object array
+  asset mode:
+  asset id `string`, or `string[]` when `multiple: true`
+- Widget:
+  `VFileUpload`
+- Relevant params:
+  `multiple`, `uploadType`, `fileAccepts`, `fileMaxSize`, `assetMode`, `assetAdapter`, `autoUpload`, `removeAssetOnClear`
+- Relevant options:
+  `fileSelected(...)`, `assetUploaded(...)`, `assetsResolved(...)`, `assetRemoved(...)`
+- Notes:
+  This is the most general file field.
+  Use direct mode when the form should persist actual file payloads or metadata directly in `Master`.
+  Use asset mode when your application stores binary content in a centralized asset service/table and other records should only reference asset ids.
+  Even in metadata mode, `field.$selectedFiles` still exposes the currently selected raw `File[]` for validation or custom upload handling.
 
 ### `messagingbox`
 

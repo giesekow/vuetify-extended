@@ -7,7 +7,44 @@ import { Report } from "./report";
 import '@vuepic/vue-datepicker/dist/main.css';
 import { OnHandler } from "./lib";
 import 'katex/dist/katex.min.css';
-export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagingbox' | 'chart' | 'viewtable' | 'map' | 'map-line' | 'map-circle' | 'map-rectangle' | 'map-polygon' | 'map-heatmap' | 'map-cluster' | 'map-geojson' | 'code' | 'color' | 'html' | 'htmlview' | 'listselect' | 'time' | 'date' | 'datetime' | 'button' | 'image' | 'document' | 'password' | 'float' | 'integer' | 'decimal' | 'collection' | 'textarea' | 'boolean' | 'table' | 'reporttable' | 'servertable';
+export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagingbox' | 'chart' | 'viewtable' | 'map' | 'map-line' | 'map-circle' | 'map-rectangle' | 'map-polygon' | 'map-heatmap' | 'map-cluster' | 'map-geojson' | 'code' | 'color' | 'html' | 'htmlview' | 'listselect' | 'file-upload' | 'time' | 'date' | 'datetime' | 'button' | 'image' | 'document' | 'password' | 'float' | 'integer' | 'decimal' | 'collection' | 'textarea' | 'boolean' | 'table' | 'reporttable' | 'servertable';
+export type FieldUploadType = 'base64' | 'file' | 'metadata';
+export interface AssetRecord {
+    id: string;
+    name: string;
+    mimeType?: string;
+    size?: number;
+    previewUrl?: string;
+    downloadUrl?: string;
+    thumbnailUrl?: string;
+    extension?: string;
+    [key: string]: any;
+}
+export interface AssetFieldUploadPayload {
+    files: File[];
+    file?: File;
+    multiple: boolean;
+    fieldType: 'image' | 'document' | 'file-upload';
+}
+export interface AssetResolvePayload {
+    ids: string[];
+    multiple: boolean;
+    fieldType: 'image' | 'document' | 'file-upload';
+}
+export interface AssetAdapter {
+    upload: (payload: AssetFieldUploadPayload, field: Field) => Promise<AssetRecord[]>;
+    resolve: (payload: AssetResolvePayload, field: Field) => Promise<AssetRecord[]>;
+    remove?: (assets: AssetRecord[], field: Field) => Promise<void>;
+    replace?: (asset: AssetRecord, file: File, field: Field) => Promise<AssetRecord>;
+    getPreviewUrl?: (asset: AssetRecord, field: Field) => Promise<string> | string;
+    getDownloadUrl?: (asset: AssetRecord, field: Field) => Promise<string> | string;
+}
+export interface FieldSelectedFilePayload {
+    files: File[];
+    file?: File;
+    multiple: boolean;
+    uploadType: FieldUploadType;
+}
 export declare const fieldTypeOptions: {
     name: string;
     _id: string;
@@ -67,8 +104,19 @@ export interface FieldParams {
     previewFullscreen?: boolean;
     hideMapText?: boolean;
     mapTextPageSize?: number;
+    uploadType?: FieldUploadType;
     fileAccepts?: any;
     fileMaxSize?: number;
+    assetMode?: boolean;
+    assetAdapter?: AssetAdapter;
+    assetIdField?: string;
+    assetPreviewField?: string;
+    assetDownloadField?: string;
+    assetNameField?: string;
+    assetMimeTypeField?: string;
+    assetSizeField?: string;
+    autoUpload?: boolean;
+    removeAssetOnClear?: boolean;
     messageInitialCount?: number;
     messagePageSize?: number;
     bordered?: boolean;
@@ -167,6 +215,10 @@ export interface FieldOptions {
     messageFormat?: (field: Field, data: any) => any[];
     rules?: (field: Field) => any[];
     changed?: (field: Field) => void;
+    fileSelected?: (field: Field, payload: FieldSelectedFilePayload) => Promise<void> | void;
+    assetUploaded?: (field: Field, assets: AssetRecord[]) => Promise<void> | void;
+    assetsResolved?: (field: Field, assets: AssetRecord[]) => Promise<void> | void;
+    assetRemoved?: (field: Field, assets: AssetRecord[]) => Promise<void> | void;
     focusChanged?: (field: Field, focused: boolean) => void;
     setup?: (field: Field) => void;
     validate?: (field: Field) => Promise<string | undefined> | string | undefined;
@@ -225,6 +277,11 @@ export declare class Field extends UIBase {
     private autocompleteDebounceTimer?;
     private autocompleteAbortController?;
     private autocompleteMenuClass;
+    private selectedFiles;
+    private resolvedAssets;
+    private assetResolveRequestId;
+    private assetUploadPending;
+    private assetUploading;
     constructor(params?: FieldParams, options?: FieldOptions);
     static setDefault(value: FieldParams, reset?: boolean): void;
     get $refs(): Refs;
@@ -238,9 +295,88 @@ export declare class Field extends UIBase {
     get $value(): any;
     get $options(): any[];
     get $collectionForm(): Form | undefined;
+    get $selectedFiles(): File[];
+    get $resolvedAssets(): AssetRecord[];
+    get $hasPendingUpload(): boolean;
     props(): never[];
     setup(props: any, context: any): void;
     private modelBinding;
+    private componentOptions;
+    private mediaFieldType;
+    private isMediaField;
+    private isAssetMode;
+    private assetAdapter;
+    private assetIdField;
+    private assetPreviewField;
+    private assetDownloadField;
+    private assetNameField;
+    private assetMimeTypeField;
+    private assetSizeField;
+    private resolvedUploadType;
+    private normalizeFiles;
+    private normalizeStoredAssetIds;
+    private assetValueFromRecords;
+    private buildAssetRecordMetadata;
+    private hydrateAssetRecords;
+    private buildSelectedFileMetadata;
+    private directStoredMediaItems;
+    mediaItems(): ({
+        key: string;
+        label: any;
+        mimeType: any;
+        size: any;
+        previewUrl: undefined;
+        downloadUrl: undefined;
+        raw: any;
+        uploaded: boolean;
+        pending: boolean;
+    } | {
+        key: string;
+        label: string;
+        mimeType: string;
+        size: undefined;
+        previewUrl: string;
+        downloadUrl: string;
+        raw: any;
+        uploaded: boolean;
+        pending: boolean;
+    })[] | ({
+        key: string;
+        label: string;
+        mimeType: string;
+        size: number | undefined;
+        previewUrl: string | undefined;
+        downloadUrl: string | undefined;
+        raw: AssetRecord;
+        uploaded: boolean;
+        pending: boolean;
+    } | {
+        key: string;
+        label: string;
+        mimeType: string;
+        size: number;
+        previewUrl: undefined;
+        downloadUrl: undefined;
+        raw: File;
+        uploaded: boolean;
+        pending: boolean;
+    })[];
+    private setSelectedFiles;
+    private mergeDirectMediaValues;
+    $clearSelectedFiles(): Promise<void>;
+    private emitFileSelected;
+    private emitAssetUploaded;
+    private emitAssetsResolved;
+    private emitAssetRemoved;
+    private removeAssets;
+    private validateSelectedFiles;
+    private createDirectUploadValue;
+    $uploadAssets(): Promise<AssetRecord[]>;
+    handleSelectedFiles(files?: File[] | FileList | null): Promise<void>;
+    private syncResolvedAssets;
+    private clearMediaValue;
+    private clearMediaItem;
+    private openMediaItem;
     valueChanged(newValue?: any): void;
     attachEventListeners(): void;
     removeEventListeners(): void;
@@ -385,6 +521,9 @@ export declare class Field extends UIBase {
         [key: string]: any;
     }>[];
     buildImage(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
+        [key: string]: any;
+    }>;
+    buildFileUpload(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;
     private showFullscreen;
