@@ -155,7 +155,7 @@ export class Part extends UIBase {
       {
         justify: this.params.value.justify,
         align: this.params.value.align,
-        dense: this.params.value.dense,
+        density: this.params.value.dense ? 'comfortable' : undefined,
         alignContent: this.params.value.alignContent,
       },
       () => {

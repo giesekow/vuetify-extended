@@ -48,6 +48,11 @@ export function toggleThemeMode(): AppThemeMode {
 
 export function bindVuetifyThemeMode(vuetify: any) {
   watch(themeModeRef, (value) => {
+    if (typeof vuetify?.theme?.change === 'function') {
+      vuetify.theme.change(value);
+      return;
+    }
+
     if (vuetify?.theme?.global?.name) {
       vuetify.theme.global.name.value = value;
     }

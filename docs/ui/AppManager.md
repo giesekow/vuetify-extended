@@ -12,6 +12,7 @@ Static coordinator used by host apps and library internals to initialize, regist
 - Acts as the bridge between independent UI objects and the mounted `AppMain` instance.
 - Exposes app/setup state used by bootstrap validation.
 - Provides the registry and serialization bridge used by `AppMain` history/persistence restore.
+- Normalizes grouped `navigation: { ... }` metadata and auto-registration behavior for factory-based screens.
 
 Practical guides:
 
@@ -107,8 +108,19 @@ Behavior:
 - if `navigation.key` is present and a registration already exists, it is reused
 - if `navigation.key` is present and the target is a factory, `AppManager` auto-registers or refreshes the screen definition for restore
 - if `navigation.key` is present but the target is only an instance and no registration exists, the screen still works in-session but is excluded from refresh/resume restore and a dev warning is emitted
+- when the same key is registered again, the newest registration wins
 
 Backward-compatible flat navigation fields such as `navigationKey` and `navigationParams` are still accepted, but grouped `navigation` is preferred.
+
+Grouped `navigation` also supports inline restore helpers:
+
+- `serializeState`
+- `restoreState`
+- `resolveTitle`
+- `persist`
+- `excludeFromRestore`
+
+These map into the same internal registration/entry model used by explicit `registerScreen(...)`.
 
 ## What `buildNavigationEntry(...)` Does
 

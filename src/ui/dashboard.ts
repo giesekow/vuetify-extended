@@ -822,7 +822,7 @@ export class DashboardWidget extends UIBase {
       {
         justify: this.params.value.justify,
         align: this.params.value.align,
-        dense: this.params.value.dense,
+        density: this.params.value.dense ? 'comfortable' : undefined,
         alignContent: this.params.value.alignContent,
       },
       () => allChildren.map((child) => renderDashboardChild(this, child))
@@ -3565,7 +3565,7 @@ export class Dashboard extends UIBase {
             {
               justify: this.params.value.justify,
               align: this.params.value.align,
-              dense: this.params.value.dense,
+              density: this.params.value.dense ? 'comfortable' : undefined,
               alignContent: this.params.value.alignContent,
             },
             () => allChildren.map((child) => renderDashboardChild(this, child))

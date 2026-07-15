@@ -189,6 +189,8 @@ Bootstraps the current Vue app to use:
 - the shared notifications root
 - the recommended `src/api`, `src/bootstrap`, `src/menu`, and `src/pages` structure
 
+The generated bootstrap structure is navigation-ready, but browser/history persistence is still an explicit host-app decision through `createVuetifyExtendedApp({ navigation: ... })`.
+
 ### Supported Entry Files
 
 The command currently detects one of:
@@ -269,7 +271,14 @@ The generated theme module includes:
 - `getThemeMode()`
 - `setThemeMode(mode)`
 - `toggleThemeMode()`
+- `bindVuetifyThemeMode(vuetify)`
 - `createVuetifyThemeOptions()`
+
+Behavior:
+
+- theme mode is persisted in local storage
+- `bindVuetifyThemeMode(...)` keeps Vuetify’s active theme name synchronized with the stored mode
+- the generated helper uses Vuetify’s current `theme.change(...)` API when available
 
 This command is useful after `bootstrap app` when you want a standard light/dark starting point without hand-wiring the Vuetify theme block.
 

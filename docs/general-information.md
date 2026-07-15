@@ -168,7 +168,7 @@ They now also support two important runtime integrations directly from bootstrap
 - `i18n`
   Registers the global text/formatting adapter used by `UIText`, `UIBase.$text(...)`, `UIBase.$uiText(...)`, notifications, dialogs, shell widgets, forms, reports, triggers, and other built-in UI labels.
 - `navigation`
-  Configures `AppMain` history/persistence behavior including browser history, restore-on-load, storage mode, and custom persistence adapters.
+  Configures `AppMain` navigation behavior including the app-level `enabled` switch, browser history integration, restore-on-load, storage mode, and custom persistence adapters.
 
 Typical host-app shape:
 
@@ -196,6 +196,8 @@ createVuetifyExtendedApp({
   },
 })
 ```
+
+If `app` is passed as an already-created `AppMain` instance instead of `{ params, options }`, bootstrap overrides such as `navigation`, `menu`, `udfs`, and `makeUDF` are still merged into that instance.
 
 For a full step-by-step explanation of both:
 
@@ -236,8 +238,9 @@ Use cases:
 
 ### Browser / Device History
 
-`AppMain` now mirrors its stack into browser history:
+`AppMain` can mirror its stack into browser history:
 
+- history behavior is only active when `navigation.enabled === true` and `navigation.history !== false`
 - `showMenu`, `showReport`, `showTrigger`, `showCollection`, and `showUI` push history entries
 - `replace: true` replaces the current history state
 - browser back/forward restores the stack through serialized navigation entries
@@ -247,6 +250,7 @@ Use cases:
 
 When navigation persistence is enabled:
 
+- persistence behavior is only active when `navigation.enabled === true` and `navigation.persist !== false`
 - the current stack snapshot is saved after stack changes
 - unload/background lifecycle hooks also flush the current snapshot
 - browser environments default to `web-session`
@@ -254,6 +258,12 @@ When navigation persistence is enabled:
 - entries are included in persisted restore by default when they are reconstructable
 - `persistState === false` suppresses extra serialized screen state, but does not remove the entry from the restored stack
 - `excludeFromRestore === true` explicitly removes an entry from refresh/resume restore
+
+If `navigation.enabled` is omitted or `false`, the app behaves like the classic single-page shell:
+
+- no navigation entries are built
+- no browser history synchronization runs
+- no persisted stack snapshots are saved or restored
 
 For persisted restore to work reliably, register reconstructable screens with `AppManager.registerScreen(...)` and navigate with `navigationKey` plus serializable `navigationParams`.
 

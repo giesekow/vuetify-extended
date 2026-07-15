@@ -12,8 +12,8 @@ Top-level application shell and stack host for menus, reports, collections, shel
 - Maintains the active UI stack and exposes reactive `stackRef` and `activeItemRef`.
 - Resolves global and per-screen FAB configuration.
 - Supports mobile shell behavior including `mobileTitle`, `mobileLogo`, and shell widget routing between the compact header and right-side drawer.
-- Integrates browser history with the internal stack so browser back/forward mirrors `AppMain` navigation.
-- Persists restorable stack snapshots across refresh/resume through configurable storage adapters.
+- Can integrate browser history with the internal stack so browser back/forward mirrors `AppMain` navigation.
+- Can persist restorable stack snapshots across refresh/resume through configurable storage adapters.
 - Supports global text localization through the shared `UIText`/i18n runtime used across shell titles, buttons, dialogs, forms, reports, and triggers.
 
 Practical guides:
@@ -116,6 +116,7 @@ For new code, prefer the grouped `navigation` object because it keeps navigation
 
 ```ts
 export interface AppNavigationOptions {
+  enabled?: boolean;
   history?: boolean;
   persist?: boolean;
   restoreOnLoad?: boolean;
@@ -127,10 +128,12 @@ export interface AppNavigationOptions {
 
 Meaning:
 
+- `enabled`
+  Master switch for the runtime navigation system. When `false` or omitted, `AppMain` behaves like the classic in-app stack only: no serialized navigation entries, no browser-history syncing, and no refresh/resume restoration.
 - `history`
-  Enables browser `pushState` / `replaceState` / `popstate` integration.
+  Enables browser `pushState` / `replaceState` / `popstate` integration once navigation itself is enabled.
 - `persist`
-  Enables snapshot persistence for refresh/resume restore.
+  Enables snapshot persistence for refresh/resume restore once navigation itself is enabled.
 - `restoreOnLoad`
   Restores the last saved snapshot during bootstrap before falling back to the root menu.
 - `storageMode`
@@ -139,6 +142,15 @@ Meaning:
   Persistence key used by the selected adapter.
 - `persistence`
   Fully custom adapter implementing `load/save/clear`.
+
+Default behavior:
+
+- `enabled` defaults to `false`
+- `history` defaults to `true`
+- `persist` defaults to `true`
+- `restoreOnLoad` defaults to `true`
+
+This means history/persistence are configured but dormant until the host app explicitly opts navigation in with `enabled: true`.
 
 ### `AppMain`
 
@@ -223,6 +235,7 @@ new AppMain(
 - `$pop(count?, skipHistory?)`
 - `$reload()`
 - `syncCurrentNavigationState()`
+- `setOptions(options)`
 
 Each `$show...(...)` method accepts either:
 
@@ -242,11 +255,14 @@ Notes:
 
 Behavior:
 
-- pushing a report/trigger/collection/menu/UI screen adds a stack entry and updates browser history
+- when `navigation.enabled !== true`, `AppMain` only manages the live in-memory stack
+- when `navigation.enabled === true`, pushing a report/trigger/collection/menu/UI screen builds a `NavigationEntry`
+- browser history is only updated when `navigation.enabled === true` and `history !== false`
 - `replace: true` replaces the current browser history state instead of pushing a new one
 - browser back/forward triggers stack restoration through serialized `NavigationEntry` snapshots
 - hardware/device back in Capacitor delegates to the same `AppMain.$back()` flow
-- persistence snapshots are saved after stack changes and on unload/background lifecycle events
+- persistence snapshots are only saved when `navigation.enabled === true` and `persist !== false`
+- unload/background lifecycle events also flush persistence when enabled
 - when persistence restore fails or no snapshot exists, `AppMain` falls back to the root menu
 
 History and persistence intentionally share the same serialized navigation entry model, but they are not identical:

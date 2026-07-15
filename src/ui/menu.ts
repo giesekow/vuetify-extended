@@ -197,7 +197,7 @@ export class Menu extends UIBase {
       {
         justify: this.params.value.justify || 'center',
         align: this.params.value.align || 'center',
-        dense: this.params.value.dense,
+        density: this.params.value.dense ? 'comfortable' : undefined,
         alignContent: this.params.value.alignContent || 'center',
       },
       () => {

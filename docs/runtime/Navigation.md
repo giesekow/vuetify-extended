@@ -9,6 +9,30 @@ It focuses on:
 - serializable navigation entries
 - how to register screens so they can be restored later
 
+## App-Level Master Switch
+
+Navigation is opt-in at the app level.
+
+```ts
+createVuetifyExtendedApp({
+  navigation: {
+    enabled: true,
+    history: false,
+    persist: true,
+    restoreOnLoad: true,
+  },
+})
+```
+
+Meaning:
+
+- `enabled: false` or omitted
+  No serialized navigation system is active. The app still uses the normal live `AppMain` stack, but browser history and refresh/resume restoration are disabled.
+- `enabled: true, history: false`
+  Navigation entries and persistence are active, but browser back/forward does not drive the stack.
+- `enabled: true, history: true`
+  Full navigation stack, browser history integration, and optional persistence all participate together.
+
 ## The Navigation Model
 
 `AppMain` owns the active stack.
@@ -33,8 +57,8 @@ the runtime:
 
 1. pushes the live UI object into the current `AppMain` stack
 2. builds a `NavigationEntry`
-3. syncs browser history if enabled
-4. saves persistence state if persistence is enabled
+3. syncs browser history if `navigation.history !== false`
+4. saves persistence state if `navigation.persist !== false`
 
 ## Preferred Navigation Shape
 
@@ -203,6 +227,8 @@ If a factory is used with `navigation.key` and no registration exists yet, the r
 
 If an already-created instance is used with `navigation.key` but no registration exists, the screen still works for the current session, but refresh/resume restore is intentionally disabled for that entry.
 
+This means the common navigation-aware path does not require manual `attachNavigation(...)` or manual `registerScreen(...)` wiring for every screen. The explicit registry API is still useful when you want centralized control.
+
 ## When Restoration Works Best
 
 Navigation restoration works best when:
@@ -257,6 +283,31 @@ Typical cases:
 - redirect-style workflows
 
 ## Good Host-App Pattern
+
+Use this pattern when you want restoreable screens with minimal boilerplate:
+
+```ts
+AppManager.showReport(
+  (entry) => buildCustomerReport(entry?.params?.mode ?? 'display', entry?.params?.customerId),
+  {
+    navigation: {
+      key: 'reports.customer.display',
+      params: {
+        customerId,
+        mode: 'display',
+      },
+      persist: true,
+    },
+  },
+)
+```
+
+Recommended approach:
+
+- use factory functions for report/trigger/collection/UI screens
+- group metadata under `navigation`
+- keep `navigation.params` small and serializable
+- use `navigation.state` only for extra UI state that cannot be derived from params
 
 ```ts
 AppManager.registerScreen('reports.invoice-edit', {

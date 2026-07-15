@@ -40,6 +40,7 @@ Persistence is configured through `AppNavigationOptions`:
 
 ```ts
 navigation: {
+  enabled: true,
   history: true,
   persist: true,
   restoreOnLoad: true,
@@ -49,6 +50,8 @@ navigation: {
 
 Meaning:
 
+- `enabled`
+  Turns the navigation/persistence system on. If omitted or `false`, no stack snapshots are saved or restored.
 - `persist`
   Enables saving snapshots.
 - `restoreOnLoad`
@@ -94,7 +97,7 @@ The runtime chooses a sensible default:
 - browser environments default to `web-session`
 - Capacitor environments default to `capacitor-preferences`
 
-This gives most apps reasonable behavior without custom setup.
+This gives most apps reasonable behavior without custom setup once navigation is enabled.
 
 ## What Should Go Into Persisted State
 
@@ -163,6 +166,13 @@ The runtime deliberately keeps this distinction:
 - persisted snapshots include reconstructable entries by default
 - `persistState === false` suppresses extra saved state only
 - `excludeFromRestore === true` removes the entry entirely from refresh/resume restore
+
+This distinction matters most when you choose:
+
+- `enabled: true, history: false, persist: true`
+  Refresh/resume restore still works, but browser back/forward does not.
+- `enabled: false`
+  Neither history nor persistence is active, even if `history` or `persist` are set.
 
 This is important because some screens are useful for session navigation but unsafe or noisy to restore after a refresh.
 
