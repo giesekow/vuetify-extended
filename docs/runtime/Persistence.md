@@ -74,11 +74,13 @@ Use `'web-session'` when:
 
 - you want restore during the current browser session
 - you do not want long-lived persistence across fully closed browser sessions
+- you want browser tabs/windows isolated from each other by default
 
 Use `'web-local'` when:
 
 - you want longer-lived browser persistence
 - it is acceptable for users to return to the same stack later
+- you still want tab/window isolation, but prefer local-storage durability for that tab’s scoped snapshot
 
 Use `'capacitor-preferences'` when:
 
@@ -98,6 +100,30 @@ The runtime chooses a sensible default:
 - Capacitor environments default to `capacitor-preferences`
 
 This gives most apps reasonable behavior without custom setup once navigation is enabled.
+
+## Browser Tab Isolation
+
+Browser-backed persistence is now window-scoped by the runtime for both:
+
+- `web-session`
+- `web-local`
+
+That means:
+
+- normal browser tabs do not overwrite each other's navigation snapshot
+- duplicated tabs also receive their own storage namespace instead of continuing to write to the same session key
+- refresh in the same tab keeps using the same scoped session key
+
+This isolation is intentionally applied because the runtime treats persistence as a per-tab workflow-resume feature rather than a shared multi-tab navigation channel.
+
+Difference between the two browser-backed modes:
+
+- `web-session`
+  Uses `sessionStorage` under a tab-scoped key.
+- `web-local`
+  Uses `localStorage` under a tab-scoped key.
+
+So both modes isolate tabs, while `web-local` uses the longer-lived browser storage backend for the same tab scope.
 
 ## What Should Go Into Persisted State
 

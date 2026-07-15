@@ -255,6 +255,7 @@ When navigation persistence is enabled:
 - unload/background lifecycle hooks also flush the current snapshot
 - browser environments default to `web-session`
 - Capacitor environments default to `capacitor-preferences`
+- browser-backed snapshots are scoped per browser window/tab so concurrent tabs do not overwrite each other
 - entries are included in persisted restore by default when they are reconstructable
 - `persistState === false` suppresses extra serialized screen state, but does not remove the entry from the restored stack
 - `excludeFromRestore === true` explicitly removes an entry from refresh/resume restore

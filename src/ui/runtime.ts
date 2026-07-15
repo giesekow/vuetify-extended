@@ -217,6 +217,7 @@ type StorageLike = {
 
 const DEFAULT_STORAGE_KEY = 'vuetify-extended-navigation-stack';
 const NAV_TEMPLATE_KEY = Symbol('vuetify-extended.navigation-template');
+const NAV_WINDOW_SCOPE_ID_KEY = '__veWindowScopeId';
 
 export interface NavigationTemplate {
   key?: string;
@@ -252,6 +253,58 @@ export function createNavigationId() {
 
 export function navigationStorageKey(value?: string) {
   return value || DEFAULT_STORAGE_KEY;
+}
+
+function getBrowserNavigationType() {
+  const performanceApi = (globalThis as any)?.performance;
+  try {
+    const entries = performanceApi?.getEntriesByType?.('navigation');
+    const type = entries?.[0]?.type;
+    if (typeof type === 'string') {
+      return type;
+    }
+  } catch (_error) {
+    //
+  }
+
+  const legacyType = performanceApi?.navigation?.type;
+  if (legacyType === 1) {
+    return 'reload';
+  }
+  if (legacyType === 0) {
+    return 'navigate';
+  }
+  return undefined;
+}
+
+function resolveWindowScopedNavigationStorageKey(baseKey: string) {
+  if (typeof window === 'undefined' || !window.history) {
+    return baseKey;
+  }
+
+  const currentState = window.history.state;
+  const existingScopeId = typeof currentState?.[NAV_WINDOW_SCOPE_ID_KEY] === 'string'
+    ? currentState[NAV_WINDOW_SCOPE_ID_KEY]
+    : undefined;
+  const navigationType = getBrowserNavigationType();
+  const scopeId = navigationType === 'reload' && existingScopeId
+    ? existingScopeId
+    : randomId();
+
+  try {
+    window.history.replaceState(
+      {
+        ...(typeof currentState === 'object' && currentState !== null ? currentState : {}),
+        [NAV_WINDOW_SCOPE_ID_KEY]: scopeId,
+      },
+      '',
+      window.location.href,
+    );
+  } catch (_error) {
+    //
+  }
+
+  return `${baseKey}::${scopeId}`;
 }
 
 function safeWindowStorage(name: 'sessionStorage' | 'localStorage'): StorageLike | undefined {
@@ -417,21 +470,28 @@ export async function createNavigationPersistenceAdapter(
   mode: NavigationStorageMode,
   key?: string,
 ): Promise<NavigationPersistenceAdapter> {
-  const storageKey = navigationStorageKey(key);
+  const baseStorageKey = navigationStorageKey(key);
+  const scopedStorageKey = resolveWindowScopedNavigationStorageKey(baseStorageKey);
 
   if (mode === 'web-local') {
-    return createWebStorageAdapter(safeWindowStorage('localStorage'), storageKey);
+    return createWebStorageAdapter(safeWindowStorage('localStorage'), scopedStorageKey);
   }
 
   if (mode === 'capacitor-preferences') {
-    return createCapacitorPreferencesAdapter(storageKey);
+    return createCapacitorPreferencesAdapter(baseStorageKey);
   }
 
   if (mode === 'custom') {
-    return createWebStorageAdapter(safeWindowStorage('sessionStorage'), storageKey);
+    return createWebStorageAdapter(
+      safeWindowStorage('sessionStorage'),
+      scopedStorageKey,
+    );
   }
 
-  return createWebStorageAdapter(safeWindowStorage('sessionStorage'), storageKey);
+  return createWebStorageAdapter(
+    safeWindowStorage('sessionStorage'),
+    scopedStorageKey,
+  );
 }
 
 export async function attachCapacitorBackButton(handler: () => Promise<void> | void) {
