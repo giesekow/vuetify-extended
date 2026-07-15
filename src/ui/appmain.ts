@@ -4,6 +4,7 @@ import { Menu } from "./menu";
 import { Report } from "./report";
 import { Collection } from "./collection";
 import { Selector } from "./selector";
+import { Trigger } from "./trigger";
 import { sleep } from "../misc";
 import { Dialogs } from "./dialogs";
 import { Field } from "./field";
@@ -79,7 +80,7 @@ export interface AppScreenParams {
 }
 
 export interface AppStackItem {
-  type: "menu"|"report"|"collection"|"selector"|"ui";
+  type: "menu"|"report"|"trigger"|"collection"|"selector"|"ui";
   item: UIBase,
   params: AppScreenParams
 }
@@ -1157,6 +1158,24 @@ export class AppMain extends UIBase {
     this.stack.push({
       type: "collection",
       item: collection,
+      params: params || {}
+    })
+
+    this.index.value = this.stack.length - 1;
+    await this.activateCurrentItem();
+  }
+
+  async $showTrigger(trigger: Trigger, params?: any, replace?: boolean) {
+
+    if (this.index.value >= 0 && this.index.value < this.stack.length) {
+      this.stack[this.index.value].item.removeEventListeners();
+    }
+
+    if (replace) await this.$pop()
+
+    this.stack.push({
+      type: "trigger",
+      item: trigger,
       params: params || {}
     })
 

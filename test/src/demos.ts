@@ -2170,7 +2170,7 @@ function buildHomeMenu() {
                   ),
                 ],
               };
-              AppManager.showUI(trigger);
+              AppManager.showTrigger(trigger);
             },
           },
         ),

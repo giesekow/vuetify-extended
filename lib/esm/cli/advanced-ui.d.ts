@@ -1,0 +1,10 @@
+import { CreateCommandOptions } from './create-ui';
+export declare function runCreateDashboardCommand(options: CreateCommandOptions): Promise<number>;
+export declare function runCreatePageCommand(options: CreateCommandOptions): Promise<number>;
+export declare function runCreateFieldCommand(options: CreateCommandOptions): Promise<number>;
+export declare function runCreatePartCommand(options: CreateCommandOptions): Promise<number>;
+export declare function runCreateDashboardWidgetCommand(options: CreateCommandOptions): Promise<number>;
+export declare function runCreateServiceCommand(options: CreateCommandOptions): Promise<number>;
+export declare function runCreateValidatorCommand(options: CreateCommandOptions): Promise<number>;
+export declare function runDoctorCommand(options: CreateCommandOptions): Promise<number>;
+export declare function runMigrateCommand(options: CreateCommandOptions): Promise<number>;

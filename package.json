@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "A plugin to use vuetify in javascript mode",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run test:cli",
+    "test:cli": "npm run build && node test/cli/create-form.test.cjs && node test/cli/advanced-cli.test.cjs",
     "build": "npm run build-esm && npm run build-cjs",
     "build-esm": "npx tsc -p tsconfig.json && cp -r src/css lib/esm/",
     "build-cjs": "npx tsc -p tsconfig-cjs.json && cp -r src/css lib/cjs/",

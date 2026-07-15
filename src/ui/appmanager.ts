@@ -8,6 +8,7 @@ import { EventEmitter } from "./lib";
 import { Menu } from "./menu";
 import { Report } from "./report";
 import { Selector } from "./selector";
+import { Trigger } from "./trigger";
 
 
 
@@ -107,6 +108,14 @@ export class AppManager {
   static showCollection(collection: Collection, params?: any, replace?: boolean) {
     if (AppManager.app) {
       AppManager.app.$showCollection(collection, params, replace);
+      return true;
+    }
+    return false;
+  }
+
+  static showTrigger(trigger: Trigger, params?: any, replace?: boolean) {
+    if (AppManager.app) {
+      AppManager.app.$showTrigger(trigger, params, replace);
       return true;
     }
     return false;

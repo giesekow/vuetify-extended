@@ -7,6 +7,7 @@ import { Field } from "./field";
 import { Menu } from "./menu";
 import { Report } from "./report";
 import { Selector } from "./selector";
+import { Trigger } from "./trigger";
 export declare class AppManager {
     private static app;
     private static printer;
@@ -30,6 +31,7 @@ export declare class AppManager {
     static getUDFs(objectType: string | string[]): Promise<any[]>;
     static makeUDF(options: any, mode?: ReportMode): Field | undefined;
     static showCollection(collection: Collection, params?: any, replace?: boolean): boolean;
+    static showTrigger(trigger: Trigger, params?: any, replace?: boolean): boolean;
     static showReport(report: Report, params?: any, replace?: boolean): boolean;
     static showDialog(dialog: DialogForm, params?: any): boolean;
     static showSelector(selector: Selector, params?: any): boolean;

@@ -4,6 +4,7 @@ import { Menu } from "./menu";
 import { Report } from "./report";
 import { Collection } from "./collection";
 import { Selector } from "./selector";
+import { Trigger } from "./trigger";
 import { Field } from "./field";
 import { Button } from "./button";
 import { DialogForm } from "./dialogform";
@@ -67,7 +68,7 @@ export interface AppScreenParams {
     [key: string]: any;
 }
 export interface AppStackItem {
-    type: "menu" | "report" | "collection" | "selector" | "ui";
+    type: "menu" | "report" | "trigger" | "collection" | "selector" | "ui";
     item: UIBase;
     params: AppScreenParams;
 }
@@ -150,6 +151,7 @@ export declare class AppMain extends UIBase {
     $showMenu(menu: Menu, params?: any): Promise<void>;
     $showReport(report: Report, params?: any, replace?: boolean): Promise<void>;
     $showCollection(collection: Collection, params?: any, replace?: boolean): Promise<void>;
+    $showTrigger(trigger: Trigger, params?: any, replace?: boolean): Promise<void>;
     $showUI(ui: UIBase, params?: any, replace?: boolean): Promise<void>;
     $showSelector(selector: Selector, params?: any): Promise<void>;
     $showDialog(dialog: DialogForm, params?: any): Promise<void>;
