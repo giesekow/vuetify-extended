@@ -105,6 +105,8 @@ export interface MenuItemParams {
     icon?: string;
     color?: string;
     textColor?: string;
+    iconColor?: string;
+    iconBackgroundColor?: string;
 }
 export interface MenuItemOptions {
     access?: (menuItem: MenuItem, mode?: ReportMode) => Promise<boolean | undefined> | boolean | undefined;

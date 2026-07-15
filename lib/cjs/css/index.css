@@ -70,7 +70,7 @@
   min-width: 0;
   box-sizing: border-box;
   overflow: hidden;
-  background: rgb(var(--v-theme-surface));
+  background: color-mix(in srgb, rgb(var(--v-theme-surface)) 92%, rgb(var(--v-theme-surface-light)) 8%);
 }
 
 .vef-tiptap__toolbar {
@@ -83,7 +83,7 @@
   box-sizing: border-box;
   padding: 6px 8px;
   border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  background: rgba(var(--v-theme-surface-variant), 0.18);
+  background: color-mix(in srgb, rgb(var(--v-theme-surface-light)) 72%, rgb(var(--v-theme-surface)) 28%);
 }
 
 .vef-tiptap__tool-btn,
@@ -134,7 +134,7 @@
 
 .vef-tiptap__content p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
-  color: rgba(var(--v-theme-on-surface), 0.5);
+  color: color-mix(in srgb, rgb(var(--v-theme-on-surface)) 50%, transparent);
   float: left;
   height: 0;
   pointer-events: none;
@@ -178,7 +178,7 @@
   margin: 16px auto;
   border-radius: 10px;
   overflow: hidden;
-  background: rgba(var(--v-theme-on-surface), 0.04);
+  background: color-mix(in srgb, rgb(var(--v-theme-surface-light)) 70%, rgb(var(--v-theme-surface)) 30%);
 }
 
 .vef-tiptap__embedded-video-frame {

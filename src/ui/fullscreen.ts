@@ -74,7 +74,7 @@ function buildHeroBlock(ui: UIBase, params: FullScreenBaseParams, trailing?: VNo
         width: '88px',
         height: '88px',
         borderRadius: '999px',
-        background: 'rgba(255,255,255,0.18)',
+        background: 'color-mix(in srgb, currentColor 18%, transparent)',
         marginBottom: '8px',
         backdropFilter: 'blur(6px)',
       },

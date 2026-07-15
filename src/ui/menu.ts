@@ -187,7 +187,7 @@ export class Menu extends UIBase {
   build(props: any, context: any) {
     const h = this.$h;
     return this.$h(
-      VRow,
+      VRow as any,
       {
         justify: this.params.value.justify || 'center',
         align: this.params.value.align || 'center',
@@ -312,11 +312,15 @@ export class Menu extends UIBase {
                   {
                     prepend: () => h(
                       VAvatar,
-                      {},
+                      {
+                        style: {
+                          background: item.$params.iconBackgroundColor || 'rgba(255, 255, 255, 0.96)',
+                        },
+                      },
                       () => h(
                         VIcon,
                         {
-                          color: item.$params.textColor || 'white'
+                          color: item.$params.iconColor || item.$params.color || item.$params.textColor || 'rgb(var(--v-theme-on-surface))'
                         },
                         () => item.$params.icon || ''
                       )
@@ -939,6 +943,8 @@ export interface MenuItemParams {
   icon?: string;
   color?: string;
   textColor?: string;
+  iconColor?: string;
+  iconBackgroundColor?: string;
 }
 
 export interface MenuItemOptions {

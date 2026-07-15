@@ -31,6 +31,7 @@ It is less focused on template-heavy, animation-heavy, or design-system-first fr
 ## Documentation Map
 
 - [docs/README.md](./docs/README.md)
+- [docs/cli/README.md](./docs/cli/README.md)
 - [docs/architecture.md](./docs/architecture.md)
 - [docs/general-information.md](./docs/general-information.md)
 - [docs/ui/Field.md](./docs/ui/Field.md)
@@ -77,6 +78,74 @@ This gives you one place to:
 - configure dialog and notification behavior
 - expose single root components for dialogs and notifications
 - scaffold an optional app shell around `AppMain`
+
+## CLI Bootstrap
+
+The package now also ships a small scaffolding CLI for the first bootstrap pass.
+
+Detailed CLI reference:
+
+- [docs/cli/README.md](./docs/cli/README.md)
+
+From a Vue host app:
+
+```bash
+npx vuetify-ext bootstrap app
+```
+
+This command currently:
+
+- detects `src/main.ts` or `src/main.js`
+- creates a recommended `src/` structure for future scaffolding:
+  - `src/api/index.*`
+  - `src/bootstrap/index.*`
+  - `src/bootstrap/header.*`
+  - `src/bootstrap/footer.*`
+  - `src/menu/index.*`
+  - `src/pages/home/index.*`
+  - `src/pages/home/form.*`
+- rewrites the main entry to mount:
+  - `bootstrap.component`
+  - `bootstrap.dialogs`
+  - `bootstrap.notifications`
+- preserves common existing `app.use(...)` registrations from the previous entry file
+- preserves the current mount selector such as `'#app'`
+- asks for backend/bootstrap information interactively by default
+
+For automation, prompts can be disabled and the same information can be supplied through flags.
+
+Useful flags:
+
+```bash
+npx vuetify-ext bootstrap app --dry-run
+npx vuetify-ext bootstrap app --force
+npx vuetify-ext bootstrap app --non-interactive --backend axios --api-url http://127.0.0.1:3000/v1 --keycloak-url http://127.0.0.1:8081 --keycloak-realm foodman --keycloak-client-id foodman-admin-app
+```
+
+The generated files intentionally keep API setup, shell bootstrap, menu, and pages separated so future CLI commands have predictable destinations.
+
+Current recommended structure:
+
+```text
+src/
+  api/
+    index.ts
+  bootstrap/
+    index.ts
+    header.ts
+    footer.ts
+  menu/
+    index.ts
+  pages/
+    home/
+      index.ts
+      form.ts
+```
+
+Current supported entry files:
+
+- `src/main.ts`
+- `src/main.js`
 
 ## Importing CSS
 

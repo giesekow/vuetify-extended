@@ -151,7 +151,7 @@ export class Part extends UIBase {
     this.childrenInstances = [];
 
     return this.$h(
-      VRow,
+      VRow as any,
       {
         justify: this.params.value.justify,
         align: this.params.value.align,

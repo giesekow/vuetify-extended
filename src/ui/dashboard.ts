@@ -817,7 +817,7 @@ export class DashboardWidget extends UIBase {
     this.childInstances = allChildren.filter((item): item is UIBase => isRenderableUIBase(item));
 
     const content = h(
-      VRow,
+      VRow as any,
       {
         justify: this.params.value.justify,
         align: this.params.value.align,
@@ -3558,7 +3558,7 @@ export class Dashboard extends UIBase {
         () => [
           headerNode,
           h(
-            VRow,
+            VRow as any,
             {
               justify: this.params.value.justify,
               align: this.params.value.align,

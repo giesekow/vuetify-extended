@@ -1609,7 +1609,7 @@ export const TiptapHtmlEditor = defineComponent({
             minHeight: contentMinHeight,
           },
         })
-        : (instance ? [vueH(EditorContent, { editor: instance })] : []);
+        : (instance ? [vueH(EditorContent as any, { editor: instance as any })] : []);
 
       return vueH(
         'div',

@@ -1,6 +1,6 @@
 import { Ref, RendererNode, VNode, nextTick } from "vue";
 import { ReportMode, UIBase } from "./base";
-import { VAutocomplete, VBtn, VCard, VCardActions, VCardText, VCheckboxBtn, VCol, VColorPicker, VCombobox, VDialog, VFileUpload, VIcon, VListItem, VRadio, VRadioGroup, VRow, VSelect, VSpacer, VSwitch, VTextField, VTextarea } from 'vuetify/components';
+import { VAutocomplete, VBtn, VCard, VCheckboxBtn, VCol, VColorInput, VCombobox, VDialog, VFileUpload, VIcon, VOtpInput, VRadio, VRadioGroup, VRow, VSelect, VSwitch, VTextField, VTextarea } from 'vuetify/components';
 import { Master } from "../master";
 import { Button } from "./button";
 import * as webtex from 'webtex';
@@ -23,7 +23,7 @@ import 'katex/dist/katex.min.css';
 
 export type FieldType = 'text'|'select'|'autocomplete'|'label'|
                         'messagingbox'|'chart'| 'viewtable'|
-                        'map'|'map-line'|'map-circle'|'map-rectangle'|'map-polygon'|'map-heatmap'|'map-cluster'|'map-geojson'|'code'|'color'|'html'|'htmlview'|'listselect'|'file-upload'|
+                        'map'|'map-line'|'map-circle'|'map-rectangle'|'map-polygon'|'map-heatmap'|'map-cluster'|'map-geojson'|'code'|'color'|'html'|'htmlview'|'listselect'|'otp'|'file-upload'|
                         'time'|'date'|'datetime'|'button'|'image'|
                         'document'|'password'|'float'|'integer'|'decimal'|
                         'collection'|'textarea'|'boolean'|'table'|'reporttable'|'servertable';
@@ -64,6 +64,14 @@ export interface AssetAdapter {
   getDownloadUrl?: (asset: AssetRecord, field: Field) => Promise<string> | string;
 }
 
+export interface UploadedFileMetadata {
+  name: string;
+  size: number;
+  type: string;
+  lastModified: number;
+  extension?: string;
+}
+
 export interface FieldSelectedFilePayload {
   files: File[];
   file?: File;
@@ -94,11 +102,11 @@ export const fieldTypeOptions = [
   {name: 'Text', _id: 'text', id: 'text'}, {name: 'Select', _id: 'select', id: 'select'}, {name: 'Autocomplete', _id: 'autocomplete', id: 'autocomplete'},
   {name: 'Label', _id: 'label', id: 'label'}, {name: 'Messaging Box', _id: 'messagingbox', id: 'messagingbox'}, {name: 'Chart', _id: 'chart', id: 'chart'},
   {name: 'View Table', _id: 'viewtable', id: 'viewtable'}, {name: 'Map', _id: 'map', id: 'map'}, {name: 'Map Line', _id: 'map-line', id: 'map-line'}, {name: 'Map Circle', _id: 'map-circle', id: 'map-circle'}, {name: 'Map Rectangle', _id: 'map-rectangle', id: 'map-rectangle'}, {name: 'Map Polygon', _id: 'map-polygon', id: 'map-polygon'}, {name: 'Map Heatmap', _id: 'map-heatmap', id: 'map-heatmap'}, {name: 'Map Cluster', _id: 'map-cluster', id: 'map-cluster'}, {name: 'Map GeoJSON', _id: 'map-geojson', id: 'map-geojson'}, {name: 'Code', _id: 'code', id: 'code'},
-  {name: 'Color', _id: 'color', id: 'color'}, {name: 'HTML', _id: 'html', id: 'html'}, {name: 'Time', _id: 'time', id: 'time'},
+  {name: 'Color', _id: 'color', id: 'color'}, {name: 'HTML', _id: 'html', id: 'html'}, {name: 'HTML View', _id: 'htmlview', id: 'htmlview'}, {name: 'Time', _id: 'time', id: 'time'},
   {name: 'Date', _id: 'date', id: 'date'}, {name: 'Datetime', _id: 'datetime', id: 'datetime'}, {name: 'Button', _id: 'button', id: 'button'},
   {name: 'Image', _id: 'image', id: 'image'}, {name: 'Document', _id: 'document', id: 'document'}, {name: 'Password', _id: 'password', id: 'password'},
   {name: 'Float', _id: 'float', id: 'float'}, {name: 'Integer', _id: 'integer', id: 'integer'}, {name: 'Decimal', _id: 'decimal', id: 'decimal'},
-  {name: 'File Upload', _id: 'file-upload', id: 'file-upload'},
+  {name: 'OTP', _id: 'otp', id: 'otp'}, {name: 'File Upload', _id: 'file-upload', id: 'file-upload'},
   {name: 'Collection', _id: 'collection', id: 'collection'}, {name: 'Textarea', _id: 'textarea', id: 'textarea'}, {name: 'Boolean', _id: 'boolean', id: 'boolean'},
   {name: 'Table', _id: 'table', id: 'table'}, {name: 'Report Table', _id: 'reporttable', id: 'reporttable'}, {name: 'Server Table', _id: 'servertable', id: 'servertable'},
 ]
@@ -114,7 +122,7 @@ export interface FieldParams {
   readonly?: boolean;
   invisible?: boolean;
   idField?: string;
-  lang?: 'html'|'json'|'javascript'|'python'|'python'|'text'|'ejs'|'latex';
+  lang?: 'html'|'json'|'javascript'|'python'|'text'|'ejs'|'latex';
   codeTheme?: 'chrome'|'xcode';
   hint?: string;
   icon?: string;
@@ -176,6 +184,8 @@ export interface FieldParams {
   default?: any;
   required?: boolean;
   decimalPlaces?: number;
+  length?: number;
+  otpType?: string;
   collectionStart?: number;
   collectionEnd?: number;
   collectionDisableAdd?: boolean;
@@ -253,6 +263,7 @@ export interface FieldOptions {
   assetUploaded?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
   assetsResolved?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
   assetRemoved?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
+  finished?: (field: Field, value: string) => Promise<void>|void;
   focusChanged?: (field: Field, focused: boolean) => void;
   setup?: (field: Field) => void;
   validate?: (field: Field) => Promise<string|undefined>|string|undefined;
@@ -322,6 +333,7 @@ export class Field extends UIBase {
   private assetResolveRequestId: Ref<number>;
   private assetUploadPending: Ref<boolean>;
   private assetUploading: Ref<boolean>;
+  private fileUploadLoading: Ref<boolean>;
 
   constructor(params?: FieldParams, options?: FieldOptions) {
     super();
@@ -372,6 +384,7 @@ export class Field extends UIBase {
     this.assetResolveRequestId = this.$makeRef(0);
     this.assetUploadPending = this.$makeRef(false);
     this.assetUploading = this.$makeRef(false);
+    this.fileUploadLoading = this.$makeRef(false);
   }
 
   static setDefault(value: FieldParams, reset?: boolean): void {
@@ -494,6 +507,10 @@ export class Field extends UIBase {
     return this.params.value.options || {};
   }
 
+  private inputIconProps() {
+    return this.params.value.icon ? { prependInnerIcon: this.params.value.icon } : {};
+  }
+
   private mediaFieldType(): 'image'|'document'|'file-upload'|undefined {
     const type = this.params.value.type;
     if (type === 'image' || type === 'document' || type === 'file-upload') {
@@ -543,7 +560,19 @@ export class Field extends UIBase {
   }
 
   private normalizeFiles(files?: File[] | FileList | null) {
-    return Array.from(files || []);
+    if (!files) {
+      return [];
+    }
+
+    if (Array.isArray(files)) {
+      return files.filter((file): file is File => file instanceof File);
+    }
+
+    if (files instanceof File) {
+      return [files];
+    }
+
+    return Array.from(files);
   }
 
   private normalizeStoredAssetIds(value: any): string[] {
@@ -712,14 +741,19 @@ export class Field extends UIBase {
   }
 
   async $clearSelectedFiles() {
+    this.clearSelectedFiles();
+  }
+
+  private clearSelectedFiles() {
     this.selectedFiles.value = [];
     this.assetUploadPending.value = false;
   }
 
-  private async emitFileSelected(files: File[]) {
+  private async emitFileSelected(files?: File[] | FileList | null) {
+    const normalizedFiles = files ? this.normalizeFiles(files) : this.$selectedFiles;
     const payload: FieldSelectedFilePayload = {
-      files,
-      file: files[0],
+      files: normalizedFiles,
+      file: normalizedFiles[0],
       multiple: !!this.params.value.multiple,
       uploadType: this.resolvedUploadType(),
     };
@@ -765,19 +799,38 @@ export class Field extends UIBase {
     await this.emitAssetRemoved(records);
   }
 
+  private buildFileMetadata(file: File): UploadedFileMetadata {
+    const fileName = file?.name || '';
+    const parts = fileName.split('.');
+    const extension = parts.length > 1 ? parts[parts.length - 1].toLowerCase() : undefined;
+
+    return {
+      name: fileName,
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified,
+      extension,
+    };
+  }
+
+  private normalizeFilesInput(value: any): File[] {
+    return this.normalizeFiles(value).filter((item) => item instanceof File);
+  }
+
   private async validateSelectedFiles(files: File[]) {
+    const validFiles: File[] = [];
     const maxSize = Number(this.params.value.fileMaxSize || 0);
-    const valid: File[] = [];
 
     for (const file of files) {
-      if (maxSize > 0 && file.size > maxSize * 1024) {
+      if (maxSize > 0 && file.size > (maxSize * 1024)) {
         Dialogs.$error(`${file.name} exceeds the maximum allowed size of ${maxSize} KB.`);
         continue;
       }
-      valid.push(file);
+
+      validFiles.push(file);
     }
 
-    return valid;
+    return validFiles;
   }
 
   private async createDirectUploadValue(files: File[]) {
@@ -796,13 +849,7 @@ export class Field extends UIBase {
     }
 
     if (this.resolvedUploadType() === 'metadata') {
-      const metadata = files.map((file) => ({
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        lastModified: file.lastModified,
-        extension: file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase() : undefined,
-      }));
+      const metadata = files.map((file) => this.buildFileMetadata(file));
       return this.params.value.multiple ? metadata : metadata[0];
     }
 
@@ -810,6 +857,7 @@ export class Field extends UIBase {
     for (const file of files) {
       encoded.push(await fileToBase64(file, this.params.value.fileMaxSize || 500));
     }
+
     return this.params.value.multiple ? encoded : encoded[0];
   }
 
@@ -840,8 +888,7 @@ export class Field extends UIBase {
       const nextRecords = this.params.value.multiple ? existingRecords.concat(safeRecords) : safeRecords;
       this.resolvedAssets.value = nextRecords;
       this.modelValue.value = this.assetValueFromRecords(nextRecords);
-      this.selectedFiles.value = [];
-      this.assetUploadPending.value = false;
+      this.clearSelectedFiles();
       await this.emitAssetUploaded(safeRecords);
       return safeRecords;
     } catch (error: any) {
@@ -854,8 +901,14 @@ export class Field extends UIBase {
 
   async handleSelectedFiles(files?: File[] | FileList | null) {
     const normalized = await this.validateSelectedFiles(this.normalizeFiles(files));
+
     if (normalized.length === 0) {
-      await this.$clearSelectedFiles();
+      if (this.isAssetMode()) {
+        await this.$clearSelectedFiles();
+      } else {
+        this.clearSelectedFiles();
+        this.modelValue.value = this.params.value.multiple ? [] : null;
+      }
       return;
     }
 
@@ -994,6 +1047,56 @@ export class Field extends UIBase {
 
     if (typeof item.raw === 'string') {
       this.showFullscreen(item.raw);
+      return;
+    }
+
+    if (item.raw instanceof File) {
+      const objectUrl = URL.createObjectURL(item.raw);
+      if (item.raw.type.startsWith('image/')) {
+        void Dialogs.$imagePreview(objectUrl, {
+          title: item.label || this.params.value.label,
+          fullscreen: this.params.value.previewFullscreen !== false,
+        });
+        return;
+      }
+
+      if (item.raw.type === 'application/pdf') {
+        void Dialogs.$documentPreview(objectUrl, {
+          title: item.label || this.params.value.label,
+          fullscreen: this.params.value.previewFullscreen !== false,
+        });
+        return;
+      }
+
+      void Dialogs.$iframe({
+        src: objectUrl,
+        title: item.label || this.params.value.label,
+        fullscreen: this.params.value.previewFullscreen !== false,
+        downloadUrl: objectUrl,
+      });
+    }
+  }
+
+  private async onOtpFinished(value: string) {
+    if (this.options.finished) {
+      await this.options.finished(this, value);
+    }
+    this.handleOn('finish', value);
+  }
+
+  private async onFileUploadChanged(value: any) {
+    const files = this.normalizeFilesInput(value);
+
+    if (this.isAssetMode()) {
+      await this.handleSelectedFiles(files);
+      return;
+    }
+
+    this.fileUploadLoading.value = true;
+    try {
+      await this.handleSelectedFiles(files);
+    } finally {
+      this.fileUploadLoading.value = false;
     }
   }
 
@@ -1047,8 +1150,8 @@ export class Field extends UIBase {
           return;
         }
         this.modelValue.value = value;
-        if (this.isAssetMode()) {
-          void this.$clearSelectedFiles();
+        if (this.isMediaField()) {
+          this.clearSelectedFiles();
         }
         if (this.options.modifies) {
           this.options.modifies.value = value; 
@@ -1062,8 +1165,8 @@ export class Field extends UIBase {
             return;
           }
           this.modelValue.value = value;
-          if (this.isAssetMode()) {
-            void this.$clearSelectedFiles();
+          if (this.isMediaField()) {
+            this.clearSelectedFiles();
           }
           if (this.options.modifies) {
             this.options.modifies.value = value; 
@@ -1948,6 +2051,8 @@ export class Field extends UIBase {
         return this.buildCollection(props, context);
       case 'color':
         return this.buildColor(props, context);
+      case 'otp':
+        return this.buildOtp(props, context);
       case 'date':
         return this.buildDate(props, context);
       case 'datetime':
@@ -2020,6 +2125,7 @@ export class Field extends UIBase {
         VCombobox,
         {
           ...this.modelBinding(),
+          ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -2044,6 +2150,7 @@ export class Field extends UIBase {
         VTextField,
         {
           ...this.modelBinding(),
+          ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -2093,6 +2200,7 @@ export class Field extends UIBase {
       VSelect,
       {
         ...this.modelBinding(),
+        ...this.inputIconProps(),
         autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         hint: this.params.value.hint || "",
@@ -2220,6 +2328,7 @@ export class Field extends UIBase {
       VAutocomplete as any,
       {
         ...this.modelBinding(),
+        ...this.inputIconProps(),
         autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         hint: this.params.value.hint || "",
@@ -2601,132 +2710,62 @@ export class Field extends UIBase {
 
   buildColor(props: any, context: any) {
     const h = this.$h;
-
-    const dialog: Ref<boolean> = this.$makeRef(false);
-    const temp: Ref<any> = this.$makeRef();
-
     return h(
-      VRow,
-      {},
-      () => [
-        h(
-          VCol,
-          {
-            cols: 12
-          },
-          () => h(
-            'span',
-            {
-              class: ['ml-4']
-            },
-            this.params.value.label
-          )
-        ),
-        h(
-          VCol,
-          {
-            class: [],
-          },
-          () => [
-            h(
-              VListItem,
-              {
-                lines: 'two',
-                class: ['py-0', 'my-0'],
-              },
-              {
-                prepend: () => h(
-                  'div',
-                  {
-                    class: ['v-color-picker-preview__dot', 'ml-4'],
-                    style: {cursor: 'pointer', width: '30px', height: '30px', display: 'inline-block'},
-                    onClick: () => {
-                      dialog.value = true;
-                    }
-                  },
-                  h(
-                    'div',
-                    {
-                      class: [],
-                      style: {cursor: 'pointer', 'background-color': this.modelValue.value, width: '30px', height: '30px', display: 'inline-block'},
-                      onClick: () => {
-                        dialog.value = true;
-                      }
-                    } 
-                  )
-                ),
-                title: () => h(
-                  'div',
-                  {
-                    class: ['text-h6'],
-                    style: {cursor: 'pointer', display: 'inline-block'},
-                    onClick: () => {
-                      dialog.value = true;
-                    }
-                  },
-                  this.modelValue.value,
-                )
-              }
-            ),
-          ]
-        ),
-        h(
-          VDialog,
-          {
-            modelValue: dialog.value,
-            maxWidth: 350,
-            persistent: true
-          },
-          () => h(
-            VCard,
-            {},
-            () => [
-              h(
-                VCardText,
-                {},
-                () => h(
-                  VColorPicker,
-                  {
-                    modelValue: temp.value,
-                    mode: "hexa",
-                    "onUpdate:modelValue": (v) => {
-                      temp.value = v;
-                    }
-                  }
-                )
-              ),
-              h(
-                VCardActions,
-                {},
-                () => [
-                  h(VSpacer),
-                  h(
-                    VBtn,
-                    {
-                      color: "error",
-                      onClick: () => {
-                        dialog.value = false;
-                      }
-                    },
-                    () => "Cancel"
-                  ),
-                  h(
-                    VBtn,
-                    {
-                      color: "success",
-                      onClick: () => {
-                        this.modelValue.value = temp.value;
-                        dialog.value = false;
-                      }
-                    },
-                    () => "Save"
-                  )
-                ]
-              )
-            ]
-          )
-        )
-      ]
+      VColorInput as any,
+      {
+        ...this.componentOptions(),
+        ...this.modelBinding(),
+        ...this.inputIconProps(),
+        autofocus: this.params.value.autofocus,
+        label: this.params.value.label || "",
+        hint: this.params.value.hint || "",
+        persistentHint: this.params.value.hint ? true : false,
+        placeholder: this.params.value.placeholder || "",
+        clearable: this.params.value.clearable || false,
+        color: this.params.value.color || "primary",
+        variant: this.params.value.variant || Field.defaultParams?.variant,
+        readonly: this.$readonly,
+        class: this.params.value.class || [],
+        style: this.params.value.style || {},
+        rules: this.rules(),
+        mode: 'hexa',
+        "onUpdate:modelValue": (value: any) => {
+          if (typeof value === 'string') {
+            this.modelValue.value = value;
+            return;
+          }
+
+          this.modelValue.value = value?.hexa || value?.hex || '';
+        },
+        "onUpdate:focused": (ev: any) => this.onFocusChanged(ev)
+      },
+    );
+  }
+
+  buildOtp(props: any, context: any) {
+    const h = this.$h;
+    return h(
+      VOtpInput as any,
+      {
+        ...this.componentOptions(),
+        ...this.modelBinding(),
+        ...this.inputIconProps(),
+        autofocus: this.params.value.autofocus,
+        label: this.params.value.label || "",
+        placeholder: this.params.value.placeholder || "",
+        color: this.params.value.color || "primary",
+        variant: this.params.value.variant || Field.defaultParams?.variant || 'outlined',
+        readonly: this.$readonly,
+        disabled: this.$readonly,
+        class: this.params.value.class || [],
+        style: this.params.value.style || {},
+        length: this.params.value.length || 6,
+        type: this.params.value.otpType || 'number',
+        "onUpdate:focused": (ev: any) => this.onFocusChanged(ev),
+        onFinish: (value: string) => {
+          void this.onOtpFinished(value);
+        },
+      },
     );
   }
 
@@ -2737,6 +2776,7 @@ export class Field extends UIBase {
         VCombobox,
         {
           ...this.modelBinding(),
+          ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -2761,6 +2801,7 @@ export class Field extends UIBase {
         VTextField,
         {
           ...this.modelBinding(),
+          ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -2787,6 +2828,7 @@ export class Field extends UIBase {
         VCombobox,
         {
           modelValue: this.modelValue.value,
+          ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -2814,6 +2856,7 @@ export class Field extends UIBase {
         VTextField,
         {
           modelValue: this.modelValue.value,
+          ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
           label: this.params.value.label || "",
           hint: this.params.value.hint || "",
@@ -2881,9 +2924,10 @@ export class Field extends UIBase {
     const h = this.$h;
     return h(
       VTextField,
-      {
-        ...this.modelBinding(),
-        autofocus: this.params.value.autofocus,
+        {
+          ...this.modelBinding(),
+          ...this.inputIconProps(),
+          autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         hint: this.params.value.hint || "",
         persistentHint: this.params.value.hint ? true : false,
@@ -2907,6 +2951,7 @@ export class Field extends UIBase {
       VTextField,
       {
         ...this.modelBinding(),
+        ...this.inputIconProps(),
         autofocus: this.params.value.autofocus,
         label: this.params.value.label || "",
         hint: this.params.value.hint || "",
@@ -3175,10 +3220,10 @@ export class Field extends UIBase {
               color: this.params.value.color || "primary",
               class: this.params.value.class || [],
               style: this.params.value.style || {},
-              loading: this.assetUploading.value,
+              loading: this.assetUploading.value || this.fileUploadLoading.value,
               showSize: true,
               "onUpdate:modelValue": (value: any) => {
-                void this.handleSelectedFiles(value);
+                void this.onFileUploadChanged(value);
               },
               onRejected: (files: File[]) => {
                 if (files?.length) {
@@ -3241,7 +3286,7 @@ export class Field extends UIBase {
                       },
                     },
                     [
-                      ...((item.previewUrl || item.downloadUrl || typeof item.raw === 'string') ? [
+                      ...((item.previewUrl || item.downloadUrl || typeof item.raw === 'string' || item.raw instanceof File) ? [
                         h(
                           VBtn,
                           {

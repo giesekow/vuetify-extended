@@ -7,14 +7,26 @@ import 'vuetify/styles';
 import '../../src/css/index.css';
 import './demo.css';
 import { createVuetifyExtendedApp } from '../../src';
-import { createDemoApp, installDemoApi } from './demos';
+import { createDemoApp, getDemoThemeMode, installDemoApi, registerDemoThemeRuntime } from './demos';
+
+const demoApp = createDemoApp();
+
+const vuetify = createVuetify({
+  components,
+  directives,
+  theme: {
+    defaultTheme: getDemoThemeMode(),
+  },
+});
+
+registerDemoThemeRuntime(vuetify, demoApp);
 
 const bootstrap = createVuetifyExtendedApp({
   api: {
     type: 'instance',
     instance: installDemoApi(),
   },
-  app: createDemoApp(),
+  app: demoApp,
   dialogs: {
     progressSize: 96,
     progressWidth: 10,
@@ -27,11 +39,6 @@ const bootstrap = createVuetifyExtendedApp({
     maxVisible: 4,
     defaultTimeout: 3600,
   },
-});
-
-const vuetify = createVuetify({
-  components,
-  directives,
 });
 
 const Root = defineComponent({

@@ -101,8 +101,8 @@ export declare class AppMain extends UIBase {
     get $ref(): string | undefined;
     setParams(params: AppParams): void;
     get $params(): AppParams;
-    get stackRef(): Ref<AppStackItem[]>;
-    get activeItemRef(): Ref<AppStackItem | undefined>;
+    get stackRef(): Ref<AppStackItem[], AppStackItem[]>;
+    get activeItemRef(): Ref<AppStackItem | undefined, AppStackItem | undefined>;
     private syncStackRefs;
     props(): never[];
     menu(): Promise<Menu | undefined>;

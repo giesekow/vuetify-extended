@@ -7,7 +7,7 @@ export interface TiptapHtmlEditorAdapter {
     getBody: () => HTMLElement | null;
     getHTML: () => string;
 }
-export declare const TiptapHtmlEditor: import("vue").DefineComponent<{
+export declare const TiptapHtmlEditor: import("vue").DefineComponent<import("vue").ExtractPropTypes<{
     modelValue: {
         type: StringConstructor;
         default: string;
@@ -32,9 +32,9 @@ export declare const TiptapHtmlEditor: import("vue").DefineComponent<{
         type: BooleanConstructor;
         default: boolean;
     };
-}, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
+}>, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
     [key: string]: any;
-}>, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, ("update:modelValue" | "ready")[], "update:modelValue" | "ready", import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<{
+}>, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, ("update:modelValue" | "ready")[], "update:modelValue" | "ready", import("vue").PublicProps, Readonly<import("vue").ExtractPropTypes<{
     modelValue: {
         type: StringConstructor;
         default: string;
@@ -59,15 +59,15 @@ export declare const TiptapHtmlEditor: import("vue").DefineComponent<{
         type: BooleanConstructor;
         default: boolean;
     };
-}>> & {
+}>> & Readonly<{
     "onUpdate:modelValue"?: ((...args: any[]) => any) | undefined;
     onReady?: ((...args: any[]) => any) | undefined;
-}, {
+}>, {
     readonly: boolean;
     disabled: boolean;
     height: string | number | undefined;
     modelValue: string;
     placeholder: string;
     allowFullscreen: boolean;
-}, {}>;
+}, {}, {}, {}, string, import("vue").ComponentProvideOptions, true, {}, any>;
 export {};
