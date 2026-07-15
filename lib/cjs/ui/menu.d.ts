@@ -3,9 +3,13 @@ import { ReportMode, UIBase } from "./base";
 import { EventEmitter, OnHandler } from "./lib";
 import { Report } from "./report";
 import { Collection } from "./collection";
+import { Trigger } from "./trigger";
+import type { AppScreenParams } from "./appmain";
+import { InlineNavigationOptions, NavigationMenuRestoreStep, NavigationScreenFactory, UIText } from "./runtime";
+type MenuScreenTarget<T extends UIBase> = T | NavigationScreenFactory<T>;
 export interface MenuParams {
     ref?: string;
-    title?: string;
+    title?: UIText;
     maxWidth?: number | string;
     minWidth?: number | string;
     width?: number | string;
@@ -48,6 +52,7 @@ export declare class Menu extends UIBase {
     private hostElement;
     private contentElement;
     private cardElements;
+    private replayPath;
     private static defaultParams;
     constructor(params?: MenuParams, options?: MenuOptions);
     static setDefault(value: MenuParams, reset?: boolean): void;
@@ -80,6 +85,18 @@ export declare class Menu extends UIBase {
     private itemClicked;
     private backClicked;
     $reload(): Promise<void>;
+    $getVisibleItems(): Promise<MenuItem[]>;
+    setReplayPath(path?: NavigationMenuRestoreStep[]): void;
+    getReplayPath(): {
+        index: number;
+        text?: string | undefined;
+        action?: string | undefined;
+    }[];
+    buildReplayPathForItem(item: MenuItem): {
+        index: number;
+        text?: string | undefined;
+        action?: string | undefined;
+    }[];
     forceCancel(): Promise<void>;
     setup(props: any, context: any): void;
     mounted(): void;
@@ -93,10 +110,10 @@ export declare class Menu extends UIBase {
     private handleOn;
 }
 export interface MenuItemParams {
-    action?: 'report' | 'collection' | 'function' | 'menu';
+    action?: 'report' | 'collection' | 'trigger' | 'ui' | 'function' | 'menu';
     mode?: ReportMode;
-    text?: string;
-    subText?: string;
+    text?: UIText;
+    subText?: UIText;
     shortcut?: string;
     shortcutDisplay?: 'text' | 'compact';
     shortcutFontSize?: string | number;
@@ -110,9 +127,14 @@ export interface MenuItemParams {
 }
 export interface MenuItemOptions {
     access?: (menuItem: MenuItem, mode?: ReportMode) => Promise<boolean | undefined> | boolean | undefined;
-    report?: (menuItem: MenuItem, mode?: ReportMode) => Promise<Report | undefined> | Report | undefined;
-    collection?: (menuItem: MenuItem, mode?: ReportMode) => Promise<Collection | undefined> | Collection | undefined;
-    menu?: (menuItem: MenuItem, mode?: ReportMode) => Promise<Menu | undefined> | Menu | undefined;
+    report?: (menuItem: MenuItem, mode?: ReportMode) => Promise<MenuScreenTarget<Report> | undefined> | MenuScreenTarget<Report> | undefined;
+    collection?: (menuItem: MenuItem, mode?: ReportMode) => Promise<MenuScreenTarget<Collection> | undefined> | MenuScreenTarget<Collection> | undefined;
+    trigger?: (menuItem: MenuItem, mode?: ReportMode) => Promise<MenuScreenTarget<Trigger> | undefined> | MenuScreenTarget<Trigger> | undefined;
+    ui?: (menuItem: MenuItem, mode?: ReportMode) => Promise<MenuScreenTarget<UIBase> | undefined> | MenuScreenTarget<UIBase> | undefined;
+    menu?: (menuItem: MenuItem, mode?: ReportMode) => Promise<MenuScreenTarget<Menu> | undefined> | MenuScreenTarget<Menu> | undefined;
+    navigation?: (menuItem: MenuItem, mode?: ReportMode) => Promise<InlineNavigationOptions<any> | undefined> | InlineNavigationOptions<any> | undefined;
+    showParams?: (menuItem: MenuItem, mode?: ReportMode) => Promise<AppScreenParams | undefined> | AppScreenParams | undefined;
+    replace?: (menuItem: MenuItem, mode?: ReportMode) => Promise<boolean | undefined> | boolean | undefined;
     callback?: (menuItem: MenuItem, mode?: ReportMode) => Promise<void> | void;
     setup?: (menuItem: MenuItem) => void;
     on?: (menuItem: MenuItem) => OnHandler;
@@ -129,14 +151,26 @@ export declare class MenuItem extends EventEmitter {
     setParent(menu: Menu): void;
     getParent(): Menu | undefined;
     access(mode?: ReportMode): Promise<boolean | undefined>;
-    report(mode?: ReportMode): Promise<Report | undefined>;
-    collection(mode?: ReportMode): Promise<Collection | undefined>;
-    menu(mode?: ReportMode): Promise<Menu | undefined>;
+    report(mode?: ReportMode): Promise<MenuScreenTarget<Report> | undefined>;
+    collection(mode?: ReportMode): Promise<MenuScreenTarget<Collection> | undefined>;
+    trigger(mode?: ReportMode): Promise<MenuScreenTarget<Trigger> | undefined>;
+    ui(mode?: ReportMode): Promise<MenuScreenTarget<UIBase> | undefined>;
+    menu(mode?: ReportMode): Promise<MenuScreenTarget<Menu> | undefined>;
+    navigation(mode?: ReportMode): Promise<InlineNavigationOptions<any> | undefined>;
+    showParams(mode?: ReportMode): Promise<AppScreenParams | undefined>;
+    replace(mode?: ReportMode): Promise<boolean | undefined>;
     callback(mode?: ReportMode): Promise<void>;
     attachEventListeners(): void;
     removeEventListeners(): void;
     setup(props: any, context: any): void;
     private handleOn;
 }
+export declare function prepareMenuReplayTarget(parent: Menu, step: NavigationMenuRestoreStep): Promise<{
+    mode: ReportMode | undefined;
+    params: AppScreenParams;
+    target: MenuScreenTarget<Menu>;
+} | undefined>;
+export declare function executeMenuItemAction(item: MenuItem, parent?: UIBase): Promise<void>;
 export declare const $MN: (params?: MenuParams, options?: MenuOptions) => Menu;
 export declare const $MI: (params?: MenuItemParams, options?: MenuItemOptions) => MenuItem;
+export {};

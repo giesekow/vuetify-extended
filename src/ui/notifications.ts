@@ -2,6 +2,7 @@ import { Ref, defineComponent, h, markRaw, onMounted, onUnmounted, ref } from "v
 import { VBtn, VCard, VCardActions, VCardText, VCardTitle, VIcon, VSpacer } from 'vuetify/components';
 import { Button } from "./button";
 import { AppManager } from "./appmanager";
+import { resolveUIText, type UIText } from "./runtime";
 
 export type NotificationLocation = 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
 
@@ -26,8 +27,8 @@ export interface NotificationOptions {
 
 export interface NotificationItem {
   id: number;
-  title?: string;
-  text: string;
+  title?: UIText;
+  text: UIText;
   color?: string;
   icon?: string;
   timeout?: number;
@@ -38,8 +39,8 @@ export interface NotificationItem {
 }
 
 export interface NotificationPayload {
-  title?: string;
-  text: string;
+  title?: UIText;
+  text: UIText;
   color?: string;
   icon?: string;
   timeout?: number;
@@ -148,7 +149,7 @@ export class Notifications {
             fontSize: '0.95rem',
             fontWeight: 600,
           },
-        }, item.title || 'Notification'),
+        }, resolveUIText(item.title, 'Notification')),
         hNode(VSpacer),
         ...(item.closable === false ? [] : [
           hNode(VBtn, {
@@ -165,7 +166,7 @@ export class Notifications {
           fontSize: '0.9rem',
           lineHeight: 1.4,
         },
-      }, () => item.text),
+      }, () => resolveUIText(item.text)),
       ...(item.actions && item.actions.length > 0 ? [
         hNode(VCardActions, {
           style: {
@@ -277,7 +278,7 @@ export class Notifications {
     return Notifications.enqueue(payload);
   }
 
-  static $info(text: string, payload: Partial<Omit<NotificationPayload, 'text'>> = {}) {
+  static $info(text: UIText, payload: Partial<Omit<NotificationPayload, 'text'>> = {}) {
     return Notifications.enqueue({
       text,
       color: payload.color || Notifications.options.value.infoColor || 'info',
@@ -287,7 +288,7 @@ export class Notifications {
     });
   }
 
-  static $success(text: string, payload: Partial<Omit<NotificationPayload, 'text'>> = {}) {
+  static $success(text: UIText, payload: Partial<Omit<NotificationPayload, 'text'>> = {}) {
     return Notifications.enqueue({
       text,
       color: payload.color || Notifications.options.value.successColor || 'success',
@@ -297,7 +298,7 @@ export class Notifications {
     });
   }
 
-  static $warning(text: string, payload: Partial<Omit<NotificationPayload, 'text'>> = {}) {
+  static $warning(text: UIText, payload: Partial<Omit<NotificationPayload, 'text'>> = {}) {
     return Notifications.enqueue({
       text,
       color: payload.color || Notifications.options.value.warningColor || 'warning',
@@ -307,7 +308,7 @@ export class Notifications {
     });
   }
 
-  static $error(text: string, payload: Partial<Omit<NotificationPayload, 'text'>> = {}) {
+  static $error(text: UIText, payload: Partial<Omit<NotificationPayload, 'text'>> = {}) {
     return Notifications.enqueue({
       text,
       color: payload.color || Notifications.options.value.errorColor || 'error',

@@ -24,6 +24,7 @@ export interface MediaDisplayItem {
 }
 export interface RichWidgetContext {
     $h: any;
+    $text: (value: any, fallback?: string) => string;
     $readonly: boolean;
     $makeRef: any;
     $watch: any;

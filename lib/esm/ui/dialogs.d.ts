@@ -4,12 +4,13 @@ import type { DialogFormOptions, DialogParams } from "./dialogform";
 import type { Field, FieldOptions, FieldParams, FieldType } from "./field";
 import type { FormOptions, FormParams } from "./form";
 import type { Part } from "./part";
+import { type UIText } from "./runtime";
 export interface PromptParams {
-    title?: string;
-    text?: string;
+    title?: UIText;
+    text?: UIText;
     type?: FieldType;
-    confirmText?: string;
-    cancelText?: string;
+    confirmText?: UIText;
+    cancelText?: UIText;
     fieldParams?: FieldParams;
     formParams?: FormParams;
     dialogParams?: DialogParams;
@@ -153,8 +154,8 @@ export declare class Dialogs {
     static progressComponent(): import("vue").DefineComponent<{}, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, true, {}, any>;
-    static $confirm(text: string, title?: string): Promise<boolean>;
-    static $info(text: string, title?: string, options?: {
+    static $confirm(text: UIText, title?: UIText): Promise<boolean>;
+    static $info(text: UIText, title?: UIText, options?: {
         width?: number;
         height?: number;
     }): Promise<void>;
@@ -165,9 +166,9 @@ export declare class Dialogs {
     static $prompt(params?: PromptParams, options?: PromptOptions): Promise<any | undefined>;
     private static installConfirmKeydownHandler;
     private static removeConfirmKeydownHandler;
-    static $error(text: string): void;
-    static $success(text: string): void;
-    static $warning(text: string): void;
+    static $error(text: UIText): void;
+    static $success(text: UIText): void;
+    static $warning(text: UIText): void;
     static $showProgress({ value, text }: any): void;
     static $updateProgress({ value, text }: any): void;
     static $hideProgress(): void;

@@ -5,11 +5,12 @@ import { OnHandler } from "./lib";
 import { Part, PRefs } from "./part";
 import { Field, Refs } from "./field";
 import { ExportTemplateInfo } from "./report";
+import { UIText } from "./runtime";
 export interface TriggerParams {
     ref?: string;
     invisible?: boolean;
-    title?: string;
-    subtitle?: string;
+    title?: UIText;
+    subtitle?: UIText;
     mode?: 'create' | 'edit' | 'display';
     cancelButton?: ButtonParams;
     removeButton?: ButtonParams;

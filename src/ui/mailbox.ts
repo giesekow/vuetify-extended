@@ -4,6 +4,7 @@ import { AppManager } from "./appmanager";
 import { Dialogs } from "./dialogs";
 import { Report } from "./report";
 import { VBadge, VBtn, VCard, VCardActions, VCardText, VCardTitle, VCheckboxBtn, VChip, VCol, VContainer, VDivider, VIcon, VLayout, VList, VListItem, VListItemSubtitle, VListItemTitle, VRow, VSpacer } from 'vuetify/components';
+import { resolveUIText, type UIText } from "./runtime";
 
 export interface MailboxItem {
   id: string | number;
@@ -32,7 +33,7 @@ export interface MailboxPage {
 }
 
 export interface MailboxOptions {
-  title?: string;
+  title?: UIText;
   pageSize?: number;
   load?: (params: MailboxLoadParams) => Promise<MailboxPage | MailboxItem[]> | MailboxPage | MailboxItem[];
   viewItem?: (item: MailboxItem) => Promise<Report | undefined> | Report | undefined;
@@ -45,7 +46,7 @@ export interface MailboxOptions {
 }
 
 export interface MailboxViewParams {
-  title?: string;
+  title?: UIText;
   width?: string | number;
   pageSize?: number;
   reloadOnShow?: boolean;
@@ -61,7 +62,7 @@ export interface MailboxBellParams {
   variant?: 'flat'|'text'|'outlined'|'plain'|'elevated'|'tonal';
   badgeColor?: string;
   maxBadge?: number;
-  title?: string;
+  title?: UIText;
   viewWidth?: string | number;
   hideOnMobile?: boolean;
   hideOnNonMobile?: boolean;
@@ -69,7 +70,7 @@ export interface MailboxBellParams {
 }
 
 export class Mailbox {
-  private static options: Ref<MailboxOptions> = ref({ pageSize: 8, title: 'Mailbox' });
+  private static options: Ref<MailboxOptions> = ref({ pageSize: 8, title: { key: 've.mailbox.title', fallback: 'Mailbox' } });
   private static items: Ref<MailboxItem[]> = ref([]);
   private static unreadCount: Ref<number> = ref(0);
   private static loading: Ref<boolean> = ref(false);
@@ -124,7 +125,7 @@ export class Mailbox {
   }
 
   static get $title() {
-    return Mailbox.options.value.title || 'Mailbox';
+    return resolveUIText(Mailbox.options.value.title, 'Mailbox');
   }
 
   static setUnread(count: number) {
@@ -317,7 +318,7 @@ export class Mailbox {
       }
       return Mailbox.items.value;
     } catch (error: any) {
-      Dialogs.$error(error?.message || 'Failed to load mailbox items.');
+      Dialogs.$error(error?.message || { key: 've.mailbox.loadFailed', fallback: 'Failed to load mailbox items.' });
       return Mailbox.items.value;
     } finally {
       Mailbox.loading.value = false;
@@ -328,7 +329,7 @@ export class Mailbox {
 export class MailboxView extends UIBase {
   private params: Ref<MailboxViewParams>;
   private static defaultParams: MailboxViewParams = {
-    title: 'Mailbox',
+    title: { key: 've.mailbox.title', fallback: 'Mailbox' },
     width: 980,
     pageSize: 8,
     reloadOnShow: false,
@@ -420,7 +421,11 @@ export class MailboxView extends UIBase {
       return;
     }
 
-    const accepted = await Dialogs.$confirm(`Delete ${items.length} selected mailbox item(s)?`);
+    const accepted = await Dialogs.$confirm({
+      key: 've.mailbox.confirmDeleteSelected',
+      fallback: 'Delete {count} selected mailbox item(s)?',
+      values: { count: items.length },
+    });
     if (!accepted) {
       return;
     }
@@ -431,7 +436,7 @@ export class MailboxView extends UIBase {
 
   render(): VNode | VNode[] | undefined {
     const h = this.$h;
-    const title = this.$params.title || Mailbox.$title;
+    const title = this.$text(this.$params.title, Mailbox.$title);
     const width = this.clampToViewport(this.$params.width, 980) || 'calc(100vw - 24px)';
     const justify = this.$params.horizontalAlign === 'left' ? 'start' : this.$params.horizontalAlign === 'right' ? 'end' : 'center';
     const align = this.$params.verticalAlign === 'center' ? 'center' : this.$params.verticalAlign === 'end' ? 'end' : 'start';
@@ -447,24 +452,24 @@ export class MailboxView extends UIBase {
                 h(VCardTitle, { style: { display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' } }, () => [
                   h(VIcon, { icon: 'mdi-mailbox-open-up-outline' }),
                   h('span', title),
-                  h(VChip, { size: 'small', color: Mailbox.$unreadCount > 0 ? 'primary' : 'default', variant: Mailbox.$unreadCount > 0 ? 'elevated' : 'outlined' }, () => `${Mailbox.$unreadCount} unread`),
-                  ...(selectedCount > 0 ? [h(VChip, { size: 'small', color: 'secondary', variant: 'outlined' }, () => `${selectedCount} selected`)] : []),
+                  h(VChip, { size: 'small', color: Mailbox.$unreadCount > 0 ? 'primary' : 'default', variant: Mailbox.$unreadCount > 0 ? 'elevated' : 'outlined' }, () => this.$uiText('ve.mailbox.unreadCount', '{count} unread', { count: Mailbox.$unreadCount })),
+                  ...(selectedCount > 0 ? [h(VChip, { size: 'small', color: 'secondary', variant: 'outlined' }, () => this.$uiText('ve.mailbox.selectedCount', '{count} selected', { count: selectedCount }))] : []),
                   h(VSpacer),
-                  h(VBtn, { icon: 'mdi-refresh', variant: 'text', title: 'Refresh', onClick: async () => { this.clearSelection(); await Mailbox.refresh(this.$params.pageSize); } }),
-                  h(VBtn, { icon: 'mdi-close', variant: 'text', title: 'Close', onClick: () => this.forceCancel() }),
+                  h(VBtn, { icon: 'mdi-refresh', variant: 'text', title: this.$uiText('ve.common.refresh', 'Refresh'), 'aria-label': this.$uiText('ve.common.refresh', 'Refresh'), onClick: async () => { this.clearSelection(); await Mailbox.refresh(this.$params.pageSize); } }),
+                  h(VBtn, { icon: 'mdi-close', variant: 'text', title: this.$uiText('ve.common.close', 'Close'), 'aria-label': this.$uiText('ve.common.close', 'Close'), onClick: () => this.forceCancel() }),
                 ]),
                 ...(selectedCount > 0 ? [
                   h(VDivider),
                   h(VCardActions, { style: { padding: '8px 16px', gap: '8px', flexWrap: 'wrap' } }, () => [
-                    h(VBtn, { variant: 'outlined', color: 'primary', prependIcon: 'mdi-email-open-outline', onClick: () => this.markSelectedRead() }, () => 'Mark Selected Read'),
-                    h(VBtn, { variant: 'outlined', color: 'error', prependIcon: 'mdi-delete-outline', onClick: () => this.deleteSelected() }, () => 'Delete Selected'),
-                    h(VBtn, { variant: 'text', onClick: () => this.clearSelection() }, () => 'Clear Selection'),
+                    h(VBtn, { variant: 'outlined', color: 'primary', prependIcon: 'mdi-email-open-outline', onClick: () => this.markSelectedRead() }, () => this.$uiText('ve.mailbox.markSelectedRead', 'Mark Selected Read')),
+                    h(VBtn, { variant: 'outlined', color: 'error', prependIcon: 'mdi-delete-outline', onClick: () => this.deleteSelected() }, () => this.$uiText('ve.mailbox.deleteSelected', 'Delete Selected')),
+                    h(VBtn, { variant: 'text', onClick: () => this.clearSelection() }, () => this.$uiText('ve.mailbox.clearSelection', 'Clear Selection')),
                   ]),
                 ] : []),
                 h(VDivider),
                 h(VCardText, { style: { padding: '0px' } }, () => [
                   Mailbox.$items.length === 0 && !Mailbox.$loading
-                    ? h('div', { style: { padding: '24px', textAlign: 'center', opacity: 0.72 } }, 'No mailbox items available.')
+                    ? h('div', { style: { padding: '24px', textAlign: 'center', opacity: 0.72 } }, this.$uiText('ve.mailbox.empty', 'No mailbox items available.'))
                     : h('div', { style: { maxHeight: listMaxHeight, overflowY: 'auto' } }, [
                         h(VList, { lines: 'three' }, () => Mailbox.$items.map((item) => h(VListItem, {
                           key: item.id,
@@ -493,17 +498,22 @@ export class MailboxView extends UIBase {
                             ]),
                           ]),
                           append: () => h('div', { style: { display: 'flex', alignItems: 'center', gap: '4px' } }, [
-                            h(VBtn, { icon: item.read ? 'mdi-email-marked-unread' : 'mdi-email-open-outline', size: 'small', variant: 'text', title: item.read ? 'Mark unread' : 'Mark read', onClick: (ev: Event) => { ev.stopPropagation(); item.read ? Mailbox.markUnread(item) : Mailbox.markRead(item); } }),
-                            h(VBtn, { icon: 'mdi-delete-outline', size: 'small', variant: 'text', title: 'Remove', onClick: (ev: Event) => { ev.stopPropagation(); Mailbox.remove(item); this.selectedIds.value = this.selectedIds.value.filter((id) => id !== item.id); } }),
+                            h(VBtn, { icon: item.read ? 'mdi-email-marked-unread' : 'mdi-email-open-outline', size: 'small', variant: 'text', title: item.read ? this.$uiText('ve.mailbox.markUnread', 'Mark unread') : this.$uiText('ve.mailbox.markRead', 'Mark read'), 'aria-label': item.read ? this.$uiText('ve.mailbox.markUnread', 'Mark unread') : this.$uiText('ve.mailbox.markRead', 'Mark read'), onClick: (ev: Event) => { ev.stopPropagation(); item.read ? Mailbox.markUnread(item) : Mailbox.markRead(item); } }),
+                            h(VBtn, { icon: 'mdi-delete-outline', size: 'small', variant: 'text', title: this.$uiText('ve.common.remove', 'Remove'), 'aria-label': this.$uiText('ve.common.remove', 'Remove'), onClick: (ev: Event) => { ev.stopPropagation(); Mailbox.remove(item); this.selectedIds.value = this.selectedIds.value.filter((id) => id !== item.id); } }),
                           ]),
                         })))
                       ]),
                   h(VDivider),
                   h(VCardActions, { style: { justifyContent: 'space-between', padding: '12px 16px', gap: '8px', flexWrap: 'wrap' } }, () => [
-                    h('span', { style: { fontSize: '0.78rem', opacity: '0.72' } }, Mailbox.$loading ? 'Loading mailbox...' : `${Mailbox.$items.length} item(s) loaded${Mailbox.$hasMore ? ' - more available' : ''}`),
+                    h('span', { style: { fontSize: '0.78rem', opacity: '0.72' } }, Mailbox.$loading
+                      ? this.$uiText('ve.mailbox.loading', 'Loading mailbox...')
+                      : this.$uiText('ve.mailbox.loadedStatus', '{count} item(s) loaded{suffix}', {
+                          count: Mailbox.$items.length,
+                          suffix: Mailbox.$hasMore ? this.$uiText('ve.mailbox.moreAvailableSuffix', ' - more available') : '',
+                        })),
                     h('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } }, [
-                      h(VBtn, { variant: 'text', disabled: Mailbox.$unreadCount === 0, onClick: () => Mailbox.setUnread(0) }, () => 'Clear Unread Badge'),
-                      h(VBtn, { variant: 'outlined', disabled: !Mailbox.$hasMore || Mailbox.$loading, onClick: () => Mailbox.loadMore(this.$params.pageSize) }, () => Mailbox.$loading ? 'Loading...' : 'Load More'),
+                      h(VBtn, { variant: 'text', disabled: Mailbox.$unreadCount === 0, onClick: () => Mailbox.setUnread(0) }, () => this.$uiText('ve.mailbox.clearUnreadBadge', 'Clear Unread Badge')),
+                      h(VBtn, { variant: 'outlined', disabled: !Mailbox.$hasMore || Mailbox.$loading, onClick: () => Mailbox.loadMore(this.$params.pageSize) }, () => Mailbox.$loading ? this.$uiText('ve.common.loading', 'Loading...') : this.$uiText('ve.mailbox.loadMore', 'Load More')),
                     ]),
                   ]),
                 ]),
@@ -559,7 +569,7 @@ export class MailboxBell extends UIBase {
     variant: 'text',
     badgeColor: 'error',
     maxBadge: 99,
-    title: 'Open mailbox',
+    title: { key: 've.mailbox.open', fallback: 'Open mailbox' },
     viewWidth: 980,
   };
 
@@ -606,8 +616,8 @@ export class MailboxBell extends UIBase {
           icon: this.$params.icon,
           color: this.$params.color,
           variant: this.$params.variant,
-          title: this.$params.title,
-          'aria-label': this.$params.title,
+          title: this.$text(this.$params.title, this.$uiText('ve.mailbox.open', 'Open mailbox')),
+          'aria-label': this.$text(this.$params.title, this.$uiText('ve.mailbox.open', 'Open mailbox')),
           style: {
             height: '40px',
             width: '40px',

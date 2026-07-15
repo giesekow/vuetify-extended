@@ -1,6 +1,6 @@
 # vuetify-extended
 
-`vuetify-extended` is a TypeScript-first extension layer on top of Vue 3 and Vuetify 3. It lets you define forms, reports, selectors, dialogs, menus, and workflow-driven UI in TypeScript classes instead of relying primarily on Vue SFC templates.
+`vuetify-extended` is a TypeScript-first extension layer on top of Vue 3 and Vuetify 4. It lets you define forms, reports, selectors, dialogs, menus, and workflow-driven UI in TypeScript classes instead of relying primarily on Vue SFC templates.
 
 This repository contains both the source code under `src/` and the published build outputs under `lib/`.
 

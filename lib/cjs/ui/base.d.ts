@@ -1,6 +1,7 @@
 import { VNode, h, ref, watch } from 'vue';
 import { EventEmitter } from './lib';
 import { Master } from '../master';
+import { type NavigationEntry, type UIText } from './runtime';
 export declare class BaseComponent extends EventEmitter {
     private dataStore;
     private forceRenderListeners;
@@ -37,4 +38,14 @@ export declare class UIBase extends BaseComponent {
     show(): Promise<void>;
     hide(): Promise<void>;
     forceCancel(): Promise<void>;
+    canHandleBack(): Promise<boolean>;
+    handleBack(): Promise<boolean>;
+    serializeNavigationState(_entry?: NavigationEntry): Promise<any>;
+    restoreNavigationState(_state: any, _entry?: NavigationEntry): Promise<void>;
+    $text(value: UIText | undefined | null, fallback?: string): string;
+    $uiText(key: string, fallback?: string, values?: Record<string, any>): string;
+    $formatDate(value: any, options?: any): any;
+    $formatNumber(value: number, options?: any): string;
+    $formatCurrency(value: number, options?: any): string;
+    get $isRTL(): boolean;
 }

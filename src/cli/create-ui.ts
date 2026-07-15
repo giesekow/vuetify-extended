@@ -541,6 +541,9 @@ function buildNamedFormFileSource(ext: ScriptExt, answers: ReportAnswers, pascal
   const functionName = formFunctionNameForStep(pascalName, step);
   const defaultTitle = step <= 1 ? `${answers.title} Form` : answers.title;
   const partMarker = `${FORM_FIELDS_MARKER_PREFIX}1:fields`;
+  const formKeyBase = step <= 1
+    ? pageTextKey(answers.name, 'form')
+    : pageTextKey(answers.name, 'forms', `step${step}`);
 
   return `${GENERATED_MARKER} ${step <= 1 ? 'create report' : 'create form'}
 import { $FD, $FM, $PT${typeImport} } from 'vuetify-extended';
@@ -548,7 +551,7 @@ import { $FD, $FM, $PT${typeImport} } from 'vuetify-extended';
 export function ${functionName}(${modeSignature}) {
   return $FM(
     {
-      title: ${serializeString(defaultTitle)},
+      title: ${serializeUITextDescriptor(`${formKeyBase}.title`, defaultTitle)},
       mode,
       width: 920,
     },
@@ -561,25 +564,25 @@ export function ${functionName}(${modeSignature}) {
             children: () => [
               ${partMarker}
               $FD({
-                label: 'Name',
+                label: ${serializeUITextDescriptor(`${formKeyBase}.fields.name.label`, 'Name')},
                 storage: 'name',
                 cols: 6,
                 required: true,
               }),
               $FD({
-                label: 'Code',
+                label: ${serializeUITextDescriptor(`${formKeyBase}.fields.code.label`, 'Code')},
                 storage: 'code',
                 cols: 6,
               }),
               $FD({
-                label: 'Description',
+                label: ${serializeUITextDescriptor(`${formKeyBase}.fields.description.label`, 'Description')},
                 storage: 'description',
                 type: 'textarea',
                 cols: 12,
               }),
               $FD({
                 type: 'label',
-                label: 'Replace these starter fields with the real form schema for this page.',
+                label: ${serializeUITextDescriptor(`${formKeyBase}.hints.replaceSchema`, 'Replace these starter fields with the real form schema for this page.')},
                 cols: 12,
               }),
             ],
@@ -593,8 +596,12 @@ export function ${functionName}(${modeSignature}) {
 }
 
 function buildReportFileSource(ext: ScriptExt, answers: ReportAnswers, pascalName: string): string {
-  const typeImport = ext === '.ts' ? ', type ReportMode' : '';
+  const typeImport = ext === '.ts' ? ', type NavigationEntry, type ReportMode' : '';
   const modeSignature = ext === '.ts' ? `mode: ReportMode = ${serializeString(answers.mode)}` : `mode = ${serializeString(answers.mode)}`;
+  const resolvedModeLine = ext === '.ts'
+    ? `    const resolvedMode = (entry?.mode as ReportMode | undefined) || mode;`
+    : `    const resolvedMode = (entry && entry.mode) || mode;`;
+  const entrySignature = ext === '.ts' ? 'entry?: NavigationEntry' : 'entry';
 
   return `${GENERATED_MARKER} create report
 import { $RP${typeImport} } from 'vuetify-extended';
@@ -602,33 +609,40 @@ import { create${pascalName}Form } from './form';
 ${REPORT_IMPORT_MARKER}
 
 export function create${pascalName}Report(${modeSignature}) {
-  return $RP(
-    {
-      title: ${serializeString(answers.title)},
-      objectType: ${serializeString(answers.objectType)},
-      forms: ${Math.max(1, answers.forms)},
-      mode,
-      horizontalAlign: 'center',
-      verticalAlign: 'start',
-      fluid: true,
-    },
-    {
-      form: async (_props, _context, index) => {
-        ${REPORT_RESOLVER_MARKER}
-        if (index === 0) return create${pascalName}Form(mode);
-        return undefined;
+  return (${entrySignature}) => {
+${resolvedModeLine}
+    return $RP(
+      {
+        title: ${serializeUITextDescriptor(pageTextKey(answers.name, 'report', 'title'), answers.title)},
+        objectType: ${serializeString(answers.objectType)},
+        forms: ${Math.max(1, answers.forms)},
+        mode: resolvedMode,
+        horizontalAlign: 'center',
+        verticalAlign: 'start',
+        fluid: true,
       },
-    },
-  );
+      {
+        form: async (_props, _context, index) => {
+          ${REPORT_RESOLVER_MARKER}
+          if (index === 0) return create${pascalName}Form(resolvedMode);
+          return undefined;
+        },
+      },
+    );
+  };
 }
 `;
 }
 
 function buildTriggerFileSource(ext: ScriptExt, answers: TriggerAnswers, pascalName: string): string {
-  const typeImport = ext === '.ts' ? ', type ReportMode' : '';
+  const typeImport = ext === '.ts' ? ', type NavigationEntry, type ReportMode' : '';
   const modeSignature = ext === '.ts' ? `mode: ReportMode = ${serializeString(answers.mode)}` : `mode = ${serializeString(answers.mode)}`;
   const dataPrefix = sanitizeIdentifier(answers.objectType || answers.name).toUpperCase();
   const itemAccessor = ext === '.ts' ? '(item as Record<string, any>)[key]' : 'item[key]';
+  const resolvedModeLine = ext === '.ts'
+    ? `    const resolvedMode = (entry?.mode as ReportMode | undefined) || mode;`
+    : `    const resolvedMode = (entry && entry.mode) || mode;`;
+  const entrySignature = ext === '.ts' ? 'entry?: NavigationEntry' : 'entry';
 
   return `${GENERATED_MARKER} create trigger
 import { $FD, $TG${typeImport} } from 'vuetify-extended';
@@ -646,50 +660,57 @@ const ${dataPrefix}_ROWS = [
 ];
 
 export function create${pascalName}Trigger(${modeSignature}) {
-  return $TG(
-    {
-      title: ${serializeString(`${answers.title} Trigger`)},
-      subtitle: 'Starter trigger generated by vuetify-ext.',
-      objectType: ${serializeString(answers.objectType)},
-      idField: ${serializeString(answers.idField)},
-      multiple: ${answers.multiple ? 'true' : 'false'},
-      mode,
-      queryFields: ['name', 'description', 'status'],
-      headers: ${dataPrefix}_HEADERS,
-      fluid: true,
-      canPrint: false,
-      canExport: false,
-    },
-    {
-      headers: async () => ${dataPrefix}_HEADERS,
-      load: async (searchText) => {
-        const search = String(searchText || '').trim().toLowerCase();
-        if (!search) {
-          return ${dataPrefix}_ROWS;
-        }
-
-        return ${dataPrefix}_ROWS.filter((item) =>
-          ['name', 'description', 'status'].some((key) =>
-            String(${itemAccessor} || '').toLowerCase().includes(search),
-          ),
-        );
+  return (${entrySignature}) => {
+${resolvedModeLine}
+    return $TG(
+      {
+        title: ${serializeUITextDescriptor(pageTextKey(answers.name, 'trigger', 'title'), `${answers.title} Trigger`)},
+        subtitle: ${serializeUITextDescriptor(pageTextKey(answers.name, 'trigger', 'subtitle'), 'Starter trigger generated by vuetify-ext.')},
+        objectType: ${serializeString(answers.objectType)},
+        idField: ${serializeString(answers.idField)},
+        multiple: ${answers.multiple ? 'true' : 'false'},
+        mode: resolvedMode,
+        queryFields: ['name', 'description', 'status'],
+        headers: ${dataPrefix}_HEADERS,
+        fluid: true,
+        canPrint: false,
+        canExport: false,
       },
-      topChildren: () => [
-        $FD({
-          type: 'label',
-          label: 'Replace the in-memory load() function with your API-backed query when ready.',
-          cols: 12,
-        }),
-      ],
-    },
-  );
+      {
+        headers: async () => ${dataPrefix}_HEADERS,
+        load: async (searchText) => {
+          const search = String(searchText || '').trim().toLowerCase();
+          if (!search) {
+            return ${dataPrefix}_ROWS;
+          }
+
+          return ${dataPrefix}_ROWS.filter((item) =>
+            ['name', 'description', 'status'].some((key) =>
+              String(${itemAccessor} || '').toLowerCase().includes(search),
+            ),
+          );
+        },
+        topChildren: () => [
+          $FD({
+            type: 'label',
+            label: ${serializeUITextDescriptor(pageTextKey(answers.name, 'trigger', 'hints', 'replaceLoad'), 'Replace the in-memory load() function with your API-backed query when ready.')},
+            cols: 12,
+          }),
+        ],
+      },
+    );
+  };
 }
 `;
 }
 
 function buildCollectionFileSource(ext: ScriptExt, answers: CollectionAnswers, pascalName: string): string {
-  const typeImport = ext === '.ts' ? ', type ReportMode' : '';
+  const typeImport = ext === '.ts' ? ', type NavigationEntry, type ReportMode' : '';
   const modeSignature = ext === '.ts' ? `mode: ReportMode = ${serializeString(answers.mode)}` : `mode = ${serializeString(answers.mode)}`;
+  const resolvedModeLine = ext === '.ts'
+    ? `    const resolvedMode = (entry?.mode as ReportMode | undefined) || mode;`
+    : `    const resolvedMode = (entry && entry.mode) || mode;`;
+  const entrySignature = ext === '.ts' ? 'entry?: NavigationEntry' : 'entry';
 
   return `${GENERATED_MARKER} create collection
 import { $COL${typeImport} } from 'vuetify-extended';
@@ -697,18 +718,27 @@ import { create${pascalName}Report } from './report';
 import { create${pascalName}Trigger } from './trigger';
 
 export function create${pascalName}Collection(${modeSignature}) {
-  return $COL(
-    {
-      objectType: ${serializeString(answers.objectType)},
-      idField: ${serializeString(answers.idField)},
-      multiple: ${answers.multiple ? 'true' : 'false'},
-      mode,
-    },
-    {
-      trigger: async () => create${pascalName}Trigger(mode),
-      report: async () => create${pascalName}Report(mode),
-    },
-  );
+  return (${entrySignature}) => {
+${resolvedModeLine}
+    return $COL(
+      {
+        objectType: ${serializeString(answers.objectType)},
+        idField: ${serializeString(answers.idField)},
+        multiple: ${answers.multiple ? 'true' : 'false'},
+        mode: resolvedMode,
+      },
+      {
+        trigger: async () => {
+          const triggerFactory = create${pascalName}Trigger(resolvedMode);
+          return await triggerFactory();
+        },
+        report: async () => {
+          const reportFactory = create${pascalName}Report(resolvedMode);
+          return await reportFactory();
+        },
+      },
+    );
+  };
 }
 `;
 }
@@ -1182,6 +1212,7 @@ function patchMenuFile(source: string, answers: MenuItemAnswers): string | undef
   if (!next) {
     return undefined;
   }
+  next = ensureVuetifyExtendedImport(next, ['$MI']);
 
   for (const importLine of importLines) {
     if (!next.includes(importLine)) {
@@ -1211,6 +1242,7 @@ function patchMenuFileWithSubMenu(
   if (!next) {
     return undefined;
   }
+  next = ensureVuetifyExtendedImport(next, ['$MI']);
 
   const importLine = `import { create${pascalName}Menu } from ${serializeString(buildRelativeImportSpecifier(parentMenuFile, subMenuFile))};`;
   if (!next.includes(importLine)) {
@@ -1248,27 +1280,75 @@ function ensureMenuMarkers(source: string): string | undefined {
 
 function buildMenuImportLines(target: MenuItemTarget, pascalName: string, page: string): string[] {
   const lines = [
-    `import { $MI${target === 'trigger' || target === 'dashboard' ? ', AppManager' : ''} } from 'vuetify-extended';`,
     `import { create${pascalName}${capitalize(target)} } from '../pages/${page}';`,
   ];
   return lines;
 }
 
+function ensureVuetifyExtendedImport(source: string, names: string[]) {
+  const importPattern = /import\s*\{([^}]*)\}\s*from\s*['"]vuetify-extended['"];?/;
+  if (!importPattern.test(source)) {
+    return ensureImportLine(source, `import { ${names.join(', ')} } from 'vuetify-extended';`);
+  }
+
+  return source.replace(importPattern, (_match: string, importedNames: string) => {
+    const parts = importedNames
+      .split(',')
+      .map((part: string) => part.trim())
+      .filter(Boolean);
+
+    for (const name of names) {
+      if (!parts.includes(name)) {
+        parts.push(name);
+      }
+    }
+
+    return `import { ${parts.join(', ')} } from 'vuetify-extended';`;
+  });
+}
+
+function ensureImportLine(source: string, importLine: string) {
+  if (source.includes(importLine)) {
+    return source;
+  }
+
+  const importMatches = Array.from(source.matchAll(/^import .*$/gm));
+  if (importMatches.length === 0) {
+    return `${importLine}\n${source}`;
+  }
+
+  const lastImport = importMatches[importMatches.length - 1];
+  const insertAt = (lastImport.index || 0) + lastImport[0].length;
+  return `${source.slice(0, insertAt)}\n${importLine}${source.slice(insertAt)}`;
+}
+
+function buildMenuNavigationKey(answers: MenuItemAnswers) {
+  const targetSegment = answers.target === 'dashboard' ? 'ui' : answers.target;
+  const modeSegment = answers.target === 'dashboard' ? '' : `.${answers.mode}`;
+  return `pages.${answers.page}.${targetSegment}${modeSegment}`;
+}
+
 function buildMenuItemBlock(answers: MenuItemAnswers, pascalName: string, itemMarker: string): string {
   const functionName = `create${pascalName}${capitalize(answers.target)}`;
+  const navigationKey = buildMenuNavigationKey(answers);
+  const textKeyBase = pageTextKey(answers.page, 'menu', answers.target, answers.mode);
 
   const body = answers.target === 'report'
     ? `$MI(
           {
             action: 'report',
             mode: ${serializeString(answers.mode)},
-            text: ${serializeString(answers.text)},
-            subText: ${serializeString(answers.subText)},
+            text: ${serializeUITextDescriptor(`${textKeyBase}.text`, answers.text)},
+            subText: ${serializeUITextDescriptor(`${textKeyBase}.subText`, answers.subText)},
             icon: ${serializeString(answers.icon)},
             color: ${serializeString(answers.color)},
           },
           {
             report: async (_menuItem, mode) => ${functionName}(mode || ${serializeString(answers.mode)}),
+            navigation: () => ({
+              key: ${serializeString(navigationKey)},
+              persist: false,
+            }),
           },
         ),`
     : answers.target === 'collection'
@@ -1276,46 +1356,52 @@ function buildMenuItemBlock(answers: MenuItemAnswers, pascalName: string, itemMa
           {
             action: 'collection',
             mode: ${serializeString(answers.mode)},
-            text: ${serializeString(answers.text)},
-            subText: ${serializeString(answers.subText)},
+            text: ${serializeUITextDescriptor(`${textKeyBase}.text`, answers.text)},
+            subText: ${serializeUITextDescriptor(`${textKeyBase}.subText`, answers.subText)},
             icon: ${serializeString(answers.icon)},
             color: ${serializeString(answers.color)},
           },
           {
             collection: async (_menuItem, mode) => ${functionName}(mode || ${serializeString(answers.mode)}),
+            navigation: () => ({
+              key: ${serializeString(navigationKey)},
+              persist: false,
+            }),
           },
         ),`
       : answers.target === 'dashboard'
         ? `$MI(
           {
-            action: 'function',
+            action: 'ui',
             mode: ${serializeString(answers.mode)},
-            text: ${serializeString(answers.text)},
-            subText: ${serializeString(answers.subText)},
+            text: ${serializeUITextDescriptor(`${textKeyBase}.text`, answers.text)},
+            subText: ${serializeUITextDescriptor(`${textKeyBase}.subText`, answers.subText)},
             icon: ${serializeString(answers.icon)},
             color: ${serializeString(answers.color)},
           },
           {
-            callback: async () => {
-              const dashboard = await ${functionName}();
-              AppManager.showUI(dashboard);
-            },
+            ui: async () => ${functionName}(),
+            navigation: () => ({
+              key: ${serializeString(navigationKey)},
+              persist: false,
+            }),
           },
         ),`
       : `$MI(
           {
-            action: 'function',
+            action: 'trigger',
             mode: ${serializeString(answers.mode)},
-            text: ${serializeString(answers.text)},
-            subText: ${serializeString(answers.subText)},
+            text: ${serializeUITextDescriptor(`${textKeyBase}.text`, answers.text)},
+            subText: ${serializeUITextDescriptor(`${textKeyBase}.subText`, answers.subText)},
             icon: ${serializeString(answers.icon)},
             color: ${serializeString(answers.color)},
           },
           {
-            callback: async () => {
-              const trigger = await ${functionName}(${serializeString(answers.mode)});
-              AppManager.showTrigger(trigger);
-            },
+            trigger: async (_menuItem, mode) => ${functionName}(mode || ${serializeString(answers.mode)}),
+            navigation: () => ({
+              key: ${serializeString(navigationKey)},
+              persist: false,
+            }),
           },
         ),`;
 
@@ -1324,6 +1410,7 @@ function buildMenuItemBlock(answers: MenuItemAnswers, pascalName: string, itemMa
 }
 
 function buildSubMenuFileSource(answers: SubMenuAnswers, pascalName: string): string {
+  const menuKeyBase = menuTextKey(answers.name);
   return `${GENERATED_MARKER} create sub-menu
 import { $MN } from 'vuetify-extended';
 // vuetify-ext:menu-imports
@@ -1331,7 +1418,7 @@ import { $MN } from 'vuetify-extended';
 export function create${pascalName}Menu() {
   return $MN(
     {
-      title: ${serializeString(answers.title)},
+      title: ${serializeUITextDescriptor(`${menuKeyBase}.title`, answers.title)},
       cols: 12,
       width: 380,
     },
@@ -1346,12 +1433,13 @@ export function create${pascalName}Menu() {
 }
 
 function buildSubMenuItemBlock(answers: SubMenuAnswers, pascalName: string, itemMarker: string): string {
+  const menuKeyBase = menuTextKey(answers.name);
   return `        ${itemMarker}
         $MI(
           {
             action: 'menu',
-            text: ${serializeString(answers.text)},
-            subText: ${serializeString(answers.subText)},
+            text: ${serializeUITextDescriptor(`${menuKeyBase}.entry.text`, answers.text)},
+            subText: ${serializeUITextDescriptor(`${menuKeyBase}.entry.subText`, answers.subText)},
             icon: ${serializeString(answers.icon)},
             color: ${serializeString(answers.color)},
           },
@@ -1453,6 +1541,13 @@ function extractReportTitle(source: string): string | undefined {
   return match?.[1];
 }
 
+function detectReportModeVariable(source: string, pascalName: string): 'mode' | 'resolvedMode' {
+  if (source.includes(`create${pascalName}Form(resolvedMode)`)) {
+    return 'resolvedMode';
+  }
+  return 'mode';
+}
+
 function ensureReportFormMarkers(source: string, pascalName: string): string | undefined {
   if (source.includes(REPORT_IMPORT_MARKER) && source.includes(REPORT_RESOLVER_MARKER)) {
     return source;
@@ -1471,22 +1566,23 @@ function ensureReportFormMarkers(source: string, pascalName: string): string | u
   }
 
   if (!next.includes(REPORT_RESOLVER_MARKER)) {
-    const exactSingleResolver = `form: async (_props, _context, _index) => create${pascalName}Form(mode),`;
+    const modeVar = detectReportModeVariable(next, pascalName);
+    const exactSingleResolver = `form: async (_props, _context, _index) => create${pascalName}Form(${modeVar}),`;
     if (next.includes(exactSingleResolver)) {
       next = next.replace(
         exactSingleResolver,
-        `form: async (_props, _context, index) => {\n        ${REPORT_RESOLVER_MARKER}\n        if (index === 0) return create${pascalName}Form(mode);\n        return undefined;\n      },`,
+        `form: async (_props, _context, index) => {\n        ${REPORT_RESOLVER_MARKER}\n        if (index === 0) return create${pascalName}Form(${modeVar});\n        return undefined;\n      },`,
       );
       return next;
     }
 
     const singleResolverPattern = new RegExp(
-      `form:\\s*async\\s*\\([^)]*\\)\\s*=>\\s*create${pascalName}Form\\(mode\\),`,
+      `form:\\s*async\\s*\\([^)]*\\)\\s*=>\\s*create${pascalName}Form\\((?:mode|resolvedMode)\\),`,
     );
     if (singleResolverPattern.test(next)) {
       next = next.replace(
         singleResolverPattern,
-        `form: async (_props, _context, index) => {\n        ${REPORT_RESOLVER_MARKER}\n        if (index === 0) return create${pascalName}Form(mode);\n        return undefined;\n      },`,
+        `form: async (_props, _context, index) => {\n        ${REPORT_RESOLVER_MARKER}\n        if (index === 0) return create${pascalName}Form(${modeVar});\n        return undefined;\n      },`,
       );
       return next;
     }
@@ -1507,7 +1603,8 @@ function patchReportForNewForm(
   input: { pascalName: string; step: number; nextFormsCount: number },
 ): string | undefined {
   const importLine = `import { ${formFunctionNameForStep(input.pascalName, input.step)} } from './${formImportStemForStep(input.step)}';`;
-  const resolverLine = `if (index === ${input.step - 1}) return ${formFunctionNameForStep(input.pascalName, input.step)}(mode);`;
+  const modeVar = detectReportModeVariable(source, input.pascalName);
+  const resolverLine = `if (index === ${input.step - 1}) return ${formFunctionNameForStep(input.pascalName, input.step)}(${modeVar});`;
 
   let next = source.replace(/forms:\s*\d+/, `forms: ${input.nextFormsCount}`);
 
@@ -1533,9 +1630,10 @@ function patchLegacySingleFormReport(
   source: string,
   input: { pascalName: string; step: number; nextFormsCount: number },
 ): string | undefined {
-  const exactSingleResolver = `form: async (_props, _context, _index) => create${input.pascalName}Form(mode),`;
+  const modeVar = detectReportModeVariable(source, input.pascalName);
+  const exactSingleResolver = `form: async (_props, _context, _index) => create${input.pascalName}Form(${modeVar}),`;
   const singleResolverPattern = new RegExp(
-    `form:\\s*async\\s*\\([^)]*\\)\\s*=>\\s*create${input.pascalName}Form\\(mode\\),`,
+    `form:\\s*async\\s*\\([^)]*\\)\\s*=>\\s*create${input.pascalName}Form\\((?:mode|resolvedMode)\\),`,
   );
   const baseImportPattern = new RegExp(
     `import\\s*\\{\\s*create${input.pascalName}Form\\s*\\}\\s*from\\s*['"]\\.\\/form['"];?`,
@@ -1545,7 +1643,7 @@ function patchLegacySingleFormReport(
     return undefined;
   }
 
-  const replacementResolver = `form: async (_props, _context, index) => {\n        ${REPORT_RESOLVER_MARKER}\n        if (index === 0) return create${input.pascalName}Form(mode);\n        if (index === ${input.step - 1}) return ${formFunctionNameForStep(input.pascalName, input.step)}(mode);\n        return undefined;\n      },`;
+  const replacementResolver = `form: async (_props, _context, index) => {\n        ${REPORT_RESOLVER_MARKER}\n        if (index === 0) return create${input.pascalName}Form(${modeVar});\n        if (index === ${input.step - 1}) return ${formFunctionNameForStep(input.pascalName, input.step)}(${modeVar});\n        return undefined;\n      },`;
 
   let next = source.replace(baseImportMatch[0], `${baseImportMatch[0]}\n${REPORT_IMPORT_MARKER}\nimport { ${formFunctionNameForStep(input.pascalName, input.step)} } from './${formImportStemForStep(input.step)}';`);
   next = next.replace(/forms:\s*\d+/, `forms: ${input.nextFormsCount}`);
@@ -1753,6 +1851,18 @@ function sanitizeIdentifier(value: string): string {
 
 function serializeString(value: string | undefined): string {
   return JSON.stringify(value || '');
+}
+
+function serializeUITextDescriptor(key: string, fallback: string): string {
+  return `{ key: ${serializeString(key)}, fallback: ${serializeString(fallback)} }`;
+}
+
+function pageTextKey(page: string, ...segments: string[]): string {
+  return ['pages', slugifyName(page), ...segments].join('.');
+}
+
+function menuTextKey(name: string, ...segments: string[]): string {
+  return ['menus', slugifyName(name), ...segments].join('.');
 }
 
 function serializeKey(key: string): string {

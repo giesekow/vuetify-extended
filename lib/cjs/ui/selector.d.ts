@@ -2,13 +2,14 @@ import { VNode } from "vue";
 import { UIBase } from "./base";
 import { ButtonParams } from "./button";
 import { OnHandler } from "./lib";
+import { UIText } from "./runtime";
 export interface SelectorParams {
     ref?: string;
     invisible?: boolean;
     persistent?: boolean;
     multiple?: boolean;
-    title?: string;
-    subtitle?: string;
+    title?: UIText;
+    subtitle?: UIText;
     mode?: 'create' | 'edit' | 'display';
     cancelButton?: ButtonParams;
     saveButton?: ButtonParams;

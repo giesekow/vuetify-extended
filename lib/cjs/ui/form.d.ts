@@ -6,12 +6,13 @@ import { Button, ButtonParams } from "./button";
 import { Report } from "./report";
 import { Refs } from "./field";
 import { OnHandler } from "./lib";
+import { UIText } from "./runtime";
 export interface FormParams {
     ref?: string;
     readonly?: boolean;
     invisible?: boolean;
-    title?: string;
-    subtitle?: string;
+    title?: UIText;
+    subtitle?: UIText;
     mode?: ReportMode;
     auto?: boolean;
     sub?: boolean;

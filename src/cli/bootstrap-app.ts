@@ -664,9 +664,9 @@ import { AppTitleBlock, EnvironmentTag, StatusBadge${typeImports} } from 'vuetif
 export function buildHeaderStart(app${typeArg})${typeReturn} {
   return [
     new AppTitleBlock({
-      title: app.$params.title || 'My Workspace',
-      subtitle: 'Built with vuetify-extended',
-      overline: 'Workspace',
+      title: app.$params.title || ${serializeUITextDescriptor('bootstrap.header.title', 'My Workspace')},
+      subtitle: ${serializeUITextDescriptor('bootstrap.header.subtitle', 'Built with vuetify-extended')},
+      overline: ${serializeUITextDescriptor('bootstrap.header.overline', 'Workspace')},
       icon: 'mdi-view-dashboard-outline',
       color: 'primary',
     }),
@@ -676,7 +676,7 @@ export function buildHeaderStart(app${typeArg})${typeReturn} {
 export function buildHeaderCenter(_app${typeArg})${typeReturn} {
   return [
     new EnvironmentTag({
-      text: 'Starter',
+      text: ${serializeUITextDescriptor('bootstrap.header.environment', 'Starter')},
       color: 'info',
       variant: 'outlined',
     }),
@@ -686,7 +686,7 @@ export function buildHeaderCenter(_app${typeArg})${typeReturn} {
 export function buildHeaderEnd(_app${typeArg})${typeReturn} {
   return [
     new StatusBadge({
-      text: 'Ready',
+      text: ${serializeUITextDescriptor('bootstrap.header.status', 'Ready')},
       icon: 'mdi-check-circle-outline',
       color: 'success',
       variant: 'tonal',
@@ -707,7 +707,7 @@ import { EnvironmentTag, StatusBadge${typeImports} } from 'vuetify-extended';
 export function buildFooterStart(_app${typeArg})${typeReturn} {
   return [
     new StatusBadge({
-      text: 'vuetify-extended Starter',
+      text: ${serializeUITextDescriptor('bootstrap.footer.start', 'vuetify-extended Starter')},
       icon: 'mdi-flask-outline',
       color: 'primary',
       variant: 'outlined',
@@ -718,7 +718,7 @@ export function buildFooterStart(_app${typeArg})${typeReturn} {
 export function buildFooterCenter(_app${typeArg})${typeReturn} {
   return [
     new EnvironmentTag({
-      text: 'Bootstrap + Pages + Menu',
+      text: ${serializeUITextDescriptor('bootstrap.footer.center', 'Bootstrap + Pages + Menu')},
       color: 'secondary',
       variant: 'outlined',
     }),
@@ -728,7 +728,7 @@ export function buildFooterCenter(_app${typeArg})${typeReturn} {
 export function buildFooterEnd(_app${typeArg})${typeReturn} {
   return [
     new StatusBadge({
-      text: 'Home Page Ready',
+      text: ${serializeUITextDescriptor('bootstrap.footer.end', 'Home Page Ready')},
       icon: 'mdi-home-outline',
       color: 'success',
       variant: 'tonal',
@@ -761,7 +761,7 @@ ${optionsBlock}export function createMainApp()${appReturnType} {
   return new AppMain(
     {
       ref: 'main-app',
-      title: 'My Workspace',
+      title: ${serializeUITextDescriptor('bootstrap.app.title', 'My Workspace')},
       showHeader: true,
       showFooter: true,
       showFab: false,
@@ -812,7 +812,7 @@ import { createHomeReport } from '../pages/home';
 export function createMainMenu() {
   return $MN(
     {
-      title: 'Workspace',
+      title: ${serializeUITextDescriptor('bootstrap.menu.title', 'Workspace')},
       cols: 12,
       width: 380,
     },
@@ -823,13 +823,17 @@ export function createMainMenu() {
           {
             action: 'report',
             mode: 'display',
-            text: 'Home',
-            subText: 'Starter page entry from src/pages/home.',
+            text: ${serializeUITextDescriptor('pages.home.menu.report.display.text', 'Home')},
+            subText: ${serializeUITextDescriptor('pages.home.menu.report.display.subText', 'Starter page entry from src/pages/home.')},
             icon: 'mdi-home-outline',
             color: 'primary',
           },
           {
-            report: async () => createHomeReport(),
+            report: async (_menuItem, mode) => createHomeReport(mode || 'display'),
+            navigation: () => ({
+              key: 'pages.home.report.display',
+              persist: true,
+            }),
           },
         ),
       ],
@@ -846,7 +850,7 @@ import { $FD, $FM, $PT } from 'vuetify-extended';
 export function createHomeForm() {
   return $FM(
     {
-      title: 'Welcome',
+      title: ${serializeUITextDescriptor('pages.home.form.title', 'Welcome')},
       mode: 'display',
       width: 860,
     },
@@ -858,17 +862,17 @@ export function createHomeForm() {
             children: () => [
               $FD({
                 type: 'label',
-                label: 'This starter page is defined in src/pages/home/index.',
+                label: ${serializeUITextDescriptor('pages.home.form.intro.location', 'This starter page is defined in src/pages/home/index.')},
                 cols: 12,
               }),
               $FD({
                 type: 'label',
-                label: 'Add future reports, triggers, collections, and dashboards under src/pages/<page-name>/.',
+                label: ${serializeUITextDescriptor('pages.home.form.intro.pages', 'Add future reports, triggers, collections, and dashboards under src/pages/<page-name>/.')},
                 cols: 12,
               }),
               $FD({
                 type: 'label',
-                label: 'Split larger pages into form.ts, report.ts, trigger.ts, collection.ts, fields.ts, or parts.ts as needed.',
+                label: ${serializeUITextDescriptor('pages.home.form.intro.structure', 'Split larger pages into form.ts, report.ts, trigger.ts, collection.ts, fields.ts, or parts.ts as needed.')},
                 cols: 12,
               }),
             ],
@@ -882,27 +886,34 @@ export function createHomeForm() {
 }
 
 function buildHomePageFileSource(ext: '.ts' | '.js'): string {
-  const typeImport = ext === '.ts' ? ', type ReportMode' : '';
+  const typeImport = ext === '.ts' ? ', type NavigationEntry, type ReportMode' : '';
   const modeArg = ext === '.ts' ? `mode: ReportMode = 'display'` : `mode = 'display'`;
+  const entryArg = ext === '.ts' ? 'entry?: NavigationEntry' : 'entry';
+  const resolvedModeLine = ext === '.ts'
+    ? `    const resolvedMode = (entry?.mode as ReportMode | undefined) || mode;`
+    : `    const resolvedMode = (entry && entry.mode) || mode;`;
 
   return `${GENERATED_MARKER}
 import { $RP${typeImport} } from 'vuetify-extended';
 import { createHomeForm } from './form';
 
 export function createHomeReport(${modeArg}) {
-  return $RP(
-    {
-      title: 'Home',
-      forms: 1,
-      mode,
-      horizontalAlign: 'center',
-      verticalAlign: 'start',
-      fluid: true,
-    },
-    {
-      form: async () => createHomeForm(),
-    },
-  );
+  return (${entryArg}) => {
+${resolvedModeLine}
+    return $RP(
+      {
+        title: ${serializeUITextDescriptor('pages.home.report.title', 'Home')},
+        forms: 1,
+        mode: resolvedMode,
+        horizontalAlign: 'center',
+        verticalAlign: 'start',
+        fluid: true,
+      },
+      {
+        form: async () => createHomeForm(),
+      },
+    );
+  };
 }
 `;
 }
@@ -987,6 +998,10 @@ function collectMatches(source: string, expression: RegExp): RegExpExecArray[] {
 
 function serializeString(value: string | undefined): string {
   return JSON.stringify(value || '');
+}
+
+function serializeUITextDescriptor(key: string, fallback: string): string {
+  return `{ key: ${serializeString(key)}, fallback: ${serializeString(fallback)} }`;
 }
 
 function defaultSocketURL(apiURL: string): string {

@@ -13,7 +13,7 @@ Composable dashboard page and widget system built on `UIBase`. `Dashboard` is in
 - `DashboardWidget` is the common card/shell primitive used by all dashboard widget variants.
 - Widgets support `refresh()` and the dashboard header refresh button cascades refresh across the whole page.
 - Dashboards support theme-aware rendering, background customization, keyboard shortcuts, and a `MenuItem`-powered header dropdown.
-- The dashboard header menu reuses existing `MenuItem` definitions, including `function`, `menu`, `collection`, and `report` actions.
+- The dashboard header menu reuses existing `MenuItem` definitions, including `function`, `menu`, `collection`, `report`, `trigger`, and `ui` actions.
 
 ## Factories
 
@@ -99,7 +99,7 @@ export interface DashboardOptions {
 - `theme` controls default text color: dark dashboards default to white text and light dashboards default to dark text.
 - `textColor` overrides the theme-derived text color.
 - `backgroundGradient` and `backgroundImage` can be combined.
-- `menuItems(...)` uses existing `MenuItem` definitions, so shortcut display and built-in action types work out of the box.
+- `menuItems(...)` uses existing `MenuItem` definitions, so shortcut display, navigation metadata, and built-in action types work out of the box.
 - `Dashboard.refresh()` cascades into all child widgets.
 
 ### Keyboard Behavior

@@ -24,8 +24,9 @@ import { OnHandler } from './lib';
 import { Report } from './report';
 import { Dialogs } from './dialogs';
 import { AppManager } from './appmanager';
-import { MenuItem } from './menu';
+import { MenuItem, executeMenuItemAction } from './menu';
 import { describeShortcut, normalizeShortcut, normalizeShortcutFromEvent } from './shortcut';
+import type { UIText } from './runtime';
 
 export type DashboardTheme = 'light' | 'dark';
 
@@ -33,8 +34,8 @@ const DASHBOARD_WIDGET_PALETTE = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#
 
 export interface DashboardParams {
   ref?: string;
-  title?: string;
-  subtitle?: string;
+  title?: UIText;
+  subtitle?: UIText;
   invisible?: boolean;
   fluid?: boolean;
   width?: number | string;
@@ -77,8 +78,8 @@ export interface DashboardOptions {
 
 export interface DashboardWidgetParams {
   ref?: string;
-  title?: string;
-  subtitle?: string;
+  title?: UIText;
+  subtitle?: UIText;
   icon?: string;
   iconColor?: string;
   invisible?: boolean;
@@ -133,7 +134,7 @@ export interface DashboardMetricWidgetOptions extends DashboardWidgetOptions {
 
 export interface DashboardTableColumn {
   key: string;
-  title: string;
+  title: UIText;
   align?: 'start' | 'center' | 'end';
   width?: string | number;
 }
@@ -142,8 +143,8 @@ export interface DashboardTableWidgetParams extends DashboardWidgetParams {
   headers?: DashboardTableColumn[];
   items?: any[];
   showSearch?: boolean;
-  searchPlaceholder?: string;
-  emptyText?: string;
+  searchPlaceholder?: UIText;
+  emptyText?: UIText;
   pagination?: boolean;
   pageSize?: number;
   page?: number;
@@ -188,7 +189,7 @@ export interface DashboardListItem {
 
 export interface DashboardListWidgetParams extends DashboardWidgetParams {
   items?: DashboardListItem[];
-  emptyText?: string;
+  emptyText?: UIText;
   separator?: boolean;
 }
 
@@ -212,7 +213,7 @@ export interface DashboardProgressItem {
 
 export interface DashboardProgressWidgetParams extends DashboardWidgetParams {
   items?: DashboardProgressItem[];
-  emptyText?: string;
+  emptyText?: UIText;
 }
 
 export interface DashboardProgressWidgetOptions extends DashboardWidgetOptions {
@@ -232,7 +233,7 @@ export interface DashboardChartItem {
 export interface DashboardChartWidgetParams extends DashboardWidgetParams {
   chartType?: 'bar' | 'line' | 'donut';
   items?: DashboardChartItem[];
-  emptyText?: string;
+  emptyText?: UIText;
   chartHeight?: number | string;
   showLegend?: boolean;
 }
@@ -276,7 +277,7 @@ export interface DashboardTimelineItem {
 
 export interface DashboardTimelineWidgetParams extends DashboardWidgetParams {
   items?: DashboardTimelineItem[];
-  emptyText?: string;
+  emptyText?: UIText;
 }
 
 export interface DashboardTimelineWidgetOptions extends DashboardWidgetOptions {
@@ -302,7 +303,7 @@ export interface DashboardActionItem {
 
 export interface DashboardActionListWidgetParams extends DashboardWidgetParams {
   items?: DashboardActionItem[];
-  emptyText?: string;
+  emptyText?: UIText;
 }
 
 export interface DashboardActionListWidgetOptions extends DashboardWidgetOptions {
@@ -322,7 +323,7 @@ export interface DashboardAlertItem {
 
 export interface DashboardAlertWidgetParams extends DashboardWidgetParams {
   items?: DashboardAlertItem[];
-  emptyText?: string;
+  emptyText?: UIText;
 }
 
 export interface DashboardAlertWidgetOptions extends DashboardWidgetOptions {
@@ -331,16 +332,16 @@ export interface DashboardAlertWidgetOptions extends DashboardWidgetOptions {
 }
 
 export interface DashboardEmptyStateWidgetParams extends DashboardWidgetParams {
-  titleText?: string;
-  message?: string;
+  titleText?: UIText;
+  message?: UIText;
   icon?: string;
   iconColor?: string;
-  buttonText?: string;
+  buttonText?: UIText;
   toneColor?: string;
 }
 
 export interface DashboardEmptyStateWidgetOptions extends DashboardWidgetOptions {
-  buttonText?: (widget: DashboardEmptyStateWidget) => string | Promise<string | undefined> | undefined;
+  buttonText?: (widget: DashboardEmptyStateWidget) => UIText | Promise<UIText | undefined> | undefined;
   onClicked?: (widget: DashboardEmptyStateWidget) => void | Promise<void>;
 }
 
@@ -358,7 +359,7 @@ export interface DashboardStatGridItem {
 export interface DashboardStatGridWidgetParams extends DashboardWidgetParams {
   items?: DashboardStatGridItem[];
   columns?: number;
-  emptyText?: string;
+  emptyText?: UIText;
 }
 
 export interface DashboardStatGridWidgetOptions extends DashboardWidgetOptions {
@@ -387,7 +388,7 @@ export interface DashboardMapData {
 
 export interface DashboardMapWidgetParams extends DashboardWidgetParams {
   data?: DashboardMapData;
-  emptyText?: string;
+  emptyText?: UIText;
   mapHeight?: number | string;
   showLegend?: boolean;
 }
@@ -408,7 +409,7 @@ export interface DashboardCalendarWidgetParams extends DashboardWidgetParams {
   items?: DashboardCalendarItem[];
   year?: number;
   month?: number;
-  emptyText?: string;
+  emptyText?: UIText;
 }
 
 export interface DashboardCalendarWidgetOptions extends DashboardWidgetOptions {
@@ -426,7 +427,7 @@ export interface DashboardTabItem {
 export interface DashboardTabsWidgetParams extends DashboardWidgetParams {
   tabs?: DashboardTabItem[];
   activeTab?: number;
-  emptyText?: string;
+  emptyText?: UIText;
 }
 
 export interface DashboardTabsWidgetOptions extends DashboardWidgetOptions {
@@ -659,8 +660,8 @@ function renderDashboardWidgetShell(
         },
         [
           h('div', { style: { color: textColor, minWidth: 0, flex: '1 1 auto' } }, [
-            ...(params.title ? [h(VCardTitle, { style: { padding: '0px', lineHeight: '1.2', color: textColor, whiteSpace: 'normal', wordBreak: 'break-word' } }, () => params.title || '')] : []),
-            ...(params.subtitle ? [h(VCardSubtitle, { style: { padding: '6px 0 0 0', color: textColor, opacity: 0.74, whiteSpace: 'normal', wordBreak: 'break-word' } }, () => params.subtitle || '')] : []),
+            ...(params.title ? [h(VCardTitle, { style: { padding: '0px', lineHeight: '1.2', color: textColor, whiteSpace: 'normal', wordBreak: 'break-word' } }, () => owner.$text(params.title))] : []),
+            ...(params.subtitle ? [h(VCardSubtitle, { style: { padding: '6px 0 0 0', color: textColor, opacity: 0.74, whiteSpace: 'normal', wordBreak: 'break-word' } }, () => owner.$text(params.subtitle))] : []),
           ]),
           ...(params.icon ? [
             h(VIcon, {
@@ -1275,7 +1276,7 @@ export class DashboardTableWidget extends DashboardWidget {
           baseColor: this.$textColor,
           color: this.$textColor,
           modelValue: this.search.value,
-          placeholder: this.$tableParams.searchPlaceholder || 'Search',
+          placeholder: this.$text(this.$tableParams.searchPlaceholder, this.$uiText('ve.dashboard.table.searchPlaceholder', 'Search')),
           prependInnerIcon: 'mdi-magnify',
           hideDetails: true,
           density: 'comfortable',
@@ -1289,9 +1290,9 @@ export class DashboardTableWidget extends DashboardWidget {
     }
 
     if (this.loading.value && !this.loaded.value) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, 'Loading...'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$uiText('ve.common.loading', 'Loading...')));
     } else if (!items.length) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$tableParams.emptyText || 'No rows to display.'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$text(this.$tableParams.emptyText, this.$uiText('ve.dashboard.table.empty', 'No rows to display.'))));
     } else {
       body.push(
         h(VTable, { density: 'comfortable', class: ['bg-transparent'], style: { background: 'transparent', color: this.$textColor } }, {
@@ -1304,7 +1305,7 @@ export class DashboardTableWidget extends DashboardWidget {
                   color: this.$textColor,
                   borderBottom: `1px solid ${dividerColor}`,
                 },
-              }, column.title))),
+              }, this.$text(column.title)))),
             ]),
             h('tbody', items.map((row: any, index: number) => h('tr', {
               key: row?.key || `${this.currentPage.value}-${index}`,
@@ -1339,7 +1340,9 @@ export class DashboardTableWidget extends DashboardWidget {
             marginTop: '12px',
           },
         }, [
-          h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, totalCount > 0 ? `${pageStart}-${pageEnd} of ${totalCount}` : '0 items'),
+          h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, totalCount > 0
+            ? this.$uiText('ve.dashboard.table.range', '{start}-{end} of {total}', { start: pageStart, end: pageEnd, total: totalCount })
+            : this.$uiText('ve.dashboard.table.zeroItems', '0 items')),
           h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } }, [
             h(VBtn, {
               variant: 'text',
@@ -1349,8 +1352,8 @@ export class DashboardTableWidget extends DashboardWidget {
               onClick: () => {
                 void this.goToPage(this.currentPage.value - 1);
               },
-            }, () => 'Prev'),
-            h('div', { class: ['text-body-2'], style: { minWidth: '68px', textAlign: 'center', opacity: 0.78 } }, `Page ${Math.min(this.currentPage.value, totalPages)} / ${totalPages}`),
+            }, () => this.$uiText('ve.common.prev', 'Prev')),
+            h('div', { class: ['text-body-2'], style: { minWidth: '68px', textAlign: 'center', opacity: 0.78 } }, this.$uiText('ve.dashboard.table.pageOf', 'Page {page} / {total}', { page: Math.min(this.currentPage.value, totalPages), total: totalPages })),
             h(VBtn, {
               variant: 'text',
               size: 'small',
@@ -1359,7 +1362,7 @@ export class DashboardTableWidget extends DashboardWidget {
               onClick: () => {
                 void this.goToPage(this.currentPage.value + 1);
               },
-            }, () => 'Next'),
+            }, () => this.$uiText('ve.common.next', 'Next')),
           ]),
         ])
       );
@@ -1459,9 +1462,9 @@ export class DashboardListWidget extends DashboardWidget {
     const showSeparator = this.$listParams.separator === true;
 
     if (this.loading.value && !this.loaded.value) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, 'Loading...'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$uiText('ve.common.loading', 'Loading...')));
     } else if (!this.resolvedItems.value.length) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$listParams.emptyText || 'No items to display.'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$text(this.$listParams.emptyText, this.$uiText('ve.dashboard.list.empty', 'No items to display.'))));
     } else {
       body.push(...this.resolvedItems.value.map((item, index) => h('div', {
         key: item.key || index,
@@ -1639,9 +1642,9 @@ export class DashboardProgressWidget extends DashboardWidget {
     const body: VNode[] = [];
 
     if (this.loading.value && !this.loaded.value) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, 'Loading...'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$uiText('ve.common.loading', 'Loading...')));
     } else if (!this.resolvedItems.value.length) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$progressParams.emptyText || 'No summary items to display.'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$text(this.$progressParams.emptyText, this.$uiText('ve.dashboard.progress.empty', 'No summary items to display.'))));
     } else {
       body.push(...this.resolvedItems.value.map((item, index) => h('div', {
         key: item.key || index,
@@ -1929,7 +1932,7 @@ export class DashboardChartWidget extends DashboardWidget {
     const h = this.$h;
     const total = Math.max(0, items.reduce((sum, item) => sum + Number(item.value || 0), 0));
     if (!total) {
-      return h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, 'No chart values to display.');
+      return h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$uiText('ve.dashboard.chart.noValues', 'No chart values to display.'));
     }
 
     let offset = 0;
@@ -1974,7 +1977,7 @@ export class DashboardChartWidget extends DashboardWidget {
           },
         }, [
           h('div', { style: { fontSize: '1.6rem', fontWeight: 700, lineHeight: 1.1 } }, total.toLocaleString()),
-          h('div', { style: { opacity: 0.7, fontSize: '0.9rem' } }, 'Total'),
+          h('div', { style: { opacity: 0.7, fontSize: '0.9rem' } }, this.$uiText('ve.dashboard.chart.total', 'Total')),
         ]),
       ]),
     ]);
@@ -1991,9 +1994,9 @@ export class DashboardChartWidget extends DashboardWidget {
     const body: VNode[] = [];
 
     if (this.loading.value && !this.loaded.value) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, 'Loading...'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$uiText('ve.common.loading', 'Loading...')));
     } else if (!items.length) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$chartParams.emptyText || 'No chart data to display.'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$text(this.$chartParams.emptyText, this.$uiText('ve.dashboard.chart.empty', 'No chart data to display.'))));
     } else {
       const type = this.$chartParams.chartType || 'bar';
       body.push(h('div', { style: { display: 'flex', flexDirection: 'column', gap: '14px' } }, [
@@ -2347,9 +2350,9 @@ export class DashboardTimelineWidget extends DashboardWidget {
     const body: VNode[] = [];
 
     if (this.loading.value && !this.loaded.value) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, 'Loading...'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$uiText('ve.common.loading', 'Loading...')));
     } else if (!this.resolvedItems.value.length) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$timelineParams.emptyText || 'No activity to display.'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$text(this.$timelineParams.emptyText, this.$uiText('ve.dashboard.timeline.empty', 'No activity to display.'))));
     } else {
       body.push(h('div', { style: { display: 'flex', flexDirection: 'column' } }, this.resolvedItems.value.map((item, index) => h('div', {
         key: item.key || index,
@@ -2480,9 +2483,9 @@ export class DashboardActionListWidget extends DashboardWidget {
     const clickable = typeof this.actionOptions.onItemClicked === 'function';
 
     if (this.loading.value && !this.loaded.value) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, 'Loading...'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$uiText('ve.common.loading', 'Loading...')));
     } else if (!this.resolvedItems.value.length) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$actionParams.emptyText || 'No actions available.'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$text(this.$actionParams.emptyText, this.$uiText('ve.dashboard.actions.empty', 'No actions available.'))));
     } else {
       body.push(...this.resolvedItems.value.map((item, index) => h('div', {
         key: item.key || index,
@@ -2623,9 +2626,9 @@ export class DashboardAlertWidget extends DashboardWidget {
     const clickable = typeof this.alertOptions.onItemClicked === 'function';
 
     if (this.loading.value && !this.loaded.value) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, 'Loading...'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$uiText('ve.common.loading', 'Loading...')));
     } else if (!this.resolvedItems.value.length) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$alertParams.emptyText || 'No alerts right now.'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$text(this.$alertParams.emptyText, this.$uiText('ve.dashboard.alerts.empty', 'No alerts right now.'))));
     } else {
       body.push(...this.resolvedItems.value.map((item, index) => {
         const color = this.severityColor(item);
@@ -2668,7 +2671,7 @@ export class DashboardAlertWidget extends DashboardWidget {
 
 export class DashboardEmptyStateWidget extends DashboardWidget {
   private emptyOptions: DashboardEmptyStateWidgetOptions;
-  private resolvedButtonText: Ref<string | undefined>;
+  private resolvedButtonText: Ref<UIText | undefined>;
   private loading: Ref<boolean>;
   private loaded: Ref<boolean>;
   private currentLoad?: Promise<void>;
@@ -2747,15 +2750,15 @@ export class DashboardEmptyStateWidget extends DashboardWidget {
       },
     }, [
       h(VAvatar, { size: 72, color: toneColor, variant: 'tonal' }, () => h(VIcon, { icon: this.$emptyParams.icon || 'mdi-inbox-outline', color: this.$emptyParams.iconColor || toneColor, size: 34 })),
-      h('div', { style: { fontSize: '1.1rem', fontWeight: 700 } }, this.$emptyParams.titleText || this.$emptyParams.title || 'Nothing here yet'),
-      ...(this.$emptyParams.message ? [h('div', { class: ['text-body-2'], style: { maxWidth: '360px', opacity: 0.74 } }, this.$emptyParams.message)] : []),
+      h('div', { style: { fontSize: '1.1rem', fontWeight: 700 } }, this.$text(this.$emptyParams.titleText, this.$text(this.$emptyParams.title, this.$uiText('ve.dashboard.emptyState.title', 'Nothing here yet')))),
+      ...(this.$emptyParams.message ? [h('div', { class: ['text-body-2'], style: { maxWidth: '360px', opacity: 0.74 } }, this.$text(this.$emptyParams.message))] : []),
       ...(this.resolvedButtonText.value ? [h(VBtn, {
         color: toneColor,
         variant: 'tonal',
         onClick: () => {
           void this.onClicked();
         },
-      }, () => this.resolvedButtonText.value)] : []),
+      }, () => this.$text(this.resolvedButtonText.value))] : []),
     ]);
 
     return renderDashboardWidgetShell(this, this.$emptyParams, body, true);
@@ -2847,9 +2850,9 @@ export class DashboardStatGridWidget extends DashboardWidget {
     const columns = Math.max(1, Math.min(4, Number(this.$statParams.columns || 2)));
 
     if (this.loading.value && !this.loaded.value) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, 'Loading...'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$uiText('ve.common.loading', 'Loading...')));
     } else if (!this.resolvedItems.value.length) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$statParams.emptyText || 'No statistics available.'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$text(this.$statParams.emptyText, this.$uiText('ve.dashboard.stats.empty', 'No statistics available.'))));
     } else {
       body.push(h('div', {
         style: {
@@ -3004,9 +3007,9 @@ export class DashboardMapWidget extends DashboardWidget {
     const height = 220;
 
     if (this.loading.value && !this.loaded.value) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, 'Loading...'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$uiText('ve.common.loading', 'Loading...')));
     } else if (!hasData) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$mapParams.emptyText || 'No geo data available.'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$text(this.$mapParams.emptyText, this.$uiText('ve.dashboard.map.empty', 'No geo data available.'))));
     } else {
       const markers = data?.markers || [];
       const line = data?.line || [];
@@ -3202,11 +3205,11 @@ export class DashboardCalendarWidget extends DashboardWidget {
     const firstDay = new Date(year, month - 1, 1);
     const firstWeekday = firstDay.getDay();
     const daysInMonth = new Date(year, month, 0).getDate();
-    const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const weekdayLabels = Array.from({ length: 7 }, (_, index) => this.$formatDate(new Date(2024, 0, 7 + index), { weekday: 'short' }));
     const monthLabel = firstDay.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
     if (this.loading.value && !this.loaded.value) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, 'Loading...'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$uiText('ve.common.loading', 'Loading...')));
     } else {
       const cells: VNode[] = [];
       weekdayLabels.forEach((label) => {
@@ -3241,7 +3244,7 @@ export class DashboardCalendarWidget extends DashboardWidget {
             variant: 'tonal',
             style: { marginBottom: '4px', maxWidth: '100%' },
           }, () => item.title)),
-          ...(items.length > 2 ? [h('div', { class: ['text-body-2'], style: { opacity: 0.68, marginTop: '2px' } }, `+${items.length - 2} more`)] : []),
+          ...(items.length > 2 ? [h('div', { class: ['text-body-2'], style: { opacity: 0.68, marginTop: '2px' } }, this.$uiText('ve.dashboard.calendar.more', '+{count} more', { count: items.length - 2 }))] : []),
         ]));
       }
 
@@ -3347,9 +3350,9 @@ export class DashboardTabsWidget extends DashboardWidget {
     const body: VNode[] = [];
 
     if (this.loading.value && !this.loaded.value) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, 'Loading...'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$uiText('ve.common.loading', 'Loading...')));
     } else if (!this.resolvedTabs.value.length) {
-      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$tabsParams.emptyText || 'No tabs configured.'));
+      body.push(h('div', { class: ['text-body-2'], style: { opacity: 0.72 } }, this.$text(this.$tabsParams.emptyText, this.$uiText('ve.dashboard.tabs.empty', 'No tabs configured.'))));
     } else {
       const activeIndex = this.normalizedIndex();
       const activeTab = this.resolvedTabs.value[activeIndex];
@@ -3480,10 +3483,10 @@ export class Dashboard extends UIBase {
 
     const titleNodes: VNode[] = [];
     if (this.params.value.title) {
-      titleNodes.push(h('div', { class: ['text-h4'], style: { fontWeight: 700, color: this.$textColor } }, this.params.value.title));
+      titleNodes.push(h('div', { class: ['text-h4'], style: { fontWeight: 700, color: this.$textColor } }, this.$text(this.params.value.title)));
     }
     if (this.params.value.subtitle) {
-      titleNodes.push(h('div', { class: ['text-subtitle-1'], style: { opacity: 0.74, marginTop: this.params.value.title ? '6px' : '0px', color: this.$textColor } }, this.params.value.subtitle));
+      titleNodes.push(h('div', { class: ['text-subtitle-1'], style: { opacity: 0.74, marginTop: this.params.value.title ? '6px' : '0px', color: this.$textColor } }, this.$text(this.params.value.subtitle)));
     }
 
     const headerNode = h('div', {
@@ -3503,7 +3506,7 @@ export class Dashboard extends UIBase {
           variant: 'text',
           size: 'small',
           color: this.$textColor,
-          'aria-label': 'Refresh dashboard',
+          'aria-label': this.$uiText('ve.dashboard.refresh', 'Refresh dashboard'),
           onClick: () => {
             void this.runRefreshAction();
           },
@@ -3513,7 +3516,7 @@ export class Dashboard extends UIBase {
           variant: 'text',
           size: 'small',
           color: this.$textColor,
-          'aria-label': 'Close dashboard',
+          'aria-label': this.$uiText('ve.dashboard.close', 'Close dashboard'),
           onClick: () => {
             void this.forceCancel();
           },
@@ -3655,7 +3658,7 @@ export class Dashboard extends UIBase {
           variant: 'text',
           size: 'small',
           color: this.$textColor,
-          'aria-label': 'Dashboard menu',
+          'aria-label': this.$uiText('ve.dashboard.menu.label', 'Dashboard menu'),
           onClick: (ev: Event) => {
             activatorProps?.onClick?.(ev);
             if (!this.dashboardMenuLoaded.value) {
@@ -3678,8 +3681,8 @@ export class Dashboard extends UIBase {
           () => {
             if (this.dashboardMenuLoading.value) {
               return [
-                h(VListItem, {
-                  title: 'Loading actions...',
+                h(VListItem as any, {
+                  title: this.$uiText('ve.dashboard.menu.loading', 'Loading actions...'),
                   prependIcon: 'mdi-loading',
                   color: this.$textColor,
                 }),
@@ -3688,18 +3691,18 @@ export class Dashboard extends UIBase {
 
             if (!this.dashboardMenuItems.value.length) {
               return [
-                h(VListItem, {
-                  title: 'No actions available',
+                h(VListItem as any, {
+                  title: this.$uiText('ve.dashboard.menu.empty', 'No actions available'),
                   prependIcon: 'mdi-menu-open',
                   color: this.$textColor,
                 }),
               ];
             }
 
-            return this.dashboardMenuItems.value.map((item, index) => h(VListItem, {
-              key: item.$params.text || item.$params.subText || index,
-              title: item.$params.text,
-              subtitle: item.$params.subText,
+            return this.dashboardMenuItems.value.map((item, index) => h(VListItem as any, {
+              key: this.$text(item.$params.text || item.$params.subText) || index,
+              title: this.$text(item.$params.text),
+              subtitle: this.$text(item.$params.subText),
               prependIcon: item.$params.icon,
               color: item.$params.textColor || this.$textColor,
               active: index === this.dashboardMenuActiveIndex.value,
@@ -3762,48 +3765,7 @@ export class Dashboard extends UIBase {
   }
 
   private async executeDashboardMenuItem(item: MenuItem) {
-    const mode = item.$params.mode;
-
-    if (item.$params.action === 'menu') {
-      const menu = await item.menu(mode);
-      if (menu) {
-        if (await menu.access()) {
-          menu.setParent(this)
-          AppManager.showMenu(menu);
-        } else {
-          Dialogs.$error('access denied!');
-        }
-      }
-      return;
-    }
-
-    if (item.$params.action === 'collection') {
-      const collection = await item.collection(mode);
-      if (collection) {
-        if (await collection.access(mode)) {
-          collection.$params.mode = mode;
-          AppManager.showCollection(collection);
-        } else {
-          Dialogs.$error('access denied!');
-        }
-      }
-      return;
-    }
-
-    if (item.$params.action === 'report') {
-      const report = await item.report(mode);
-      if (report) {
-        if (await report.access(mode)) {
-          report.$params.mode = mode;
-          AppManager.showReport(report);
-        } else {
-          Dialogs.$error('access denied!');
-        }
-      }
-      return;
-    }
-
-    await item.callback(mode);
+    await executeMenuItemAction(item, this);
   }
 
   private async runRefreshAction() {

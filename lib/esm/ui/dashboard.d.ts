@@ -4,11 +4,12 @@ import { Master } from '../master';
 import { OnHandler } from './lib';
 import { Report } from './report';
 import { MenuItem } from './menu';
+import type { UIText } from './runtime';
 export type DashboardTheme = 'light' | 'dark';
 export interface DashboardParams {
     ref?: string;
-    title?: string;
-    subtitle?: string;
+    title?: UIText;
+    subtitle?: UIText;
     invisible?: boolean;
     fluid?: boolean;
     width?: number | string;
@@ -49,8 +50,8 @@ export interface DashboardOptions {
 }
 export interface DashboardWidgetParams {
     ref?: string;
-    title?: string;
-    subtitle?: string;
+    title?: UIText;
+    subtitle?: UIText;
     icon?: string;
     iconColor?: string;
     invisible?: boolean;
@@ -101,7 +102,7 @@ export interface DashboardMetricWidgetOptions extends DashboardWidgetOptions {
 }
 export interface DashboardTableColumn {
     key: string;
-    title: string;
+    title: UIText;
     align?: 'start' | 'center' | 'end';
     width?: string | number;
 }
@@ -109,8 +110,8 @@ export interface DashboardTableWidgetParams extends DashboardWidgetParams {
     headers?: DashboardTableColumn[];
     items?: any[];
     showSearch?: boolean;
-    searchPlaceholder?: string;
-    emptyText?: string;
+    searchPlaceholder?: UIText;
+    emptyText?: UIText;
     pagination?: boolean;
     pageSize?: number;
     page?: number;
@@ -150,7 +151,7 @@ export interface DashboardListItem {
 }
 export interface DashboardListWidgetParams extends DashboardWidgetParams {
     items?: DashboardListItem[];
-    emptyText?: string;
+    emptyText?: UIText;
     separator?: boolean;
 }
 export interface DashboardListWidgetOptions extends DashboardWidgetOptions {
@@ -171,7 +172,7 @@ export interface DashboardProgressItem {
 }
 export interface DashboardProgressWidgetParams extends DashboardWidgetParams {
     items?: DashboardProgressItem[];
-    emptyText?: string;
+    emptyText?: UIText;
 }
 export interface DashboardProgressWidgetOptions extends DashboardWidgetOptions {
     items?: (widget: DashboardProgressWidget) => DashboardProgressItem[] | Promise<DashboardProgressItem[] | undefined> | undefined;
@@ -187,7 +188,7 @@ export interface DashboardChartItem {
 export interface DashboardChartWidgetParams extends DashboardWidgetParams {
     chartType?: 'bar' | 'line' | 'donut';
     items?: DashboardChartItem[];
-    emptyText?: string;
+    emptyText?: UIText;
     chartHeight?: number | string;
     showLegend?: boolean;
 }
@@ -226,7 +227,7 @@ export interface DashboardTimelineItem {
 }
 export interface DashboardTimelineWidgetParams extends DashboardWidgetParams {
     items?: DashboardTimelineItem[];
-    emptyText?: string;
+    emptyText?: UIText;
 }
 export interface DashboardTimelineWidgetOptions extends DashboardWidgetOptions {
     items?: (widget: DashboardTimelineWidget) => DashboardTimelineItem[] | Promise<DashboardTimelineItem[] | undefined> | undefined;
@@ -249,7 +250,7 @@ export interface DashboardActionItem {
 }
 export interface DashboardActionListWidgetParams extends DashboardWidgetParams {
     items?: DashboardActionItem[];
-    emptyText?: string;
+    emptyText?: UIText;
 }
 export interface DashboardActionListWidgetOptions extends DashboardWidgetOptions {
     items?: (widget: DashboardActionListWidget) => DashboardActionItem[] | Promise<DashboardActionItem[] | undefined> | undefined;
@@ -265,22 +266,22 @@ export interface DashboardAlertItem {
 }
 export interface DashboardAlertWidgetParams extends DashboardWidgetParams {
     items?: DashboardAlertItem[];
-    emptyText?: string;
+    emptyText?: UIText;
 }
 export interface DashboardAlertWidgetOptions extends DashboardWidgetOptions {
     items?: (widget: DashboardAlertWidget) => DashboardAlertItem[] | Promise<DashboardAlertItem[] | undefined> | undefined;
     onItemClicked?: (widget: DashboardAlertWidget, item: DashboardAlertItem, index: number) => void | Promise<void>;
 }
 export interface DashboardEmptyStateWidgetParams extends DashboardWidgetParams {
-    titleText?: string;
-    message?: string;
+    titleText?: UIText;
+    message?: UIText;
     icon?: string;
     iconColor?: string;
-    buttonText?: string;
+    buttonText?: UIText;
     toneColor?: string;
 }
 export interface DashboardEmptyStateWidgetOptions extends DashboardWidgetOptions {
-    buttonText?: (widget: DashboardEmptyStateWidget) => string | Promise<string | undefined> | undefined;
+    buttonText?: (widget: DashboardEmptyStateWidget) => UIText | Promise<UIText | undefined> | undefined;
     onClicked?: (widget: DashboardEmptyStateWidget) => void | Promise<void>;
 }
 export interface DashboardStatGridItem {
@@ -296,7 +297,7 @@ export interface DashboardStatGridItem {
 export interface DashboardStatGridWidgetParams extends DashboardWidgetParams {
     items?: DashboardStatGridItem[];
     columns?: number;
-    emptyText?: string;
+    emptyText?: UIText;
 }
 export interface DashboardStatGridWidgetOptions extends DashboardWidgetOptions {
     items?: (widget: DashboardStatGridWidget) => DashboardStatGridItem[] | Promise<DashboardStatGridItem[] | undefined> | undefined;
@@ -320,7 +321,7 @@ export interface DashboardMapData {
 }
 export interface DashboardMapWidgetParams extends DashboardWidgetParams {
     data?: DashboardMapData;
-    emptyText?: string;
+    emptyText?: UIText;
     mapHeight?: number | string;
     showLegend?: boolean;
 }
@@ -338,7 +339,7 @@ export interface DashboardCalendarWidgetParams extends DashboardWidgetParams {
     items?: DashboardCalendarItem[];
     year?: number;
     month?: number;
-    emptyText?: string;
+    emptyText?: UIText;
 }
 export interface DashboardCalendarWidgetOptions extends DashboardWidgetOptions {
     items?: (widget: DashboardCalendarWidget) => DashboardCalendarItem[] | Promise<DashboardCalendarItem[] | undefined> | undefined;
@@ -353,7 +354,7 @@ export interface DashboardTabItem {
 export interface DashboardTabsWidgetParams extends DashboardWidgetParams {
     tabs?: DashboardTabItem[];
     activeTab?: number;
-    emptyText?: string;
+    emptyText?: UIText;
 }
 export interface DashboardTabsWidgetOptions extends DashboardWidgetOptions {
     tabs?: (widget: DashboardTabsWidget) => DashboardTabItem[] | Promise<DashboardTabItem[] | undefined> | undefined;

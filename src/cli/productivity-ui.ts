@@ -789,17 +789,43 @@ function buildRouteFileSource(answers: RouteAnswers) {
   const factoryName = `create${pascalPage}${capitalize(answers.target)}`;
   const routeIdentifier = routeIdentifierForName(answers.name);
   const targetVar = answers.target === 'dashboard' ? 'dashboard' : answers.target;
+  const navigationKey = answers.target === 'dashboard'
+    ? `routes.${answers.name}.ui`
+    : `routes.${answers.name}.${answers.target}.${answers.mode}`;
   const openBody = answers.target === 'report'
-    ? `const report = await ${factoryName}(${serializeString(answers.mode)});
-    AppManager.showReport(report);`
+    ? `const report = ${factoryName}(${serializeString(answers.mode)});
+    AppManager.showReport(report, {
+      mode: ${serializeString(answers.mode)},
+      navigation: {
+        key: ${serializeString(navigationKey)},
+        persist: false,
+      },
+    });`
     : answers.target === 'trigger'
-      ? `const trigger = await ${factoryName}(${serializeString(answers.mode)});
-    AppManager.showTrigger(trigger);`
+      ? `const trigger = ${factoryName}(${serializeString(answers.mode)});
+    AppManager.showTrigger(trigger, {
+      mode: ${serializeString(answers.mode)},
+      navigation: {
+        key: ${serializeString(navigationKey)},
+        persist: false,
+      },
+    });`
       : answers.target === 'collection'
-        ? `const collection = await ${factoryName}(${serializeString(answers.mode)});
-    AppManager.showCollection(collection);`
-        : `const dashboard = await ${factoryName}();
-    AppManager.showUI(dashboard);`;
+        ? `const collection = ${factoryName}(${serializeString(answers.mode)});
+    AppManager.showCollection(collection, {
+      mode: ${serializeString(answers.mode)},
+      navigation: {
+        key: ${serializeString(navigationKey)},
+        persist: false,
+      },
+    });`
+        : `const dashboard = ${factoryName}();
+    AppManager.showUI(dashboard, {
+      navigation: {
+        key: ${serializeString(navigationKey)},
+        persist: false,
+      },
+    });`;
 
   return `${GENERATED_MARKER} create route
 import { AppManager } from 'vuetify-extended';
@@ -884,6 +910,7 @@ function buildDialogFormFileSource(ext: ScriptExt, answers: DialogFormAnswers) {
   const typeImport = ext === '.ts' ? ', type ReportMode' : '';
   const modeArg = ext === '.ts' ? `mode: ReportMode = ${serializeString(answers.mode)}` : `mode = ${serializeString(answers.mode)}`;
   const pascalName = toPascalCase(answers.name);
+  const textBase = dialogTextKey(answers.name);
 
   return `${GENERATED_MARKER} create dialog form
 import { $DF, $FD, $FM, $PT${typeImport} } from 'vuetify-extended';
@@ -899,7 +926,7 @@ export function create${pascalName}DialogForm(${modeArg}) {
       form: async () =>
         $FM(
           {
-            title: ${serializeString(answers.title)},
+            title: ${serializeUITextDescriptor(`${textBase}.title`, answers.title)},
             mode,
             width: 760,
           },
@@ -910,18 +937,18 @@ export function create${pascalName}DialogForm(${modeArg}) {
                 {
                   children: () => [
                     $FD({
-                      label: 'Title',
+                      label: ${serializeUITextDescriptor(`${textBase}.fields.title.label`, 'Title')},
                       storage: 'title',
                       cols: 6,
                       required: true,
                     }),
                     $FD({
-                      label: 'Owner',
+                      label: ${serializeUITextDescriptor(`${textBase}.fields.owner.label`, 'Owner')},
                       storage: 'owner',
                       cols: 6,
                     }),
                     $FD({
-                      label: 'Summary',
+                      label: ${serializeUITextDescriptor(`${textBase}.fields.summary.label`, 'Summary')},
                       storage: 'summary',
                       type: 'textarea',
                       cols: 12,
@@ -942,7 +969,7 @@ function buildTriggerFieldBlock(answers: TriggerFieldAnswers, fieldMarker: strin
   const lines = [
     `          ${fieldMarker}`,
     `          $FD({`,
-    `            label: ${serializeString(answers.label)},`,
+    `            label: ${serializeUITextDescriptor(pageTextKey(answers.page, 'trigger', 'fields', answers.storage, 'label'), answers.label)},`,
     `            storage: ${serializeString(answers.storage)},`,
   ];
   if (answers.type !== 'text') {
@@ -954,36 +981,40 @@ function buildTriggerFieldBlock(answers: TriggerFieldAnswers, fieldMarker: strin
 }
 
 function buildTriggerActionBlock(answers: TriggerActionAnswers, marker: string) {
+  const actionSlug = slugifyName(answers.text);
+  const keyBase = pageTextKey(answers.page, 'trigger', 'actions', actionSlug);
   return `        ${marker}
         $BN(
           {
-            text: ${serializeString(answers.text)},
+            text: ${serializeUITextDescriptor(`${keyBase}.text`, answers.text)},
             icon: ${serializeString(answers.icon)},
             color: ${serializeString(answers.color)},
             variant: ${serializeString(answers.variant)},
 ${answers.shortcut ? `            shortcut: ${serializeString(answers.shortcut)},\n` : ''}          },
           {
             onClicked: () => {
-              trigger.emit('side-action', ${serializeString(slugifyName(answers.text))});
-              Dialogs.$success(${serializeString(`${answers.text} clicked.`)});
+              trigger.emit('side-action', ${serializeString(actionSlug)});
+              Dialogs.$success(${serializeUITextDescriptor(`${keyBase}.success`, `${answers.text} clicked.`)});
             },
           },
         ),`;
 }
 
 function buildReportActionBlock(answers: ReportActionAnswers, marker: string) {
+  const actionSlug = slugifyName(answers.text);
+  const keyBase = pageTextKey(answers.page, 'report', 'actions', actionSlug);
   return `        ${marker}
         $BN(
           {
-            text: ${serializeString(answers.text)},
+            text: ${serializeUITextDescriptor(`${keyBase}.text`, answers.text)},
             icon: ${serializeString(answers.icon)},
             color: ${serializeString(answers.color)},
             variant: ${serializeString(answers.variant)},
 ${answers.shortcut ? `            shortcut: ${serializeString(answers.shortcut)},\n` : ''}          },
           {
             onClicked: () => {
-              report.emit('side-action', ${serializeString(slugifyName(answers.text))});
-              Dialogs.$success(${serializeString(`${answers.text} clicked.`)});
+              report.emit('side-action', ${serializeString(actionSlug)});
+              Dialogs.$success(${serializeUITextDescriptor(`${keyBase}.success`, `${answers.text} clicked.`)});
             },
           },
         ),`;
@@ -1189,9 +1220,9 @@ function buildHeaderItemBlock(answers: HeaderItemAnswers, marker: string) {
   if (answers.kind === 'title') {
     return `    ${marker}
     $ATB({
-      title: ${serializeString(answers.text)},
-      subtitle: ${serializeString(answers.subtitle || 'Built with vuetify-extended')},
-      overline: ${serializeString(answers.overline || 'Workspace')},
+      title: ${serializeUITextDescriptor(shellTextKey(answers.region, answers.kind, 'title'), answers.text)},
+      subtitle: ${serializeUITextDescriptor(shellTextKey(answers.region, answers.kind, 'subtitle'), answers.subtitle || 'Built with vuetify-extended')},
+      overline: ${serializeUITextDescriptor(shellTextKey(answers.region, answers.kind, 'overline'), answers.overline || 'Workspace')},
       icon: ${serializeString(answers.icon)},
       color: ${serializeString(answers.color)},
     }),`;
@@ -1200,7 +1231,7 @@ function buildHeaderItemBlock(answers: HeaderItemAnswers, marker: string) {
   if (answers.kind === 'environment') {
     return `    ${marker}
     $ENV({
-      text: ${serializeString(answers.text)},
+      text: ${serializeUITextDescriptor(shellTextKey(answers.region, answers.kind, 'text'), answers.text)},
       color: ${serializeString(answers.color)},
       variant: 'outlined',
     }),`;
@@ -1209,7 +1240,7 @@ function buildHeaderItemBlock(answers: HeaderItemAnswers, marker: string) {
   if (answers.kind === 'status') {
     return `    ${marker}
     $STB({
-      text: ${serializeString(answers.text)},
+      text: ${serializeUITextDescriptor(shellTextKey(answers.region, answers.kind, 'text'), answers.text)},
       icon: ${serializeString(answers.icon)},
       color: ${serializeString(answers.color)},
       variant: 'tonal',
@@ -1219,9 +1250,9 @@ function buildHeaderItemBlock(answers: HeaderItemAnswers, marker: string) {
   if (answers.kind === 'user') {
     return `    ${marker}
     $USR({
-      name: ${serializeString(answers.text)},
-      subtitle: ${serializeString(answers.subtitle || 'Workspace User')},
-      email: 'user@example.com',
+      name: ${serializeUITextDescriptor(shellTextKey(answers.region, answers.kind, 'name'), answers.text)},
+      subtitle: ${serializeUITextDescriptor(shellTextKey(answers.region, answers.kind, 'subtitle'), answers.subtitle || 'Workspace User')},
+      email: ${serializeUITextDescriptor(shellTextKey(answers.region, answers.kind, 'email'), 'user@example.com')},
       avatarColor: ${serializeString(answers.color)},
     }),`;
   }
@@ -1230,12 +1261,12 @@ function buildHeaderItemBlock(answers: HeaderItemAnswers, marker: string) {
     $SIA(
       {
         icon: ${serializeString(answers.icon)},
-        title: ${serializeString(answers.text)},
+        title: ${serializeUITextDescriptor(shellTextKey(answers.region, answers.kind, 'title'), answers.text)},
         color: ${serializeString(answers.color)},
       },
       {
         onClicked: () => {
-          Dialogs.$info(${serializeString(`${answers.text} clicked.`)});
+          Dialogs.$info(${serializeUITextDescriptor(shellTextKey(answers.region, answers.kind, 'clicked'), `${answers.text} clicked.`)});
         },
       },
     ),`;
@@ -1332,7 +1363,7 @@ function ensureTriggerSearchMarkers(source: string) {
 }
 
 function ensureTriggerActionMarkers(source: string) {
-  let next = ensureVuetifyExtendedImport(source, ['$BN']);
+  let next = ensureVuetifyExtendedImport(source, ['$BN', 'Dialogs']);
   if (!/sideButtons:\s*\(/.test(next)) {
     const block = `      sideButtons: (_props, _context, trigger) => [
         ${TRIGGER_ACTION_MARKER}
@@ -1352,7 +1383,7 @@ function ensureTriggerActionMarkers(source: string) {
 }
 
 function ensureReportActionMarkers(source: string) {
-  let next = ensureVuetifyExtendedImport(source, ['$BN']);
+  let next = ensureVuetifyExtendedImport(source, ['$BN', 'Dialogs']);
   if (!/sideButtons:\s*\(/.test(next)) {
     const block = `      sideButtons: (_props, _context, report) => [
         ${REPORT_ACTION_MARKER}
@@ -1450,12 +1481,15 @@ function insertIntoOptionsObject(source: string, block: string, anchors: string[
     }
   }
 
-  const closingCandidates = ['\n    },\n  );', '\n    },\r\n  );'];
-  for (const candidate of closingCandidates) {
-    const index = source.lastIndexOf(candidate);
-    if (index >= 0) {
-      return `${source.slice(0, index + 1)}${block}${source.slice(index + 1)}`;
-    }
+  const closingPattern = /\r?\n([ \t]*)},\r?\n([ \t]*)\);/g;
+  let lastMatch: RegExpMatchArray | undefined;
+  for (const match of source.matchAll(closingPattern)) {
+    lastMatch = match;
+  }
+
+  if (lastMatch && typeof lastMatch.index === 'number') {
+    const insertAt = lastMatch.index + (lastMatch[0].startsWith('\r\n') ? 2 : 1);
+    return `${source.slice(0, insertAt)}${block}${source.slice(insertAt)}`;
   }
 
   return undefined;
@@ -1633,6 +1667,22 @@ function capitalize(value: string) {
 
 function serializeString(value: string) {
   return JSON.stringify(value);
+}
+
+function serializeUITextDescriptor(key: string, fallback: string) {
+  return `{ key: ${serializeString(key)}, fallback: ${serializeString(fallback)} }`;
+}
+
+function pageTextKey(page: string, ...segments: string[]) {
+  return ['pages', slugifyName(page), ...segments].join('.');
+}
+
+function dialogTextKey(name: string, ...segments: string[]) {
+  return ['dialogs', slugifyName(name), ...segments].join('.');
+}
+
+function shellTextKey(region: HeaderRegion, kind: HeaderItemKind, leaf: string) {
+  return ['bootstrap', 'header', region, kind, leaf].join('.');
 }
 
 function serializeKey(value: string) {

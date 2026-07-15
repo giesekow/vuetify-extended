@@ -43,17 +43,20 @@ function testNonInteractiveLegacyReportPatch() {
 import { createPeopleForm } from "./form";
 
 export function createPeopleReport(mode = "display") {
-  return new Report(
-    {
-      title: "People Workspace",
-      objectType: "people",
-      forms: 1,
-      mode,
-    },
-    {
-      form: async (_props, _context, _index) => createPeopleForm(mode),
-    },
-  );
+  return (entry) => {
+    const resolvedMode = (entry && entry.mode) || mode;
+    return new Report(
+      {
+        title: "People Workspace",
+        objectType: "people",
+        forms: 1,
+        mode: resolvedMode,
+      },
+      {
+        form: async (_props, _context, _index) => createPeopleForm(resolvedMode),
+      },
+    );
+  };
 }
 `);
   writeFile(path.join(cwd, 'src/pages/people/index.ts'), `export { createPeopleForm } from "./form";
@@ -69,7 +72,7 @@ export { createPeopleReport } from "./report";
 
   assert.match(reportSource, /forms:\s*2/);
   assert.match(reportSource, /createPeopleForm2/);
-  assert.match(reportSource, /if \(index === 1\) return createPeopleForm2\(mode\);/);
+  assert.match(reportSource, /if \(index === 1\) return createPeopleForm2\(resolvedMode\);/);
   assert.match(indexSource, /export \{ createPeopleForm2 \} from '\.\/form-2';|export \{ createPeopleForm2 \} from "\.\/form-2";/);
   assert.match(formSource, /export function createPeopleForm2/);
 }

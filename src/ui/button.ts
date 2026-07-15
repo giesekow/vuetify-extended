@@ -4,6 +4,7 @@ import { VBtn, VIcon, VTooltip } from 'vuetify/components';
 import { Master } from "../master";
 import { OnHandler } from "./lib";
 import { describeButtonShortcut } from "./shortcut";
+import { type UIText } from "./runtime";
 
 export interface ButtonParams {
   ref?: string;
@@ -16,8 +17,8 @@ export interface ButtonParams {
   elevation?: string|number;
   color?: string;
   class?: string;
-  text?: string;
-  tooltip?: string;
+  text?: UIText;
+  tooltip?: UIText;
   tooltipLocation?: 'top' | 'bottom' | 'start' | 'end';
   shortcut?: string;
   shortcutDisplay?: 'text'|'compact';
@@ -106,12 +107,14 @@ export class Button extends UIBase {
     }
 
     const displayShortcut = describeButtonShortcut(this.params.value.shortcut, { cmdForCtrlOnMac: this.params.value.cmdForCtrlOnMac });
-    const titleParts = [this.params.value.text || ''].filter((item) => item && item !== '');
+    const resolvedText = this.$text(this.params.value.text);
+    const resolvedTooltip = this.$text(this.params.value.tooltip);
+    const titleParts = [resolvedText || ''].filter((item) => item && item !== '');
     if (displayShortcut && this.params.value.shortcutDisplay === 'compact') {
       titleParts.push(displayShortcut.label);
     }
 
-    const accessibleLabel = this.params.value.tooltip || (titleParts.length > 0 ? titleParts.join(' - ') : undefined);
+    const accessibleLabel = resolvedTooltip || (titleParts.length > 0 ? titleParts.join(' - ') : undefined);
     const buttonProps = {
       icon: this.params.value.iconOnly,
       appendIcon: this.params.value.appendIcon && this.params.value.icon ? this.params.value.icon : undefined,
@@ -129,7 +132,7 @@ export class Button extends UIBase {
       block: this.params.value.block,
       loading: this.params.value.loading,
       width: this.params.value.width,
-      title: this.params.value.tooltip ? undefined : accessibleLabel,
+      title: resolvedTooltip ? undefined : accessibleLabel,
       'aria-label': accessibleLabel,
       'aria-keyshortcuts': displayShortcut?.label,
       onClick: () => this.clicked(props, context)
@@ -141,13 +144,13 @@ export class Button extends UIBase {
       () => this.renderButtonContent(displayShortcut)
     );
 
-    if (!this.params.value.tooltip) {
+    if (!resolvedTooltip) {
       return buttonNode;
     }
 
     return h(VTooltip, {
       location: this.params.value.tooltipLocation || 'top',
-      text: this.params.value.tooltip,
+      text: resolvedTooltip,
     }, {
       activator: ({ props: activatorProps }: any) => h(
         VBtn,
@@ -157,7 +160,7 @@ export class Button extends UIBase {
         },
         () => this.renderButtonContent(displayShortcut)
       ),
-      default: () => this.params.value.tooltip || '',
+      default: () => resolvedTooltip || '',
     });
   }
 
@@ -169,7 +172,7 @@ export class Button extends UIBase {
     }
 
     if (!displayShortcut) {
-      return this.params.value.text || '';
+      return this.$text(this.params.value.text);
     }
 
     return h(
@@ -182,7 +185,7 @@ export class Button extends UIBase {
         },
       },
       [
-        h('span', {}, this.params.value.text || ''),
+        h('span', {}, this.$text(this.params.value.text)),
         this.params.value.shortcutDisplay === 'compact'
           ? this.renderCompactShortcut(displayShortcut.key, displayShortcut.ctrl, displayShortcut.alt, displayShortcut.shift, displayShortcut.meta, displayShortcut.label)
           : h(

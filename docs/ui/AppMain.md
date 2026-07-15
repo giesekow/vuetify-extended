@@ -12,6 +12,15 @@ Top-level application shell and stack host for menus, reports, collections, shel
 - Maintains the active UI stack and exposes reactive `stackRef` and `activeItemRef`.
 - Resolves global and per-screen FAB configuration.
 - Supports mobile shell behavior including `mobileTitle`, `mobileLogo`, and shell widget routing between the compact header and right-side drawer.
+- Integrates browser history with the internal stack so browser back/forward mirrors `AppMain` navigation.
+- Persists restorable stack snapshots across refresh/resume through configurable storage adapters.
+- Supports global text localization through the shared `UIText`/i18n runtime used across shell titles, buttons, dialogs, forms, reports, and triggers.
+
+Practical guides:
+
+- [Localization](../runtime/Localization.md)
+- [Navigation](../runtime/Navigation.md)
+- [Persistence](../runtime/Persistence.md)
 
 ## Reference
 
@@ -21,8 +30,8 @@ Top-level application shell and stack host for menus, reports, collections, shel
 export interface AppParams {
   ref?: string;
   udfQuery?: any;
-  title?: string;
-  mobileTitle?: string;
+  title?: UIText;
+  mobileTitle?: UIText;
   mobileLogo?: string;
   showHeader?: boolean;
   showFooter?: boolean;
@@ -31,7 +40,7 @@ export interface AppParams {
   fabColor?: string;
   fabPosition?: 'bottom-right'|'bottom-left';
   fabDirection?: 'up'|'left';
-  fabLabel?: string;
+  fabLabel?: UIText;
   fabShortcut?: string;
   headerLayout?: 'balanced'|'auto'|'stacked';
   footerLayout?: 'balanced'|'auto'|'stacked';
@@ -60,6 +69,7 @@ export interface AppOptions {
   udfs?: (app: AppMain, objectType: string|string[], query: any) => Promise<any[]>;
   makeUDF?: (app: AppMain, options: any) => Field|undefined;
   fabButtons?: AppFabButtonsFactory;
+  navigation?: AppNavigationOptions;
   header?: (app: AppMain) => AppShellContent | AppShellContent[];
   footer?: (app: AppMain) => AppShellContent | AppShellContent[];
   headerStart?: (app: AppMain) => AppShellContent | AppShellContent[];
@@ -80,12 +90,55 @@ export interface AppScreenParams {
   fabColor?: string;
   fabPosition?: 'bottom-right'|'bottom-left';
   fabDirection?: 'up'|'left';
-  fabLabel?: string;
+  fabLabel?: UIText;
   fabShortcut?: string;
   fabButtons?: AppFabButtonsFactory;
+  navigationKey?: string;
+  navigationType?: NavigationScreenType;
+  navigationTitle?: UIText;
+  navigationParams?: any;
+  navigationState?: any;
+  persistState?: boolean | 'default' | 'local';
+  excludeFromRestore?: boolean;
+  navigation?: InlineNavigationOptions<any>;
   [key: string]: any;
 }
 ```
+
+`AppScreenParams` supports both:
+
+- grouped navigation metadata through `navigation`
+- legacy flat navigation fields such as `navigationKey` and `navigationParams`
+
+For new code, prefer the grouped `navigation` object because it keeps navigation concerns together and maps more cleanly to restoreable screen definitions.
+
+### `AppNavigationOptions`
+
+```ts
+export interface AppNavigationOptions {
+  history?: boolean;
+  persist?: boolean;
+  restoreOnLoad?: boolean;
+  storageMode?: 'web-session' | 'web-local' | 'capacitor-preferences' | 'custom';
+  storageKey?: string;
+  persistence?: NavigationPersistenceAdapter;
+}
+```
+
+Meaning:
+
+- `history`
+  Enables browser `pushState` / `replaceState` / `popstate` integration.
+- `persist`
+  Enables snapshot persistence for refresh/resume restore.
+- `restoreOnLoad`
+  Restores the last saved snapshot during bootstrap before falling back to the root menu.
+- `storageMode`
+  Selects the built-in persistence backend. Browser defaults to `web-session`; Capacitor defaults to `capacitor-preferences`.
+- `storageKey`
+  Persistence key used by the selected adapter.
+- `persistence`
+  Fully custom adapter implementing `load/save/clear`.
 
 ### `AppMain`
 
@@ -161,3 +214,90 @@ new AppMain(
 ## Key Methods
 
 - `render(props: any, context: any)`
+- `$showMenu(menu, params?, replaceHistory?)`
+- `$showReport(report, params?, replace?)`
+- `$showTrigger(trigger, params?, replace?)`
+- `$showCollection(collection, params?, replace?)`
+- `$showUI(ui, params?, replace?)`
+- `$back()`
+- `$pop(count?, skipHistory?)`
+- `$reload()`
+- `syncCurrentNavigationState()`
+
+Each `$show...(...)` method accepts either:
+
+- a concrete UI instance for simple immediate navigation
+- a factory function `(entry) => instance` for navigation-aware and restoreable flows
+
+For screens that should survive browser back/forward or refresh/resume restore, prefer the factory form.
+
+Notes:
+
+- public `AppManager.showMenu(...)` is push-only and does not expose a replace flag
+- internal `AppMain.$showMenu(...)` still accepts `replaceHistory` for bootstrap/history bookkeeping
+
+## Navigation Behavior
+
+`AppMain` is now the authoritative runtime stack host for both interactive navigation and restore.
+
+Behavior:
+
+- pushing a report/trigger/collection/menu/UI screen adds a stack entry and updates browser history
+- `replace: true` replaces the current browser history state instead of pushing a new one
+- browser back/forward triggers stack restoration through serialized `NavigationEntry` snapshots
+- hardware/device back in Capacitor delegates to the same `AppMain.$back()` flow
+- persistence snapshots are saved after stack changes and on unload/background lifecycle events
+- when persistence restore fails or no snapshot exists, `AppMain` falls back to the root menu
+
+History and persistence intentionally share the same serialized navigation entry model, but they are not identical:
+
+- browser history includes the full current stack, including entries marked non-persistable
+- persistence restores reconstructable entries by default
+- `persistState === false` prevents extra serialized state from being saved/restored for that entry
+- `excludeFromRestore === true` removes the entry from refresh/resume restoration
+
+That keeps browser back/forward complete within the current session while allowing refresh/resume to rebuild the stack structure without forcing every screen to restore in-progress UI state.
+
+## Restorable Screens
+
+For a screen to restore cleanly after refresh/resume, it should be navigated with:
+
+- `navigation.key`
+  Registry key that can resolve the screen later.
+- `navigation.params`
+  Small serializable reconstruction params such as `objectId`, `mode`, current filters, or selected tab.
+- `navigation.state`
+  Optional extra restoreable state when you want to supply it directly.
+- `navigation.persist`
+  Controls whether extra serialized screen state is saved and restored. Default behavior is effectively `true`.
+- `navigation.excludeFromRestore`
+  Set this to `true` only for screens that should disappear completely on refresh/resume.
+
+Legacy flat fields still work, but grouped `navigation` is preferred for new code.
+
+Typical examples:
+
+- report edit screen
+  Persist `navigation.key`, `objectId`, and `mode`.
+- trigger screen
+  Persist `navigation.key` plus active search/filter params.
+- custom dashboard
+  Persist `navigation.key` plus current widget filter state.
+
+Preferred example:
+
+```ts
+AppManager.showReport(
+  (entry) => buildCustomerReport(
+    (entry?.mode as 'create' | 'edit' | 'display') ?? 'edit',
+    entry?.params?.customerId,
+  ),
+  {
+    navigation: {
+      key: 'reports.customer',
+      params: { customerId },
+      persist: true,
+    },
+  },
+)
+```

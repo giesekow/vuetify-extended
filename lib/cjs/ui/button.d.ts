@@ -2,6 +2,7 @@ import { VNode } from "vue";
 import { UIBase } from "./base";
 import { Master } from "../master";
 import { OnHandler } from "./lib";
+import { type UIText } from "./runtime";
 export interface ButtonParams {
     ref?: string;
     readonly?: boolean;
@@ -13,8 +14,8 @@ export interface ButtonParams {
     elevation?: string | number;
     color?: string;
     class?: string;
-    text?: string;
-    tooltip?: string;
+    text?: UIText;
+    tooltip?: UIText;
     tooltipLocation?: 'top' | 'bottom' | 'start' | 'end';
     shortcut?: string;
     shortcutDisplay?: 'text' | 'compact';

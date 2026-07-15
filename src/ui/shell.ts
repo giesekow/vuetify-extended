@@ -2,6 +2,7 @@ import { Ref, VNode, markRaw } from "vue";
 import { UIBase } from "./base";
 import { Button } from "./button";
 import { VAvatar, VBadge, VBtn, VCard, VCardText, VDivider, VIcon, VList, VListItem, VListItemTitle, VMenu, VChip } from 'vuetify/components';
+import { type UIText } from "./runtime";
 
 export interface ShellResponsiveVisibilityParams {
   hideOnMobile?: boolean;
@@ -10,9 +11,9 @@ export interface ShellResponsiveVisibilityParams {
 }
 
 export interface AppTitleBlockParams extends ShellResponsiveVisibilityParams {
-  title?: string;
-  subtitle?: string;
-  overline?: string;
+  title?: UIText;
+  subtitle?: UIText;
+  overline?: UIText;
   icon?: string;
   image?: string;
   color?: string;
@@ -54,7 +55,7 @@ export class AppTitleBlock extends UIBase {
         size: 40,
       }, () => h('img', {
         src: this.$params.image,
-        alt: this.$params.title || 'App title image',
+        alt: this.$text(this.$params.title, 'App title image'),
         style: {
           width: '100%',
           height: '100%',
@@ -76,21 +77,21 @@ export class AppTitleBlock extends UIBase {
           overflow: 'visible',
         },
       }, [
-        ...(this.$params.overline ? [h('div', { style: { fontSize: '0.68rem', lineHeight: '1.2', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: '0.72' } }, this.$params.overline)] : []),
-        h('div', { style: { fontSize: '1rem', lineHeight: '1.2', fontWeight: '700', color: this.$params.color || 'inherit' } }, this.$params.title || ''),
-        ...(this.$params.subtitle ? [h('div', { style: { fontSize: '0.78rem', lineHeight: '1.2', opacity: '0.74' } }, this.$params.subtitle)] : []),
+        ...(this.$params.overline ? [h('div', { style: { fontSize: '0.68rem', lineHeight: '1.2', letterSpacing: '0.08em', textTransform: 'uppercase', opacity: '0.72' } }, this.$text(this.$params.overline))] : []),
+        h('div', { style: { fontSize: '1rem', lineHeight: '1.2', fontWeight: '700', color: this.$params.color || 'inherit' } }, this.$text(this.$params.title)),
+        ...(this.$params.subtitle ? [h('div', { style: { fontSize: '0.78rem', lineHeight: '1.2', opacity: '0.74' } }, this.$text(this.$params.subtitle))] : []),
       ]),
     ]);
   }
 }
 
 export interface EnvironmentTagParams extends ShellResponsiveVisibilityParams {
-  text?: string;
+  text?: UIText;
   color?: string;
   variant?: 'flat'|'text'|'outlined'|'plain'|'elevated'|'tonal';
   size?: 'x-small'|'small'|'default'|'large'|'x-large';
   disabled?: boolean;
-  title?: string;
+  title?: UIText;
 }
 
 export interface EnvironmentTagOptions {
@@ -141,7 +142,7 @@ export class EnvironmentTag extends UIBase {
       size: this.$params.size,
       label: true,
       disabled: this.$params.disabled,
-      title: this.$params.title,
+      title: this.$text(this.$params.title),
       clickable: !this.$params.disabled && !!this.options.onClicked,
       style: {
         cursor: !this.$params.disabled && !!this.options.onClicked ? 'pointer' : undefined,
@@ -149,12 +150,12 @@ export class EnvironmentTag extends UIBase {
       onClick: () => {
         void this.onClicked();
       },
-    }, () => this.$params.text || '');
+    }, () => this.$text(this.$params.text));
   }
 }
 
 export interface StatusBadgeParams extends ShellResponsiveVisibilityParams {
-  text?: string;
+  text?: UIText;
   icon?: string;
   color?: string;
   variant?: 'flat'|'text'|'outlined'|'plain'|'elevated'|'tonal';
@@ -191,14 +192,14 @@ export class StatusBadge extends UIBase {
       size: this.$params.size,
       prependIcon: this.$params.icon,
       label: true,
-    }, () => this.$params.text || '');
+    }, () => this.$text(this.$params.text));
   }
 }
 
 
 export interface ShellIconActionParams extends ShellResponsiveVisibilityParams {
   icon?: string;
-  title?: string;
+  title?: UIText;
   color?: string;
   variant?: 'flat'|'text'|'outlined'|'plain'|'elevated'|'tonal';
   size?: 'x-small'|'small'|'default'|'large'|'x-large';
@@ -248,8 +249,8 @@ export class ShellIconAction extends UIBase {
       variant: this.$params.variant,
       size: this.$params.size,
       disabled: this.$params.disabled,
-      title: this.$params.title,
-      'aria-label': this.$params.title || 'Shell action',
+      title: this.$text(this.$params.title),
+      'aria-label': this.$text(this.$params.title, 'Shell action'),
       style: {
         height: 'auto',
         minWidth: '0',
@@ -292,9 +293,9 @@ export class ShellIconAction extends UIBase {
 }
 
 export interface UserAreaParams extends ShellResponsiveVisibilityParams {
-  name?: string;
-  subtitle?: string;
-  email?: string;
+  name?: UIText;
+  subtitle?: UIText;
+  email?: UIText;
   accountId?: string;
   initials?: string;
   icon?: string;
@@ -392,7 +393,7 @@ export class UserArea extends UIBase {
           alignItems: 'center',
           justifyContent: 'center',
         },
-        'aria-label': this.$params.name || 'Open user menu',
+        'aria-label': this.$text(this.$params.name, 'Open user menu'),
       }, () => this.buildActivator()),
       default: () => h(VCard, {
         elevation: 10,
@@ -420,12 +421,12 @@ export class UserArea extends UIBase {
       color: this.$params.avatarColor,
       variant: 'tonal',
       size: 38,
-      'aria-label': this.$params.avatarAlt || this.$params.name || 'User avatar',
+      'aria-label': this.$params.avatarAlt || this.$text(this.$params.name, 'User avatar'),
     };
 
     if (this.$params.avatarSrc) {
       avatarProps.image = this.$params.avatarSrc;
-      avatarProps.alt = this.$params.avatarAlt || this.$params.name || 'User avatar';
+      avatarProps.alt = this.$params.avatarAlt || this.$text(this.$params.name, 'User avatar');
       return h(VAvatar, avatarProps);
     }
 
@@ -435,9 +436,9 @@ export class UserArea extends UIBase {
   private buildMenuHeader() {
     const h = this.$h;
     const infoRows: VNode[] = [
-      h('div', { style: { fontSize: '1.05rem', fontWeight: '700', lineHeight: '1.2' } }, this.$params.name || ''),
-      ...(this.$params.subtitle ? [h('div', { style: { fontSize: '0.92rem', opacity: '0.78', lineHeight: '1.2', marginTop: '2px' } }, this.$params.subtitle)] : []),
-      ...(this.$params.email ? [h('div', { style: { fontSize: '0.9rem', opacity: '0.72', lineHeight: '1.2', marginTop: this.$params.subtitle ? '2px' : '4px' } }, this.$params.email)] : []),
+      h('div', { style: { fontSize: '1.05rem', fontWeight: '700', lineHeight: '1.2' } }, this.$text(this.$params.name)),
+      ...(this.$params.subtitle ? [h('div', { style: { fontSize: '0.92rem', opacity: '0.78', lineHeight: '1.2', marginTop: '2px' } }, this.$text(this.$params.subtitle))] : []),
+      ...(this.$params.email ? [h('div', { style: { fontSize: '0.9rem', opacity: '0.72', lineHeight: '1.2', marginTop: this.$params.subtitle ? '2px' : '4px' } }, this.$text(this.$params.email))] : []),
     ];
 
     if (this.$params.accountId) {
@@ -445,15 +446,15 @@ export class UserArea extends UIBase {
         h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '14px' } }, [
           h('div', { style: { flex: '1 1 auto', minWidth: 0 } }, [
             h('div', { style: { fontSize: '1rem', fontWeight: '600', lineHeight: '1.2', letterSpacing: '0.02em' } }, this.$params.accountId),
-            h('div', { style: { fontSize: '0.82rem', opacity: '0.72', lineHeight: '1.2', marginTop: '4px' } }, 'Account ID'),
+            h('div', { style: { fontSize: '0.82rem', opacity: '0.72', lineHeight: '1.2', marginTop: '4px' } }, this.$uiText('ve.user.accountId', 'Account ID')),
           ]),
           h(VBtn, {
             icon: this.copyConfirmed.value ? (this.$params.copiedIcon || 'mdi-check') : this.$params.copyIcon,
             variant: 'text',
             size: 'small',
             color: this.copyConfirmed.value ? 'success' : undefined,
-            title: this.copyConfirmed.value ? 'Copied' : 'Copy account ID',
-            'aria-label': this.copyConfirmed.value ? 'Account ID copied' : 'Copy account ID',
+            title: this.copyConfirmed.value ? this.$uiText('ve.user.copied', 'Copied') : this.$uiText('ve.user.copyAccountId', 'Copy account ID'),
+            'aria-label': this.copyConfirmed.value ? this.$uiText('ve.user.accountIdCopied', 'Account ID copied') : this.$uiText('ve.user.copyAccountId', 'Copy account ID'),
             onClick: async (ev: Event) => {
               ev.stopPropagation();
               await this.copyAccountId();
@@ -471,7 +472,7 @@ export class UserArea extends UIBase {
     if (this.menuLoading.value) {
       return h(VList, { density: 'comfortable', nav: true, style: { paddingTop: '4px', paddingBottom: '8px' } }, () => [
         h(VListItem, { style: { minHeight: '52px' } }, {
-          default: () => h(VListItemTitle, { style: { fontSize: '0.92rem', opacity: '0.72' } }, () => 'Loading...'),
+          default: () => h(VListItemTitle, { style: { fontSize: '0.92rem', opacity: '0.72' } }, () => this.$uiText('ve.common.loading', 'Loading...')),
         }),
       ]);
     }
@@ -507,8 +508,8 @@ export class UserArea extends UIBase {
         cursor: 'pointer',
         color: contentColor,
       },
-      title: params.tooltip,
-      'aria-label': params.tooltip || params.text || 'User menu action',
+      title: this.$text(params.tooltip),
+      'aria-label': this.$text(params.tooltip) || this.$text(params.text) || 'User menu action',
     }, {
       prepend: () => params.icon ? h(VIcon, {
         size: 22,
@@ -524,7 +525,7 @@ export class UserArea extends UIBase {
           fontWeight: '500',
           color: 'inherit',
         },
-      }, () => params.text || ''),
+      }, () => this.$text(params.text)),
     });
   }
 
@@ -544,7 +545,7 @@ export class UserArea extends UIBase {
           opacity: '0.58',
           marginBottom: entry.divider === false ? '0' : '8px',
         },
-      }, entry.label)] : []),
+      }, this.$text(entry.label))] : []),
       ...(entry.divider === false ? [] : [h(VDivider)]),
     ]);
   }
@@ -594,7 +595,7 @@ export class UserArea extends UIBase {
   }
 
   private initialsFromName() {
-    return (this.$params.name || '').split(' ').filter(Boolean).slice(0, 2).map((item) => item[0]?.toUpperCase() || '').join('');
+    return this.$text(this.$params.name).split(' ').filter(Boolean).slice(0, 2).map((item) => item[0]?.toUpperCase() || '').join('');
   }
 }
 

@@ -7,6 +7,7 @@ import { Report } from "./report";
 import '@vuepic/vue-datepicker/dist/main.css';
 import { OnHandler } from "./lib";
 import 'katex/dist/katex.min.css';
+import { UIText } from "./runtime";
 export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagingbox' | 'chart' | 'viewtable' | 'map' | 'map-line' | 'map-circle' | 'map-rectangle' | 'map-polygon' | 'map-heatmap' | 'map-cluster' | 'map-geojson' | 'code' | 'color' | 'html' | 'htmlview' | 'listselect' | 'otp' | 'file-upload' | 'time' | 'date' | 'datetime' | 'button' | 'image' | 'document' | 'password' | 'float' | 'integer' | 'decimal' | 'collection' | 'textarea' | 'boolean' | 'table' | 'reporttable' | 'servertable';
 export type FieldUploadType = 'base64' | 'file' | 'metadata';
 export interface AssetRecord {
@@ -60,9 +61,9 @@ export declare const fieldTypeOptions: {
 export interface FieldParams {
     ref?: string;
     type?: FieldType;
-    label?: string;
+    label?: UIText;
     storage?: string;
-    placeholder?: string;
+    placeholder?: UIText;
     multiple?: boolean;
     options?: any;
     readonly?: boolean;
@@ -70,7 +71,7 @@ export interface FieldParams {
     idField?: string;
     lang?: 'html' | 'json' | 'javascript' | 'python' | 'text' | 'ejs' | 'latex';
     codeTheme?: 'chrome' | 'xcode';
-    hint?: string;
+    hint?: UIText;
     icon?: string;
     clearable?: boolean;
     autofocus?: boolean;
@@ -106,8 +107,8 @@ export interface FieldParams {
     searchPageSize?: number;
     cacheSearchResults?: boolean;
     keepSelectedItemsInOptions?: boolean;
-    autocompleteLoadMoreText?: string;
-    autocompleteLoadingMoreText?: string;
+    autocompleteLoadMoreText?: UIText;
+    autocompleteLoadingMoreText?: UIText;
     previewFullscreen?: boolean;
     hideMapText?: boolean;
     mapTextPageSize?: number;
@@ -451,6 +452,9 @@ export declare class Field extends UIBase {
     private autocompleteNoDataText;
     private autocompleteLoadMoreText;
     private autocompleteLoadingMoreText;
+    private resolvedLabel;
+    private resolvedHint;
+    private resolvedPlaceholder;
     messageFormat(data: any): any[];
     $reload(): Promise<void>;
     render(props: any, context: any): VNode | undefined;

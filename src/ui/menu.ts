@@ -7,10 +7,15 @@ import { Collection } from "./collection";
 import { AppManager } from "./appmanager";
 import { Dialogs } from "./dialogs";
 import { describeShortcut, normalizeShortcut, normalizeShortcutFromEvent } from "./shortcut";
+import { Trigger } from "./trigger";
+import type { AppScreenParams } from "./appmain";
+import { InlineNavigationOptions, NavigationMenuRestoreStep, NavigationScreenFactory, UIText } from "./runtime";
+
+type MenuScreenTarget<T extends UIBase> = T | NavigationScreenFactory<T>;
 
 export interface MenuParams {
   ref?: string;
-  title?: string;
+  title?: UIText;
   maxWidth?: number|string;
   minWidth?: number|string;
   width?: number|string;
@@ -55,6 +60,7 @@ export class Menu extends UIBase {
   private hostElement: Ref<HTMLElement|undefined>;
   private contentElement: Ref<HTMLElement|undefined>;
   private cardElements: Array<HTMLElement | undefined> = [];
+  private replayPath: NavigationMenuRestoreStep[] = [];
   private static defaultParams: MenuParams = {
     keyboardNavigation: true,
   };
@@ -207,7 +213,7 @@ export class Menu extends UIBase {
             {
               class: ['text-h4']
             },
-            this.params.value.title || ''
+            this.$text(this.params.value.title)
           )
         );
 
@@ -330,11 +336,11 @@ export class Menu extends UIBase {
                       {
                         class: ['text-h6']
                       },
-                      item.$params.text,
+                      this.$text(item.$params.text),
                     ),
                     subtitle: () => h(
                       'span',
-                      item.$params.subText,
+                      this.$text(item.$params.subText),
                     ),
                     append: () => this.renderMenuItemShortcut(item),
                   }
@@ -711,46 +717,7 @@ export class Menu extends UIBase {
   }
 
   private async itemClicked(item: MenuItem) {
-    const mode = item.$params.mode;
-    if (item.$params.action === 'menu') {
-      const menu = await item.menu(mode);
-      if (menu) {
-        if (await menu.access()) {
-          menu.setParent(this);
-          AppManager.showMenu(menu);
-        } else {
-          Dialogs.$error("access denied!");
-        }
-      }
-    }
-
-    if (item.$params.action === 'collection') {
-      const collection = await item.collection();
-      if (collection) {
-        if (await collection.access(item.$params.mode)) {
-          collection.$params.mode = item.$params.mode;
-          AppManager.showCollection(collection);
-        } else {
-          Dialogs.$error("access denied!");
-        }
-      }
-    }
-
-    if (item.$params.action === 'report') {
-      const report = await item.report();
-      if (report) {
-        if (await report.access(item.$params.mode)) {
-          report.$params.mode = item.$params.mode;
-          AppManager.showReport(report);
-        } else {
-          Dialogs.$error("access denied!");
-        }
-      }
-    }
-
-    if (item.$params.action === 'function') {
-      item.callback();
-    }
+    await executeMenuItemAction(item, this);
   }
 
   private async backClicked() {
@@ -759,6 +726,40 @@ export class Menu extends UIBase {
 
   async $reload() {
     await this.prepareChildren();
+  }
+
+  async $getVisibleItems() {
+    if (!this.loaded.value) {
+      await this.prepareChildren();
+    }
+
+    return [...this.childrenInstances];
+  }
+
+  setReplayPath(path?: NavigationMenuRestoreStep[]) {
+    this.replayPath = Array.isArray(path)
+      ? path.map((step) => ({ ...step }))
+      : [];
+  }
+
+  getReplayPath() {
+    return this.replayPath.map((step) => ({ ...step }));
+  }
+
+  buildReplayPathForItem(item: MenuItem) {
+    const index = this.childrenInstances.indexOf(item);
+    if (index < 0) {
+      return this.getReplayPath();
+    }
+
+    return [
+      ...this.getReplayPath(),
+      {
+        index,
+        text: this.$text(item.$params.text),
+        action: item.$params.action,
+      },
+    ];
   }
 
   async forceCancel() {
@@ -931,10 +932,10 @@ export class Menu extends UIBase {
 }
 
 export interface MenuItemParams {
-  action?: 'report'|'collection'|'function'|'menu';
+  action?: 'report'|'collection'|'trigger'|'ui'|'function'|'menu';
   mode?: ReportMode;
-  text?: string;
-  subText?: string;
+  text?: UIText;
+  subText?: UIText;
   shortcut?: string;
   shortcutDisplay?: 'text'|'compact';
   shortcutFontSize?: string | number;
@@ -949,9 +950,14 @@ export interface MenuItemParams {
 
 export interface MenuItemOptions {
   access?: (menuItem: MenuItem, mode?: ReportMode) => Promise<boolean|undefined>|boolean|undefined;
-  report?: (menuItem: MenuItem, mode?: ReportMode) => Promise<Report|undefined>|Report|undefined;
-  collection?: (menuItem: MenuItem, mode?: ReportMode) => Promise<Collection|undefined>|Collection|undefined;
-  menu?:(menuItem: MenuItem, mode?: ReportMode) => Promise<Menu|undefined>|Menu|undefined;
+  report?: (menuItem: MenuItem, mode?: ReportMode) => Promise<MenuScreenTarget<Report>|undefined>|MenuScreenTarget<Report>|undefined;
+  collection?: (menuItem: MenuItem, mode?: ReportMode) => Promise<MenuScreenTarget<Collection>|undefined>|MenuScreenTarget<Collection>|undefined;
+  trigger?: (menuItem: MenuItem, mode?: ReportMode) => Promise<MenuScreenTarget<Trigger>|undefined>|MenuScreenTarget<Trigger>|undefined;
+  ui?: (menuItem: MenuItem, mode?: ReportMode) => Promise<MenuScreenTarget<UIBase>|undefined>|MenuScreenTarget<UIBase>|undefined;
+  menu?:(menuItem: MenuItem, mode?: ReportMode) => Promise<MenuScreenTarget<Menu>|undefined>|MenuScreenTarget<Menu>|undefined;
+  navigation?: (menuItem: MenuItem, mode?: ReportMode) => Promise<InlineNavigationOptions<any> | undefined> | InlineNavigationOptions<any> | undefined;
+  showParams?: (menuItem: MenuItem, mode?: ReportMode) => Promise<AppScreenParams | undefined> | AppScreenParams | undefined;
+  replace?: (menuItem: MenuItem, mode?: ReportMode) => Promise<boolean | undefined> | boolean | undefined;
   callback?: (menuItem: MenuItem, mode?: ReportMode) => Promise<void>|void;
   setup?: (menuItem: MenuItem) => void;
   on?: (menuItem: MenuItem) => OnHandler;
@@ -997,16 +1003,36 @@ export class MenuItem extends EventEmitter {
     return this.options.access ? await this.options.access(this, mode) : true;
   }
 
-  async report (mode?: ReportMode): Promise<Report|undefined> {
+  async report (mode?: ReportMode): Promise<MenuScreenTarget<Report>|undefined> {
     return this.options.report ? await this.options.report(this, mode) : undefined;
   }
 
-  async collection (mode?: ReportMode): Promise<Collection|undefined> {
+  async collection (mode?: ReportMode): Promise<MenuScreenTarget<Collection>|undefined> {
     return this.options.collection ? await this.options.collection(this, mode) : undefined;
   }
 
-  async menu (mode?: ReportMode): Promise<Menu|undefined> {
+  async trigger (mode?: ReportMode): Promise<MenuScreenTarget<Trigger>|undefined> {
+    return this.options.trigger ? await this.options.trigger(this, mode) : undefined;
+  }
+
+  async ui (mode?: ReportMode): Promise<MenuScreenTarget<UIBase>|undefined> {
+    return this.options.ui ? await this.options.ui(this, mode) : undefined;
+  }
+
+  async menu (mode?: ReportMode): Promise<MenuScreenTarget<Menu>|undefined> {
     return this.options.menu ? await this.options.menu(this, mode) : undefined;
+  }
+
+  async navigation(mode?: ReportMode): Promise<InlineNavigationOptions<any> | undefined> {
+    return this.options.navigation ? await this.options.navigation(this, mode) : undefined;
+  }
+
+  async showParams(mode?: ReportMode): Promise<AppScreenParams | undefined> {
+    return this.options.showParams ? await this.options.showParams(this, mode) : undefined;
+  }
+
+  async replace(mode?: ReportMode): Promise<boolean | undefined> {
+    return this.options.replace ? await this.options.replace(this, mode) : undefined;
   }
 
   async callback (mode?: ReportMode): Promise<void> {
@@ -1031,6 +1057,262 @@ export class MenuItem extends EventEmitter {
     }
 
     this.emit(event, data)
+  }
+}
+
+function mergeMenuItemShowParams(
+  baseParams?: AppScreenParams,
+  navigation?: InlineNavigationOptions<any>,
+): AppScreenParams {
+  if (!navigation) {
+    return { ...(baseParams || {}) };
+  }
+
+  return {
+    ...(baseParams || {}),
+    navigation: {
+      ...((baseParams || {}).navigation || {}),
+      ...navigation,
+    },
+  };
+}
+
+async function resolveMenuItemNavigationContext(item: MenuItem, mode?: ReportMode) {
+  const navigation = await item.navigation(mode);
+  const showParams = await item.showParams(mode);
+  const replace = (await item.replace(mode)) === true;
+
+  return {
+    params: mergeMenuItemShowParams(showParams, navigation),
+    replace,
+  };
+}
+
+export async function prepareMenuReplayTarget(parent: Menu, step: NavigationMenuRestoreStep) {
+  const items = await parent.$getVisibleItems();
+  const matchesStep = (candidate?: MenuItem) => {
+    if (!candidate || candidate.$params.action !== 'menu') {
+      return false;
+    }
+
+    if (step.action && candidate.$params.action !== step.action) {
+      return false;
+    }
+
+    if (step.text && parent.$text(candidate.$params.text) !== step.text && step.index !== items.indexOf(candidate)) {
+      return false;
+    }
+
+    return true;
+  };
+
+  let candidate: MenuItem | undefined = items[step.index];
+  if (!matchesStep(candidate) && step.text) {
+    candidate = items.find((item) => item.$params.action === 'menu' && parent.$text(item.$params.text) === step.text);
+  }
+
+  if (!matchesStep(candidate)) {
+    return undefined;
+  }
+  if (!candidate) {
+    return undefined;
+  }
+  const selectedCandidate = candidate;
+
+  const mode = selectedCandidate.$params.mode;
+  const { params } = await resolveMenuItemNavigationContext(selectedCandidate, mode);
+  const preferFactory = !!(params.navigation?.key || params.navigationKey);
+  const target = await resolveMenuItemTarget(selectedCandidate, (currentMode) => selectedCandidate.menu(currentMode), mode, parent, preferFactory);
+  if (!target) {
+    return undefined;
+  }
+
+  return {
+    mode,
+    params,
+    target,
+  };
+}
+
+async function resolveMenuItemTarget<T extends UIBase>(
+  item: MenuItem,
+  resolver: (mode?: ReportMode) => Promise<MenuScreenTarget<T> | undefined>,
+  mode?: ReportMode,
+  parent?: UIBase,
+  preferFactory?: boolean,
+): Promise<MenuScreenTarget<T> | undefined> {
+  if (preferFactory) {
+    return async (entry) => {
+      const dynamicMode = (entry?.mode as ReportMode | undefined) || mode;
+      const dynamicTarget = await resolver(dynamicMode);
+      if (!dynamicTarget) {
+        return undefined;
+      }
+
+      const created = typeof dynamicTarget === 'function'
+        ? await (dynamicTarget as NavigationScreenFactory<T>)(entry)
+        : dynamicTarget;
+
+      if (!created) {
+        return undefined;
+      }
+
+      if (dynamicMode && (created as any)?.$params) {
+        (created as any).$params.mode = dynamicMode;
+      }
+
+      if (parent && created instanceof Menu) {
+        created.setParent(parent);
+      }
+
+      return created;
+    };
+  }
+
+  const resolvedTarget = await resolver(mode);
+  if (!resolvedTarget) {
+    return undefined;
+  }
+
+  if (typeof resolvedTarget === 'function') {
+    const factory = resolvedTarget as NavigationScreenFactory<T>;
+    return async (entry) => {
+      const created = await factory(entry);
+      if (!created) {
+        return undefined;
+      }
+
+      if (mode && (created as any)?.$params) {
+        (created as any).$params.mode = entry?.mode || mode;
+      }
+
+      if (parent && created instanceof Menu) {
+        created.setParent(parent);
+      }
+
+      return created;
+    };
+  }
+
+  const instance = resolvedTarget as T;
+  if (mode && (instance as any)?.$params) {
+    (instance as any).$params.mode = mode;
+  }
+
+  if (parent && instance instanceof Menu) {
+    instance.setParent(parent);
+  }
+
+  return instance;
+}
+
+async function showPreparedMenuItemTarget<T extends UIBase>(
+  type: 'menu' | 'report' | 'collection' | 'trigger' | 'ui',
+  target: MenuScreenTarget<T>,
+  params: AppScreenParams,
+  replace: boolean,
+  mode?: ReportMode,
+) {
+  const resolved = await AppManager.prepareScreenTarget(type, target, params);
+  if (!resolved.item) {
+    return;
+  }
+
+  if (mode && (resolved.item as any)?.$params) {
+    (resolved.item as any).$params.mode = mode;
+  }
+
+  let allowed = true;
+  if (type === 'menu' && typeof (resolved.item as any)?.access === 'function') {
+    allowed = await (resolved.item as any).access();
+  } else if ((type === 'report' || type === 'collection' || type === 'trigger') && typeof (resolved.item as any)?.access === 'function') {
+    allowed = await (resolved.item as any).access(mode);
+  }
+
+  if (!allowed) {
+    Dialogs.$error({ key: 've.common.accessDenied', fallback: 'Access Denied' });
+    return;
+  }
+
+  if (type === 'menu') {
+    AppManager.showMenu(resolved.item as any, resolved.params);
+    return;
+  }
+
+  if (type === 'report') {
+    AppManager.showReport(resolved.item as any, resolved.params, replace);
+    return;
+  }
+
+  if (type === 'collection') {
+    AppManager.showCollection(resolved.item as any, resolved.params, replace);
+    return;
+  }
+
+  if (type === 'trigger') {
+    AppManager.showTrigger(resolved.item as any, resolved.params, replace);
+    return;
+  }
+
+  AppManager.showUI(resolved.item as any, resolved.params, replace);
+}
+
+export async function executeMenuItemAction(item: MenuItem, parent?: UIBase) {
+  const mode = item.$params.mode;
+  const { params, replace } = await resolveMenuItemNavigationContext(item, mode);
+  const preferFactory = !!(params.navigation?.key || params.navigationKey);
+
+  if (item.$params.action === 'menu') {
+    if (parent instanceof Menu) {
+      const menuRestorePath = params.navigation?.menuRestorePath || params.navigationMenuRestorePath || parent.buildReplayPathForItem(item);
+      params.navigationMenuRestorePath = menuRestorePath;
+      params.navigation = {
+        ...(params.navigation || {}),
+        menuRestorePath,
+      };
+    }
+
+    const target = await resolveMenuItemTarget(item, (currentMode) => item.menu(currentMode), mode, parent, preferFactory);
+    if (target) {
+      await showPreparedMenuItemTarget('menu', target, params, replace, mode);
+    }
+    return;
+  }
+
+  if (item.$params.action === 'collection') {
+    const target = await resolveMenuItemTarget(item, (currentMode) => item.collection(currentMode), mode, parent, preferFactory);
+    if (target) {
+      await showPreparedMenuItemTarget('collection', target, params, replace, mode);
+    }
+    return;
+  }
+
+  if (item.$params.action === 'report') {
+    const target = await resolveMenuItemTarget(item, (currentMode) => item.report(currentMode), mode, parent, preferFactory);
+    if (target) {
+      await showPreparedMenuItemTarget('report', target, params, replace, mode);
+    }
+    return;
+  }
+
+  if (item.$params.action === 'trigger') {
+    const target = await resolveMenuItemTarget(item, (currentMode) => item.trigger(currentMode), mode, parent, preferFactory);
+    if (target) {
+      await showPreparedMenuItemTarget('trigger', target, params, replace, mode);
+    }
+    return;
+  }
+
+  if (item.$params.action === 'ui') {
+    const target = await resolveMenuItemTarget(item, (currentMode) => item.ui(currentMode), mode, parent, preferFactory);
+    if (target) {
+      await showPreparedMenuItemTarget('ui', target, params, replace, mode);
+    }
+    return;
+  }
+
+  if (item.$params.action === 'function') {
+    await item.callback(mode);
   }
 }
 

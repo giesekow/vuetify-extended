@@ -6,13 +6,14 @@ import type { DialogForm, DialogFormOptions, DialogParams } from "./dialogform";
 import type { Field, FieldOptions, FieldParams, FieldType } from "./field";
 import type { FormOptions, FormParams } from "./form";
 import type { Part } from "./part";
+import { resolveUIText, type UIText } from "./runtime";
 
 export interface PromptParams {
-  title?: string;
-  text?: string;
+  title?: UIText;
+  text?: UIText;
   type?: FieldType;
-  confirmText?: string;
-  cancelText?: string;
+  confirmText?: UIText;
+  cancelText?: UIText;
   fieldParams?: FieldParams;
   formParams?: FormParams;
   dialogParams?: DialogParams;
@@ -87,17 +88,17 @@ export class Dialogs {
   private static imagePreviewDialog: Ref<boolean> = ref(false);
   private static documentPreviewDialog: Ref<boolean> = ref(false);
 
-  private static confirmTitle: Ref<string> = ref('');
-  private static confirmText: Ref<string> = ref('');
+  private static confirmTitle: Ref<any> = ref('');
+  private static confirmText: Ref<any> = ref('');
   
-  private static infoTitle: Ref<string> = ref('');
-  private static infoText: Ref<string> = ref('');
+  private static infoTitle: Ref<any> = ref('');
+  private static infoText: Ref<any> = ref('');
   private static infoWidth: Ref<number|undefined> = ref(0)
   private static infoHeight: Ref<number|undefined> = ref(0)
 
-  private static successText: Ref<string> = ref('');
-  private static errorText: Ref<string> = ref('');
-  private static warningText: Ref<string> = ref('');
+  private static successText: Ref<any> = ref('');
+  private static errorText: Ref<any> = ref('');
+  private static warningText: Ref<any> = ref('');
 
   private static progressValue: Ref<number|undefined> = ref(0);
   private static progressText: Ref<string> = ref('');
@@ -203,12 +204,12 @@ export class Dialogs {
               h(
                 VCardTitle,
                 {},
-                () => Dialogs.confirmTitle.value
+                () => resolveUIText(Dialogs.confirmTitle.value)
               ),
               h(
                 VCardText,
                 {},
-                () => Dialogs.confirmText.value
+                () => resolveUIText(Dialogs.confirmText.value)
               ),
               h(
                 VCardActions,
@@ -225,7 +226,7 @@ export class Dialogs {
                         if (Dialogs.confirmNo) Dialogs.confirmNo();
                       }
                     },
-                    () => 'No'
+                    () => resolveUIText({ key: 've.common.no', fallback: 'No' })
                   ),
                   h(
                     VBtn,
@@ -235,7 +236,7 @@ export class Dialogs {
                         if (Dialogs.confirmYes) Dialogs.confirmYes();
                       }
                     },
-                    () => 'Yes'
+                    () => resolveUIText({ key: 've.common.yes', fallback: 'Yes' })
                   )
                 ]
               )
@@ -265,12 +266,12 @@ export class Dialogs {
               h(
                 VCardTitle,
                 {},
-                () => Dialogs.infoTitle.value
+                () => resolveUIText(Dialogs.infoTitle.value)
               ),
               h(
                 VCardText,
                 {},
-                () => Dialogs.infoText.value
+                () => resolveUIText(Dialogs.infoText.value)
               ),
               h(
                 VCardActions,
@@ -287,7 +288,7 @@ export class Dialogs {
                         if (Dialogs.infoClose) Dialogs.infoClose();
                       }
                     },
-                    () => 'Close'
+                    () => resolveUIText({ key: 've.common.close', fallback: 'Close' })
                   )
                 ]
               )
@@ -493,7 +494,7 @@ export class Dialogs {
                         flex: '1 1 auto',
                       },
                     },
-                    Dialogs.imagePreviewTitle.value || 'Image Preview',
+                    resolveUIText(Dialogs.imagePreviewTitle.value, 'Image Preview'),
                   ),
                   h(
                     VBtn,
@@ -568,7 +569,7 @@ export class Dialogs {
                 [
                   h('img', {
                     src: Dialogs.imagePreviewSrc.value,
-                    alt: Dialogs.imagePreviewTitle.value || 'Image preview',
+                    alt: resolveUIText(Dialogs.imagePreviewTitle.value, 'Image preview'),
                     draggable: false,
                     style: {
                       maxWidth: '100%',
@@ -630,7 +631,7 @@ export class Dialogs {
 
           const link = document.createElement('a');
           link.href = downloadUrl;
-          link.download = Dialogs.documentPreviewTitle.value || 'document';
+          link.download = resolveUIText(Dialogs.documentPreviewTitle.value, 'document');
           link.target = '_blank';
           link.rel = 'noopener';
           document.body.appendChild(link);
@@ -644,7 +645,7 @@ export class Dialogs {
           if (Dialogs.documentPreviewOpenUrl.value || Dialogs.documentPreviewRenderSrc.value || Dialogs.documentPreviewSrc.value) {
             actions.push(markRaw(new Button(
               {
-                text: 'Open',
+                text: { key: 've.common.open', fallback: 'Open' },
                 icon: 'mdi-open-in-new',
                 variant: 'text',
               },
@@ -659,7 +660,7 @@ export class Dialogs {
           if (Dialogs.documentPreviewDownloadUrl.value || Dialogs.documentPreviewSrc.value) {
             actions.push(markRaw(new Button(
               {
-                text: 'Download',
+                text: { key: 've.common.download', fallback: 'Download' },
                 icon: 'mdi-download',
                 variant: 'text',
               },
@@ -769,7 +770,7 @@ export class Dialogs {
                         ...(textColor ? { color: textColor } : {}),
                       },
                     },
-                    Dialogs.documentPreviewTitle.value || 'Preview',
+                    resolveUIText(Dialogs.documentPreviewTitle.value, 'Preview'),
                   ),
                   ...(menuActions.length ? [
                     h(
@@ -871,7 +872,7 @@ export class Dialogs {
                   h('iframe', {
                     src: Dialogs.documentPreviewSrcdoc.value ? undefined : (Dialogs.documentPreviewRenderSrc.value || Dialogs.documentPreviewSrc.value),
                     srcdoc: Dialogs.documentPreviewSrcdoc.value || undefined,
-                    title: Dialogs.documentPreviewTitle.value || 'Preview',
+                    title: resolveUIText(Dialogs.documentPreviewTitle.value, 'Preview'),
                     style: {
                       width: '100%',
                       height: '100%',
@@ -920,10 +921,10 @@ export class Dialogs {
                     Dialogs.successDialog.value = false;
                   }
                 },
-                () => 'Close'
+                () => resolveUIText({ key: 've.common.close', fallback: 'Close' })
               )
             ],
-            default: () => Dialogs.successText.value
+            default: () => resolveUIText(Dialogs.successText.value)
           }
         );
       },
@@ -958,10 +959,10 @@ export class Dialogs {
                     Dialogs.errorDialog.value = false;
                   }
                 },
-                () => 'Close'
+                () => resolveUIText({ key: 've.common.close', fallback: 'Close' })
               )
             ],
-            default: () => Dialogs.errorText.value
+            default: () => resolveUIText(Dialogs.errorText.value)
           }
         );
       },
@@ -995,10 +996,10 @@ export class Dialogs {
                     Dialogs.warningDialog.value = false;
                   }
                 },
-                () => 'Close'
+                () => resolveUIText({ key: 've.common.close', fallback: 'Close' })
               )
             ],
-            default: () => Dialogs.warningText.value
+            default: () => resolveUIText(Dialogs.warningText.value)
           }
         );
       },
@@ -1060,7 +1061,7 @@ export class Dialogs {
     });
   }
 
-  static async $confirm(text: string, title?: string): Promise<boolean> {
+  static async $confirm(text: UIText, title?: UIText): Promise<boolean> {
     return new Promise((resolve: any) => {
       Dialogs.confirmYes = () => {
         Dialogs.removeConfirmKeydownHandler();
@@ -1074,12 +1075,12 @@ export class Dialogs {
       }
       Dialogs.installConfirmKeydownHandler();
       Dialogs.confirmText.value = text;
-      Dialogs.confirmTitle.value = title || 'Confirm';
+      Dialogs.confirmTitle.value = title || { key: 've.dialog.confirmTitle', fallback: 'Confirm' };
       Dialogs.confirmDialog.value = true;
     })
   }
 
-  static async $info(text: string, title?: string, options?: {width?: number, height?: number}): Promise<void> {
+  static async $info(text: UIText, title?: UIText, options?: {width?: number, height?: number}): Promise<void> {
     return new Promise((resolve: any) => {
       Dialogs.infoClose = () => {
         Dialogs.removeConfirmKeydownHandler();
@@ -1173,7 +1174,7 @@ export class Dialogs {
     const field = !hasCustomChildren ? new Field(
       {
         type: resolvedFieldParams.type || promptParams.type || 'text',
-        label: resolvedFieldParams.label || 'Value',
+        label: resolvedFieldParams.label || { key: 've.dialog.promptValue', fallback: 'Value' },
         storage: storageKey,
         autofocus: resolvedFieldParams.autofocus ?? true,
         cols: resolvedFieldParams.cols ?? 12,
@@ -1189,16 +1190,16 @@ export class Dialogs {
         sub: true,
         hideMode: formParams.hideMode ?? true,
         mode: dialogParams.mode || formParams.mode || 'create',
-        title: promptParams.title ?? formParams.title ?? 'Prompt',
+        title: promptParams.title ?? formParams.title ?? { key: 've.dialog.promptTitle', fallback: 'Prompt' },
         subtitle: promptParams.text ?? formParams.subtitle,
         width: formParams.width ?? (hasCustomChildren ? 760 : 520),
         saveButton: {
           ...(formParams.saveButton || {}),
-          text: promptParams.confirmText || formParams.saveButton?.text || 'Confirm',
+          text: promptParams.confirmText || formParams.saveButton?.text || { key: 've.common.confirm', fallback: 'Confirm' },
         },
         cancelButton: {
           ...(formParams.cancelButton || {}),
-          text: promptParams.cancelText || formParams.cancelButton?.text || 'Cancel',
+          text: promptParams.cancelText || formParams.cancelButton?.text || { key: 've.common.cancel', fallback: 'Cancel' },
         },
       },
       {
@@ -1300,17 +1301,17 @@ export class Dialogs {
     }
   }
 
-  static $error(text: string) {
+  static $error(text: UIText) {
     Dialogs.errorText.value = text;
     Dialogs.errorDialog.value = true;
   }
 
-  static $success(text: string) {
+  static $success(text: UIText) {
     Dialogs.successText.value = text;
     Dialogs.successDialog.value = true;
   }
 
-  static $warning(text: string) {
+  static $warning(text: UIText) {
     Dialogs.warningText.value = text;
     Dialogs.warningDialog.value = true;
   }

@@ -12,12 +12,13 @@ import { AppManager } from "./appmanager";
 import { $excel, computeFunctionalCodeAsync } from "../misc";
 import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent } from "./shortcut";
 import { Master } from "../master";
+import { UIText } from "./runtime";
 
 export interface TriggerParams {
   ref?: string;
   invisible?: boolean;
-  title?: string;
-  subtitle?: string;
+  title?: UIText;
+  subtitle?: UIText;
   mode?: 'create'|'edit'|'display';
   cancelButton?: ButtonParams,
   removeButton?: ButtonParams,
@@ -452,7 +453,7 @@ export class Trigger extends UIBase {
         h(
         'span',
         {},
-        this.$params.title || ''
+        this.$text(this.$params.title)
         )
       ]
     );
@@ -466,7 +467,7 @@ export class Trigger extends UIBase {
       () => h(
         'span',
         {},
-        this.params.value.subtitle || ""
+        this.$text(this.params.value.subtitle)
       )
     );
   }
@@ -485,7 +486,7 @@ export class Trigger extends UIBase {
           {
             class: 'title'
           },
-          'Access Denied!'
+          this.$uiText('ve.common.accessDenied', 'Access Denied!')
         )
       )
     }
@@ -534,7 +535,7 @@ export class Trigger extends UIBase {
           VTextField,
           {
             variant: 'outlined',
-            placeholder: 'Search Object',
+            placeholder: this.$uiText('ve.trigger.searchPlaceholder', 'Search Object'),
             density: 'compact',
             appendIcon: 'mdi-magnify',
             modelValue: this.searchText.value,
@@ -565,7 +566,7 @@ export class Trigger extends UIBase {
           VAutocomplete,
           {
             variant: 'outlined',
-            placeholder: 'Select Additional Search Fields',
+            placeholder: this.$uiText('ve.trigger.filterPlaceholder', 'Select Additional Search Fields'),
             density: 'compact',
             modelValue: this.selectedSearchFields.value,
             "onUpdate:modelValue": (value: any[]) => {
@@ -602,8 +603,8 @@ export class Trigger extends UIBase {
             showSelect: true,
             hideNoData: false,
             noDataText: this.currentSearchText || (this.selectedSearchFields.value || []).length > 0
-              ? 'No matching records found. Try a different search.'
-              : 'Enter a search term and press Enter to load results.',
+              ? this.$uiText('ve.trigger.noMatchingRecords', 'No matching records found. Try a different search.')
+              : this.$uiText('ve.trigger.enterSearchPrompt', 'Enter a search term and press Enter to load results.'),
             itemValue: Master.resolveItemValueField(this.items.value, this.params.value.idField),
             loading: this.loading.value,
             itemsPerPage: this.tableOptions.value.itemsPerPage,
@@ -630,13 +631,13 @@ export class Trigger extends UIBase {
 
     let message = '';
     if (this.loading.value) {
-      message = 'Loading results...';
+      message = this.$uiText('ve.trigger.loadingResults', 'Loading results...');
     } else if ((this.selected.value || []).length > 0) {
-      message = `${this.selected.value!.length} item(s) selected.`;
+      message = this.$uiText('ve.trigger.itemsSelected', `${this.selected.value!.length} item(s) selected.`, { count: this.selected.value!.length });
     } else if (this.currentSearchText || (this.selectedSearchFields.value || []).length > 0) {
-      message = `${this.tableOptions.value.total || 0} result(s) found.`;
+      message = this.$uiText('ve.trigger.resultsFound', `${this.tableOptions.value.total || 0} result(s) found.`, { count: this.tableOptions.value.total || 0 });
     } else {
-      message = 'Search by text or add filters to start browsing records.';
+      message = this.$uiText('ve.trigger.searchGuidance', 'Search by text or add filters to start browsing records.');
     }
 
     return [
@@ -812,7 +813,7 @@ export class Trigger extends UIBase {
               prependIcon: 'mdi-dots-vertical',
               size: 'small',
             },
-            () => 'Actions'
+            () => this.$uiText('ve.common.actions', 'Actions')
           ),
           default: () => h(
             VCard,
@@ -941,21 +942,21 @@ export class Trigger extends UIBase {
     if (this.hasRemoveAccess.value && this.selected.value && this.selected.value.length > 0) {
       return this.getAdditionalButtons().concat([
         new Button(
-          {text: 'Remove', color: 'warning', ...(this.params.value.removeButton || {})},
+          {text: this.$uiText('ve.common.remove', 'Remove'), color: 'warning', ...(this.params.value.removeButton || {})},
           {
             onClicked: () => this.onRemoveClicked()
           }
         ),
         ...(this.params.value.multiple && this.selected.value && this.selected.value.length > 0 ? [
           new Button(
-            {text: this.params.value.mode === 'display' ? 'View': 'Edit', color: 'success', ...(this.params.value.mode === 'display' ? this.params.value.viewButton || {} : this.params.value.editButton || {})},
+            {text: this.params.value.mode === 'display' ? this.$uiText('ve.common.view', 'View') : this.$uiText('ve.common.edit', 'Edit'), color: 'success', ...(this.params.value.mode === 'display' ? this.params.value.viewButton || {} : this.params.value.editButton || {})},
             {
               onClicked: () => this.onProcessMultiple()
             }
           )  
         ]: []),
         new Button(
-          {text: 'Cancel', color: 'secondary', ...(this.params.value.cancelButton || {})},
+          {text: this.$uiText('ve.common.cancel', 'Cancel'), color: 'secondary', ...(this.params.value.cancelButton || {})},
           {
             onClicked: () => this.onCancelClicked()
           }
@@ -965,14 +966,14 @@ export class Trigger extends UIBase {
       return this.getAdditionalButtons().concat([
         ...(this.params.value.multiple && this.selected.value && this.selected.value.length > 0 ? [
           new Button(
-            {text: this.params.value.mode === 'display' ? 'View': 'Edit', color: 'success', ...(this.params.value.mode === 'display' ? this.params.value.viewButton || {} : this.params.value.editButton || {})},
+            {text: this.params.value.mode === 'display' ? this.$uiText('ve.common.view', 'View') : this.$uiText('ve.common.edit', 'Edit'), color: 'success', ...(this.params.value.mode === 'display' ? this.params.value.viewButton || {} : this.params.value.editButton || {})},
             {
               onClicked: () => this.onProcessMultiple()
             }
           )  
         ]: []),
         new Button(
-          {text: 'Cancel', color: 'secondary', ...(this.params.value.cancelButton || {})},
+          {text: this.$uiText('ve.common.cancel', 'Cancel'), color: 'secondary', ...(this.params.value.cancelButton || {})},
           {
             onClicked: () => this.onCancelClicked()
           }
@@ -987,7 +988,7 @@ export class Trigger extends UIBase {
     const btns: Button[] = [];
     if (this.params.value.canPrint && this.hasPrintAccess.value) {
       btns.push(
-        new Button({text: 'Print', color: 'primary'}, {
+        new Button({text: this.$uiText('ve.common.print', 'Print'), color: 'primary'}, {
           onClicked: () => {
             this.printAction()
           }
@@ -997,7 +998,7 @@ export class Trigger extends UIBase {
 
     if (this.params.value.canExport && this.hasExportAccess.value) {
       btns.push(
-        new Button({text: 'Export', color: 'primary'}, {
+        new Button({text: this.$uiText('ve.common.export', 'Export'), color: 'primary'}, {
           onClicked: () => {
             this.exportAction()
           }
@@ -1106,7 +1107,7 @@ export class Trigger extends UIBase {
   }
 
   private async onRemoveClicked() {
-    const confirm = await Dialogs.$confirm('Remove selected items?');
+    const confirm = await Dialogs.$confirm({ key: 've.trigger.confirmRemoveSelected', fallback: 'Remove selected items?' });
     if (!confirm) return;
 
     const items = this.selected.value || [];
@@ -1123,7 +1124,7 @@ export class Trigger extends UIBase {
         }
 
         if (res !== true) {
-          Dialogs.$warning(res || 'Unable to remove items');
+          Dialogs.$warning(res || this.$uiText('ve.trigger.unableToRemoveItems', 'Unable to remove items'));
           hasError = true;
           break;
         }
@@ -1131,7 +1132,7 @@ export class Trigger extends UIBase {
     }
 
     if (!hasError) {
-      Dialogs.$success('Items successfully removed!');
+      Dialogs.$success(this.$uiText('ve.trigger.itemsRemoved', 'Items successfully removed!'));
     }
 
     this.selected.value = [];

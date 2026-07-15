@@ -2100,7 +2100,18 @@ function buildHomeMenu() {
             shortcutDisplay: 'compact'
           },
           {
-            report: async () => buildFullReport({ mode: 'create', title: 'New Person Workspace' }),
+            report: async (_item, mode) => (entry) =>
+              buildFullReport({
+                mode: (entry?.mode as 'create' | 'edit' | 'display') || mode || 'create',
+                title: entry?.params?.title || 'New Person Workspace',
+              }),
+            navigation: () => ({
+              key: 'demo.menu.report.create',
+              params: {
+                title: 'New Person Workspace',
+              },
+              persist: false,
+            }),
           },
         ),
         new MenuItem(
@@ -2113,7 +2124,20 @@ function buildHomeMenu() {
             color: 'teal',
           },
           {
-            report: async () => buildFullReport({ objectId: 'person-2', mode: 'display', title: 'Read Only Workspace' }),
+            report: async (_item, mode) => (entry) =>
+              buildFullReport({
+                objectId: entry?.params?.objectId || 'person-2',
+                mode: (entry?.mode as 'create' | 'edit' | 'display') || mode || 'display',
+                title: entry?.params?.title || 'Read Only Workspace',
+              }),
+            navigation: () => ({
+              key: 'demo.menu.report.display',
+              params: {
+                objectId: 'person-2',
+                title: 'Read Only Workspace',
+              },
+              persist: 'local',
+            }),
           },
         ),
         new MenuItem(
@@ -2145,16 +2169,15 @@ function buildHomeMenu() {
         ),
         new MenuItem(
           {
-            action: 'function',
+            action: 'trigger',
             text: 'Open Trigger',
             subText: 'Standalone trigger screen.',
             icon: 'mdi-table-search',
             color: 'brown',
           },
           {
-            callback: async () => {
-              const trigger = buildTriggerDemo() as any;
-              trigger.$screenParams = {
+            trigger: async () => buildTriggerDemo(),
+            showParams: async () => ({
                 fabIcon: 'mdi-radar',
                 fabColor: 'deep-orange',
                 fabLabel: 'Trigger Tools',
@@ -2169,9 +2192,7 @@ function buildHomeMenu() {
                     { onClicked: () => Dialogs.$success('Screen-specific FAB actions are now overriding the global app FAB here.') },
                   ),
                 ],
-              };
-              AppManager.showTrigger(trigger);
-            },
+              }),
           },
         ),
         new MenuItem(

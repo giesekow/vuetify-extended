@@ -6,6 +6,19 @@ import { Selector } from "./selector";
 import { OnHandler } from "./lib";
 import { VAlert } from "vuetify/components";
 import { Master } from "../master";
+import { AppManager } from "./appmanager";
+import { makeSerializable } from "./runtime";
+
+type CollectionViewState = 'report'|'selector'|'trigger'|undefined;
+
+interface CollectionNavigationState {
+  restoreMode?: 'full' | 'shallow';
+  currentObject?: CollectionViewState;
+  prevState?: CollectionViewState;
+  selectedItems?: any[];
+  selectedIds?: any[];
+  currentIndex?: number;
+}
 
 export interface CollectionParams {
   ref?: string;
@@ -37,6 +50,7 @@ export class Collection extends UIBase {
   private prevState: 'report'|'selector'|'trigger'|undefined;
   private selectedItems: any[] = [];
   private currentIndex: number = 0;
+  private suppressNavigationSync = false;
   private static defaultParams: CollectionParams = {};
 
   constructor(params?: CollectionParams, options?: CollectionOptions) {
@@ -204,15 +218,15 @@ export class Collection extends UIBase {
     if (this.currentObject.value) return;
     
     if (this.params.value.mode === 'create') {
-      await this.showReport();
+      await this.showReport(undefined, { replaceHistory: true, syncNavigation: false });
     } else {
-      if (!await this.showTrigger()) {
-        await this.showSelector();
+      if (!await this.showTrigger({ replaceHistory: true, syncNavigation: false })) {
+        await this.showSelector({ replaceHistory: true, syncNavigation: false });
       }
     }
   }
 
-  async showSelector() {
+  async showSelector(options?: { replaceHistory?: boolean; syncNavigation?: boolean }) {
     if (!this.currentSelector) {
       this.currentSelector = this.options.selector ? await this.options.selector(this) : await this.selector();
       if (this.currentSelector) {
@@ -226,6 +240,7 @@ export class Collection extends UIBase {
         this.currentSelector.$params.returnObject = true;
         this.currentSelector.$params.multiple = this.params.value.multiple;
         this.currentSelector.show();
+        await this.syncNavigationState(options?.replaceHistory ?? true, options?.syncNavigation === true);
       }
     } else {
       this.currentSelector.$params.mode = this.params.value.mode;
@@ -234,10 +249,11 @@ export class Collection extends UIBase {
       this.currentSelector.$params.multiple = this.params.value.multiple;
       this.currentObject.value = 'selector';
       this.currentSelector.show();
+      await this.syncNavigationState(options?.replaceHistory ?? true, options?.syncNavigation === true);
     }
   }
 
-  async showTrigger() {
+  async showTrigger(options?: { replaceHistory?: boolean; syncNavigation?: boolean }) {
     if (!this.currentTrigger) {
       this.currentTrigger = this.options.trigger ? await this.options.trigger(this) : await this.trigger();
       if (this.currentTrigger) {
@@ -249,6 +265,7 @@ export class Collection extends UIBase {
         this.currentTrigger.$params.multiple = this.params.value.multiple;
         this.currentObject.value = 'trigger';
         this.currentTrigger.show();
+        await this.syncNavigationState(options?.replaceHistory ?? true, options?.syncNavigation !== false);
         return true;
       }
     } else {
@@ -257,11 +274,12 @@ export class Collection extends UIBase {
       this.currentTrigger.$params.multiple = this.params.value.multiple;
       this.currentObject.value = 'trigger';
       this.currentTrigger.show();
+      await this.syncNavigationState(options?.replaceHistory ?? true, options?.syncNavigation !== false);
       return true;
     }
   }
 
-  async showReport(item?: any) {
+  async showReport(item?: any, options?: { replaceHistory?: boolean; syncNavigation?: boolean }) {
     if (this.currentReport) {
       this.currentReport.removeEventListeners();
     }
@@ -296,6 +314,7 @@ export class Collection extends UIBase {
       await this.currentReport.loadObject();
       this.currentObject.value = 'report';
       this.currentReport.show();
+      await this.syncNavigationState(options?.replaceHistory ?? true, options?.syncNavigation !== false);
     }
   }
 
@@ -314,21 +333,21 @@ export class Collection extends UIBase {
     if (Array.isArray(item) && this.params.value.multiple) {
       this.selectedItems = item;
       this.currentIndex = 0;
-      await this.showReportWithIndex(this.currentIndex);
+      await this.showReportWithIndex(this.currentIndex, { replaceHistory: false });
     } else {
       this.currentIndex = 0;
       this.selectedItems = [item];
-      await this.showReportWithIndex(this.currentIndex);
+      await this.showReportWithIndex(this.currentIndex, { replaceHistory: false });
     }
     this.currentTrigger?.hide();
 
   }
 
-  private async showReportWithIndex(index: number) {
+  private async showReportWithIndex(index: number, options?: { replaceHistory?: boolean; syncNavigation?: boolean }) {
     if (index < this.selectedItems.length) {
       this.currentReport = undefined;
       this.currentObject.value = undefined;
-      await this.showReport(this.selectedItems[index]);
+      await this.showReport(this.selectedItems[index], options);
 
       if (this.currentTrigger) {
         this.currentTrigger.removeEventListeners();
@@ -343,11 +362,11 @@ export class Collection extends UIBase {
     if (Array.isArray(item) && this.params.value.multiple) {
       this.selectedItems = item;
       this.currentIndex = 0;
-      await this.showReportWithIndex(this.currentIndex);
+      await this.showReportWithIndex(this.currentIndex, { replaceHistory: true });
     } else {
       this.currentIndex = 0;
       this.selectedItems = [item];
-      await this.showReportWithIndex(this.currentIndex);
+      await this.showReportWithIndex(this.currentIndex, { replaceHistory: true });
     }
 
     this.currentSelector?.hide();
@@ -356,23 +375,20 @@ export class Collection extends UIBase {
   private async reportSaved(item: any) {
     if (this.params.value.mode !== 'create' && this.params.value.multiple && this.currentIndex + 1 < this.selectedItems.length) {
       this.currentIndex += 1;
-      this.showReportWithIndex(this.currentIndex);
+      await this.showReportWithIndex(this.currentIndex, { replaceHistory: this.prevState !== 'trigger' });
     } else if (this.params.value.mode !== 'create') {
-      this.reportCancelled();
+      await this.reportCancelled();
     }
   }
 
   private async reportCancelled() {
-    
-    if (this.prevState === 'trigger') {
-      return this.showTrigger();
+    if (this.hasInternalBackState()) {
+      await this.restorePreviousStateLocally();
+      AppManager.backHistorySilently();
+      return true;
     }
 
-    if (this.prevState === 'selector') {
-      return this.showSelector();
-    }
-
-    this.handleOn('cancel', this);
+    return this.restorePreviousStateLocally();
   }
 
   private async reportFinished() {
@@ -398,13 +414,85 @@ export class Collection extends UIBase {
   async forceCancel() {
     await this.hide();
     if (this.currentObject.value === 'report') {
-      this.reportCancelled();
+      await this.reportCancelled();
     } else if (this.currentObject.value === 'selector') {
-      this.onSelectorCancelled();
+      await this.onSelectorCancelled();
     } else if (this.currentObject.value === 'trigger') {
-      this.onTriggerCancelled();
+      await this.onTriggerCancelled();
     } else {
       this.handleOn('cancel');
+    }
+  }
+
+  async canHandleBack(): Promise<boolean> {
+    return this.hasInternalBackState();
+  }
+
+  async handleBack(): Promise<boolean> {
+    if (!this.hasInternalBackState()) {
+      return false;
+    }
+
+    await this.reportCancelled();
+    return true;
+  }
+
+  async serializeNavigationState(): Promise<CollectionNavigationState> {
+    const selectedIds = this.selectedItems
+      .map((item) => Master.getItemId(item, this.params.value.idField))
+      .filter((value) => value !== undefined && value !== null);
+
+    return {
+      restoreMode: 'full',
+      currentObject: this.currentObject.value,
+      prevState: this.prevState,
+      selectedItems: makeSerializable(this.selectedItems),
+      selectedIds,
+      currentIndex: this.currentIndex,
+    };
+  }
+
+  async restoreNavigationState(state: CollectionNavigationState): Promise<void> {
+    this.suppressNavigationSync = true;
+    try {
+      this.prevState = state?.prevState;
+      const selectedItems = Array.isArray(state?.selectedItems) ? [...state.selectedItems] : [];
+      const selectedIds = Array.isArray(state?.selectedIds) ? [...state.selectedIds] : [];
+      this.selectedItems = selectedItems.length > 0 ? selectedItems : this.buildSelectionItemsFromIds(selectedIds);
+      this.currentIndex = typeof state?.currentIndex === 'number' ? state.currentIndex : 0;
+
+      if (state?.restoreMode === 'shallow' && this.params.value.mode !== 'create') {
+        if (await this.showTrigger({ replaceHistory: true, syncNavigation: false })) {
+          return;
+        }
+        await this.showSelector({ replaceHistory: true, syncNavigation: false });
+        return;
+      }
+
+      if (state?.currentObject === 'report' && this.selectedItems[this.currentIndex] !== undefined) {
+        await this.showReportWithIndex(this.currentIndex, { replaceHistory: true, syncNavigation: false });
+        return;
+      }
+
+      if (state?.currentObject === 'selector') {
+        await this.showSelector({ replaceHistory: true, syncNavigation: false });
+        return;
+      }
+
+      if (state?.currentObject === 'trigger') {
+        const shown = await this.showTrigger({ replaceHistory: true, syncNavigation: false });
+        if (shown) {
+          return;
+        }
+      }
+
+      if (this.params.value.mode === 'create') {
+        await this.showReport(undefined, { replaceHistory: true, syncNavigation: false });
+      } else if (!await this.showTrigger({ replaceHistory: true, syncNavigation: false })) {
+        await this.showSelector({ replaceHistory: true, syncNavigation: false });
+      }
+    } finally {
+      this.suppressNavigationSync = false;
     }
   }
 
@@ -422,6 +510,40 @@ export class Collection extends UIBase {
     }
 
     this.emit(event, data)
+  }
+
+  private hasInternalBackState() {
+    return this.currentObject.value === 'report' && this.prevState === 'trigger';
+  }
+
+  private buildSelectionItemsFromIds(ids: any[]) {
+    const idField = String(this.params.value.idField || Master.getDefaultIdField());
+    return ids
+      .filter((value) => value !== undefined && value !== null)
+      .map((value) => ({
+        [idField]: value,
+      }));
+  }
+
+  private async restorePreviousStateLocally() {
+    if (this.prevState === 'trigger') {
+      return this.showTrigger({ replaceHistory: true });
+    }
+
+    if (this.prevState === 'selector') {
+      return this.showSelector({ replaceHistory: true, syncNavigation: false });
+    }
+
+    this.handleOn('cancel', this);
+    return true;
+  }
+
+  private async syncNavigationState(replaceHistory: boolean, syncNavigation: boolean) {
+    if (this.suppressNavigationSync || !syncNavigation) {
+      return;
+    }
+
+    await AppManager.syncNavigationState({ replaceHistory });
   }
 
 }

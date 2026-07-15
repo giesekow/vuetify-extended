@@ -1,4 +1,5 @@
 import { Button } from "./button";
+import { type UIText } from "./runtime";
 export type NotificationLocation = 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
 export type NotificationSurfaceStyle = 'opaque' | 'translucent';
 export interface NotificationOptions {
@@ -19,8 +20,8 @@ export interface NotificationOptions {
 }
 export interface NotificationItem {
     id: number;
-    title?: string;
-    text: string;
+    title?: UIText;
+    text: UIText;
     color?: string;
     icon?: string;
     timeout?: number;
@@ -30,8 +31,8 @@ export interface NotificationItem {
     actions?: Button[];
 }
 export interface NotificationPayload {
-    title?: string;
-    text: string;
+    title?: UIText;
+    text: UIText;
     color?: string;
     icon?: string;
     timeout?: number;
@@ -62,8 +63,8 @@ export declare class Notifications {
     static dismiss(id: number): void;
     static clear(): void;
     static $push(payload: NotificationPayload): number;
-    static $info(text: string, payload?: Partial<Omit<NotificationPayload, 'text'>>): number;
-    static $success(text: string, payload?: Partial<Omit<NotificationPayload, 'text'>>): number;
-    static $warning(text: string, payload?: Partial<Omit<NotificationPayload, 'text'>>): number;
-    static $error(text: string, payload?: Partial<Omit<NotificationPayload, 'text'>>): number;
+    static $info(text: UIText, payload?: Partial<Omit<NotificationPayload, 'text'>>): number;
+    static $success(text: UIText, payload?: Partial<Omit<NotificationPayload, 'text'>>): number;
+    static $warning(text: UIText, payload?: Partial<Omit<NotificationPayload, 'text'>>): number;
+    static $error(text: UIText, payload?: Partial<Omit<NotificationPayload, 'text'>>): number;
 }

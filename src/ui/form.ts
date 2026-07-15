@@ -10,13 +10,14 @@ import { AppManager } from "./appmanager";
 import { Field, Refs } from "./field";
 import { OnHandler } from "./lib";
 import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent, shouldIgnoreShortcutTarget } from "./shortcut";
+import { UIText } from "./runtime";
 
 export interface FormParams {
   ref?: string;
   readonly?: boolean;
   invisible?: boolean;
-  title?: string;
-  subtitle?: string;
+  title?: UIText;
+  subtitle?: UIText;
   mode?: ReportMode;
   auto?: boolean;
   sub?: boolean;
@@ -390,7 +391,11 @@ export class Form extends UIBase {
   private buildTitle(props: any, context: any) {
     const h = this.$h;
 
-    const modes = {create: 'Create', edit: 'Edit', display: 'Display'};
+    const modes = {
+      create: this.$uiText('ve.mode.create', 'Create'),
+      edit: this.$uiText('ve.mode.edit', 'Edit'),
+      display: this.$uiText('ve.mode.display', 'Display'),
+    };
 
     return h(
       VCardTitle,
@@ -398,7 +403,9 @@ export class Form extends UIBase {
       () => h(
         'span',
         {},
-        this.$params.mode ? (this.$params.hideMode ? this.$params.title : `${modes[this.$params.mode]} ${this.$params.title || ''}`) : (this.$params.title || '')
+        this.$params.mode
+          ? (this.$params.hideMode ? this.$text(this.$params.title) : `${modes[this.$params.mode]} ${this.$text(this.$params.title) || ''}`.trim())
+          : this.$text(this.$params.title)
       )
     );
   }
@@ -411,7 +418,7 @@ export class Form extends UIBase {
       () => h(
         'span',
         {},
-        this.params.value.subtitle || ""
+        this.$text(this.params.value.subtitle)
       )
     );
   }
@@ -435,7 +442,7 @@ export class Form extends UIBase {
           {
             class: 'title'
           },
-          'Access Denied!'
+          this.$uiText('ve.common.accessDenied', 'Access Denied!')
         )
       )
     }
@@ -507,7 +514,7 @@ export class Form extends UIBase {
               color: 'rgb(var(--v-theme-error))'
             }
           },
-          'Please review the following before saving:'
+          this.$uiText('ve.form.validationSummaryTitle', 'Please review the following before saving:')
         ),
         h(
           'ul',
@@ -625,8 +632,8 @@ export class Form extends UIBase {
 
   private buildDefaultButtons(): Button[] {
     const prevButtons = this.params.value.prevButton ? [
-      new Button(
-        {text: 'Prev', color: 'secondary', ...(this.params.value.prevButton || {})},
+        new Button(
+        {text: this.$uiText('ve.common.prev', 'Prev'), color: 'secondary', ...(this.params.value.prevButton || {})},
         {
           onClicked: () => this.onPrevClicked()
         }
@@ -636,7 +643,7 @@ export class Form extends UIBase {
     if (!this.hasAccess.value) {
       return [
         new Button(
-          {text: 'Cancel', color: 'secondary', ...(this.params.value.cancelButton || {})},
+          {text: this.$uiText('ve.common.cancel', 'Cancel'), color: 'secondary', ...(this.params.value.cancelButton || {})},
           {
             onClicked: () => this.onCancelClicked()
           }
@@ -648,7 +655,7 @@ export class Form extends UIBase {
     if (this.$readonly && !this.params.value.sub && !this.params.value.showSaveInReadonly) {
       return [
         new Button(
-          {text: 'Cancel', color: 'secondary', ...(this.params.value.cancelButton || {})},
+          {text: this.$uiText('ve.common.cancel', 'Cancel'), color: 'secondary', ...(this.params.value.cancelButton || {})},
           {
             onClicked: () => this.onCancelClicked()
           }
@@ -659,14 +666,14 @@ export class Form extends UIBase {
 
     return [
       new Button(
-        {text: 'Cancel', color: 'secondary', ...(this.params.value.cancelButton || {})},
+        {text: this.$uiText('ve.common.cancel', 'Cancel'), color: 'secondary', ...(this.params.value.cancelButton || {})},
         {
           onClicked: () => this.onCancelClicked()
         }
       ),
       ...prevButtons,
       new Button(
-        {text: 'Save', color: 'success', ...(this.params.value.saveButton || {})},
+        {text: this.$uiText('ve.common.save', 'Save'), color: 'success', ...(this.params.value.saveButton || {})},
         {
           onClicked: () => this.onSaveClicked()
         }
@@ -849,7 +856,7 @@ export class Form extends UIBase {
     let accepted = true;
 
     if (!this.params.value.auto && !this.params.value.sub) {
-      accepted = await Dialogs.$confirm('Save data ?');
+      accepted = await Dialogs.$confirm({ key: 've.form.confirmSave', fallback: 'Save data ?' });
     }
 
     if (accepted) {
@@ -864,13 +871,13 @@ export class Form extends UIBase {
         if (this.$master) {
           const saved = await this.$master.$save(this.params.value.mode);
           if (saved !== true) {
-            Dialogs.$error(saved || 'Unable to save data!');
+            Dialogs.$error(saved || this.$uiText('ve.form.unableToSave', 'Unable to save data!'));
             if (this.options.onError) {
               await this.options.onError(this, saved);
             }
             this.handleOn('error', saved);
           } else {
-            if (!this.params.value.auto) Dialogs.$success('Data successfully saved!');
+            if (!this.params.value.auto) Dialogs.$success(this.$uiText('ve.form.saved', 'Data successfully saved!'));
             if (this.options.afterSaved) {
               await this.options.afterSaved(this);
             } else {
@@ -946,7 +953,9 @@ export class Form extends UIBase {
 
       const value = field.$master?.$get(field.$params.storage);
       if (this.isEmptyValue(value)) {
-        messages.push(`${field.$params.label || field.$params.storage} is required.`);
+        messages.push(this.$uiText('ve.form.fieldRequired', `${this.$text(field.$params.label || field.$params.storage)} is required.`, {
+          field: this.$text(field.$params.label || field.$params.storage),
+        }));
       }
     }
 

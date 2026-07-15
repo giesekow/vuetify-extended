@@ -1,6 +1,7 @@
 import { Fragment, VNode, cloneVNode, defineComponent, h, ref, watch, onUnmounted, onMounted } from 'vue';
 import { EventEmitter } from './lib';
 import { Master } from '../master';
+import { formatCurrencyText, formatDateText, formatNumberText, isRTLLocale, resolveUIText, type NavigationEntry, type UIText } from './runtime';
 
 export class BaseComponent extends EventEmitter {
   private dataStore: any = {};
@@ -139,4 +140,44 @@ export class UIBase extends BaseComponent {
   async hide() {}
 
   async forceCancel() {}
+
+  async canHandleBack(): Promise<boolean> {
+    return false;
+  }
+
+  async handleBack(): Promise<boolean> {
+    return false;
+  }
+
+  async serializeNavigationState(_entry?: NavigationEntry): Promise<any> {
+    return undefined;
+  }
+
+  async restoreNavigationState(_state: any, _entry?: NavigationEntry): Promise<void> {
+    //
+  }
+
+  $text(value: UIText | undefined | null, fallback: string = '') {
+    return resolveUIText(value, fallback);
+  }
+
+  $uiText(key: string, fallback: string = '', values?: Record<string, any>) {
+    return resolveUIText({ key, fallback, values }, fallback);
+  }
+
+  $formatDate(value: any, options?: any) {
+    return formatDateText(value, options);
+  }
+
+  $formatNumber(value: number, options?: any) {
+    return formatNumberText(value, options);
+  }
+
+  $formatCurrency(value: number, options?: any) {
+    return formatCurrencyText(value, options);
+  }
+
+  get $isRTL() {
+    return isRTLLocale();
+  }
 }

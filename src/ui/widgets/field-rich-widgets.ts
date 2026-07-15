@@ -33,6 +33,7 @@ export interface MediaDisplayItem {
 
 export interface RichWidgetContext {
   $h: any;
+  $text: (value: any, fallback?: string) => string;
   $readonly: boolean;
   $makeRef: any;
   $watch: any;
@@ -221,7 +222,7 @@ export function buildHTMLWidget(field: RichWidgetContext): VNode {
       modelValue: field.modelValue.value,
       readonly: field.$readonly,
       disabled: field.$readonly,
-      placeholder: field.params.value.placeholder,
+      placeholder: field.$text(field.params.value.placeholder),
       height: field.params.value.height || 300,
       class: field.params.value.class || [],
       style: field.params.value.style || {},
@@ -270,7 +271,7 @@ export function buildHTMLWidget(field: RichWidgetContext): VNode {
           {
             class: ['text-subtitle-2']
           },
-          field.params.value.label
+          field.$text(field.params.value.label)
         )
       ),
       h(
@@ -302,7 +303,7 @@ export function buildCodeWidget(field: RichWidgetContext): VNode[] {
       lang: field.params.value.lang || 'text',
       theme: field.params.value.codeTheme || "chrome",
       readonly: field.$readonly,
-      placeholder: field.params.value.placeholder,
+      placeholder: field.$text(field.params.value.placeholder),
       class: field.params.value.class || [],
       style: {"font-size": "12pt", ...(field.params.value.style || {}), height: field.params.value.height || "300px", "max-width": field.maxWidth.value},
       onInit: (e: any) => {
@@ -334,7 +335,7 @@ export function buildCodeWidget(field: RichWidgetContext): VNode[] {
       h(
         'label',
         {},
-        field.params.value.label
+        field.$text(field.params.value.label)
       ),
     ),
     ...(field.params.value.lang === 'latex' ? [editor, fullscreenBtn] : [editor]),
@@ -348,7 +349,7 @@ export function buildCodeWidget(field: RichWidgetContext): VNode[] {
         h(
           'label',
           {},
-          field.params.value.hint
+          field.$text(field.params.value.hint)
         ),
       )] : []
     )
@@ -378,7 +379,7 @@ export function buildMessageBoxWidget(field: RichWidgetContext): VNode {
           {
             class: ['text-subtitle-2']
           },
-          field.params.value.label
+          field.$text(field.params.value.label)
         )
       ),
       h(
@@ -795,7 +796,7 @@ export function buildChartWidget(field: RichWidgetContext): VNode[] | undefined 
       'div',
       {
         class: ['ml-2', 'mb-4'],
-        innerHTML: field.params.value.label
+        innerHTML: field.$text(field.params.value.label)
       }
     ),
     h(
@@ -2117,7 +2118,7 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
             position: item,
             draggable: true,
           },
-          title: `${field.params.value.label || 'Location'} ${index + 1}`,
+          title: `${field.$text(field.params.value.label, 'Location')} ${index + 1}`,
           draggable: true,
           onDragend: (event: any) => {
             if (!event?.latLng) {
@@ -2159,7 +2160,7 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
             position: pointValues[0],
             draggable: true,
           },
-          title: field.params.value.label,
+          title: field.$text(field.params.value.label),
           draggable: true,
           onDragend: (event: any) => {
             if (!event?.latLng) {
@@ -2328,7 +2329,7 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
             : '';
 
   return [
-    h('div', { class: ['ml-2', 'mb-4'] }, field.params.value.label),
+    h('div', { class: ['ml-2', 'mb-4'] }, field.$text(field.params.value.label)),
     h('div', {}, mapNode),
     ...(locationSheet ? [locationSheet] : []),
     ...((instructionText && !field.$readonly) ? [
@@ -2361,7 +2362,7 @@ export function buildImageWidget(field: RichWidgetContext): VNode {
         () => h(
           'div',
           {},
-          field.params.value.label
+          field.$text(field.params.value.label)
         )
       ),
       ...items.map((item, index) => h(

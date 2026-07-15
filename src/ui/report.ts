@@ -11,6 +11,7 @@ import { OnHandler } from "./lib";
 import { PRefs } from "./part";
 import { Refs } from "./field";
 import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent } from "./shortcut";
+import { UIText } from "./runtime";
 
 export type ReportButtonStyle = 'text'|'outlined'|'elevated';
 
@@ -18,7 +19,7 @@ export interface ReportParams {
   objectType?: any;
   objectId?: any;
   selected?: any;
-  title?: string;
+  title?: UIText;
   confirmOnCancel?: boolean;
   hideMode?: boolean;
   cancelButton?: ButtonParams;
@@ -68,7 +69,7 @@ export interface ReportOptions {
   hasPrevForm?: (report: Report, index: number) => Promise<boolean|undefined>|boolean|undefined
   removeEventListeners?: (report: Report) => Promise<void>|void
   attachEventListeners?: (report: Report) => Promise<void>|void
-  title?: (report: Report, index?: number) => string
+  title?: (report: Report, index?: number) => UIText
   sideButtons?: (props: any, context: any, report: Report) => Array<Button>|undefined
 }
 
@@ -444,7 +445,7 @@ export class Report extends UIBase {
 
         if (this.params.value.setActionButtons || this.params.value.setActionButtons === undefined) {
           newForm.$params.cancelButton = {
-            text: 'Cancel',
+            text: this.$uiText('ve.common.cancel', 'Cancel'),
             color: 'warning',
             variant: this.params.value.cancelButtonStyle || 'text',
             ...(this.params.value.cancelButton || {}),
@@ -453,7 +454,7 @@ export class Report extends UIBase {
 
           if (this.hasNext) {
             newForm.$params.saveButton = {
-              text: 'Next',
+              text: this.$uiText('ve.common.next', 'Next'),
               color: 'primary',
               variant: this.params.value.nextButtonStyle || 'elevated',
               ...(this.params.value.nextButton || {}),
@@ -464,12 +465,12 @@ export class Report extends UIBase {
 
             const finalAction: ButtonParams = this.params.value.mode === 'display'
               ? {
-                  text: 'Finish',
+                  text: this.$uiText('ve.common.finish', 'Finish'),
                   color: 'primary',
                   variant: this.params.value.finishButtonStyle || 'elevated',
                 }
               : {
-                  text: 'Save',
+                  text: this.$uiText('ve.common.save', 'Save'),
                   color: 'primary',
                   variant: this.params.value.finishButtonStyle || 'elevated',
                 };
@@ -491,7 +492,7 @@ export class Report extends UIBase {
 
           if (this.hasPrev) {
             newForm.$params.prevButton = {
-              text: 'Prev',
+              text: this.$uiText('ve.common.prev', 'Prev'),
               color: 'secondary',
               variant: this.params.value.prevButtonStyle || 'outlined',
               ...(this.params.value.prevButton || {}),
@@ -531,7 +532,11 @@ export class Report extends UIBase {
   private buildTitle(props: any, context: any) {
     const h = this.$h;
 
-    const modes = {create: 'Create', edit: 'Edit', display: 'Display'};
+    const modes = {
+      create: this.$uiText('ve.mode.create', 'Create'),
+      edit: this.$uiText('ve.mode.edit', 'Edit'),
+      display: this.$uiText('ve.mode.display', 'Display'),
+    };
     const title = this.options.title ? this.options.title(this) : this.$params.title
 
     return h(
@@ -540,7 +545,9 @@ export class Report extends UIBase {
       () => h(
         'span',
         {},
-        this.$params.mode ? (this.$params.hideMode ? title : `${modes[this.$params.mode]} ${title || ''}`) : (title || '')
+        this.$params.mode
+          ? (this.$params.hideMode ? this.$text(title) : `${modes[this.$params.mode]} ${this.$text(title) || ''}`.trim())
+          : this.$text(title)
       )
     );
   }
@@ -559,7 +566,7 @@ export class Report extends UIBase {
           {
             class: 'title'
           },
-          'Access Denied!'
+          this.$uiText('ve.common.accessDenied', 'Access Denied!')
         )
       )
     }
@@ -569,12 +576,12 @@ export class Report extends UIBase {
       {
         class: 'text-center'
       },
-      () => h(
+        () => h(
         'span',
         {
           class: 'title'
         },
-        'Loading...'
+        this.$uiText('ve.common.loading', 'Loading...')
       )
     )
     
@@ -699,7 +706,7 @@ export class Report extends UIBase {
               prependIcon: 'mdi-dots-vertical',
               size: 'small',
             },
-            () => 'Actions'
+            () => this.$uiText('ve.common.actions', 'Actions')
           ),
           default: () => h(
             VCard,
@@ -866,8 +873,8 @@ export class Report extends UIBase {
           flex: '0 0 auto',
         },
       }, [
-        h('div', { style: { fontSize: '0.58rem', lineHeight: '1', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: '0.68' } }, 'Progress'),
-        h('div', { style: { fontSize: '0.72rem', lineHeight: '1', fontWeight: '700' } }, `Step ${current} of ${total}`),
+        h('div', { style: { fontSize: '0.58rem', lineHeight: '1', letterSpacing: '0.06em', textTransform: 'uppercase', opacity: '0.68' } }, this.$uiText('ve.report.progress', 'Progress')),
+        h('div', { style: { fontSize: '0.72rem', lineHeight: '1', fontWeight: '700' } }, this.$uiText('ve.report.stepOf', `Step ${current} of ${total}`, { current, total })),
       ]),
       h('div', {
         style: {
@@ -892,7 +899,7 @@ export class Report extends UIBase {
   private buildDefaultButtons(): Button[] {
     return [
       new Button(
-        {text: 'Cancel', color: 'warning', variant: this.params.value.cancelButtonStyle || 'text', ...(this.params.value.cancelButton || {})},
+        {text: this.$uiText('ve.common.cancel', 'Cancel'), color: 'warning', variant: this.params.value.cancelButtonStyle || 'text', ...(this.params.value.cancelButton || {})},
         {
           onClicked: () => this.oncancel()
         }
@@ -906,7 +913,7 @@ export class Report extends UIBase {
     const btns: Button[] = [];
     if (this.params.value.canPrint && this.hasPrintAccess.value) {
       btns.push(
-        new Button({text: 'Print', color: 'primary'}, {
+        new Button({text: this.$uiText('ve.common.print', 'Print'), color: 'primary'}, {
           onClicked: () => {
             this.printAction()
           }
@@ -916,7 +923,7 @@ export class Report extends UIBase {
 
     if (this.params.value.canExport && this.hasExportAccess.value) {
       btns.push(
-        new Button({text: 'Export', color: 'primary'}, {
+        new Button({text: this.$uiText('ve.common.export', 'Export'), color: 'primary'}, {
           onClicked: () => {
             this.exportAction()
           }
@@ -976,7 +983,11 @@ export class Report extends UIBase {
 
   private async oncancel() {
     if (this.params.value.confirmOnCancel) {
-      const accepted = await Dialogs.$confirm(this.hasUnsavedChanges() ? 'Discard unsaved changes?' : 'Cancel this report?');
+      const accepted = await Dialogs.$confirm(
+        this.hasUnsavedChanges()
+          ? { key: 've.report.confirmDiscardChanges', fallback: 'Discard unsaved changes?' }
+          : { key: 've.report.confirmCancel', fallback: 'Cancel this report?' }
+      );
       if (!accepted) {
         return;
       }
@@ -1013,18 +1024,19 @@ export class Report extends UIBase {
       return;
     }
 
-    const subtitle = form.$params.subtitle;
-    form.$params.subtitle = subtitle && subtitle !== ''
-      ? `${subtitle} • ${label}`
+    const baseSubtitle = (form as any).__veBaseSubtitle ?? this.$text(form.$params.subtitle);
+    (form as any).__veBaseSubtitle = baseSubtitle;
+    form.$params.subtitle = baseSubtitle && baseSubtitle !== ''
+      ? `${baseSubtitle} • ${label}`
       : label;
   }
 
   private progressLabel(index: number): string | undefined {
-    const total = Math.max(this.params.value.forms || 0, index + 1);
+    const total = Math.max(this.resolvedFormCount.value || this.params.value.forms || 0, index + 1);
     if (total <= 1) {
       return undefined;
     }
-    return `Step ${index + 1} of ${total}`;
+    return this.$uiText('ve.report.stepOf', `Step ${index + 1} of ${total}`, { current: index + 1, total });
   }
 
   private snapshotMasterData(): string {

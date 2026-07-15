@@ -1,6 +1,7 @@
 import { Ref, VNode } from "vue";
 import { UIBase } from "./base";
 import { Report } from "./report";
+import { type UIText } from "./runtime";
 export interface MailboxItem {
     id: string | number;
     title: string;
@@ -25,7 +26,7 @@ export interface MailboxPage {
     nextCursor?: any;
 }
 export interface MailboxOptions {
-    title?: string;
+    title?: UIText;
     pageSize?: number;
     load?: (params: MailboxLoadParams) => Promise<MailboxPage | MailboxItem[]> | MailboxPage | MailboxItem[];
     viewItem?: (item: MailboxItem) => Promise<Report | undefined> | Report | undefined;
@@ -37,7 +38,7 @@ export interface MailboxOptions {
     loadUnreadCount?: () => Promise<number> | number;
 }
 export interface MailboxViewParams {
-    title?: string;
+    title?: UIText;
     width?: string | number;
     pageSize?: number;
     reloadOnShow?: boolean;
@@ -52,7 +53,7 @@ export interface MailboxBellParams {
     variant?: 'flat' | 'text' | 'outlined' | 'plain' | 'elevated' | 'tonal';
     badgeColor?: string;
     maxBadge?: number;
-    title?: string;
+    title?: UIText;
     viewWidth?: string | number;
     hideOnMobile?: boolean;
     hideOnNonMobile?: boolean;

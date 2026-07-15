@@ -153,6 +153,32 @@ Examples:
 - `$MN(...)` and `$MI(...)` instead of `new Menu(...)` and `new MenuItem(...)`
 - dashboard scaffolds use `$DB(...)` and the widget shorthands such as `$DMW(...)`, `$DTW(...)`, and `$DLW(...)`
 
+## Translation-Aware Output
+
+Generated UI code now prefers translation-aware text descriptors for runtime-facing text surfaces that support `UIText`.
+
+That means scaffolded code often emits values like:
+
+```ts
+{ key: 'pages.people.report.title', fallback: 'People Workspace' }
+```
+
+instead of hard-coding a raw string directly into:
+
+- report titles
+- form titles
+- field labels
+- menu item text and sub text
+- header/footer shell text
+- action button labels
+- starter dialog messages
+
+This keeps the generated code immediately usable without translations while also making it ready for the shared runtime i18n adapter.
+
+The generated `fallback` text is what users see until they provide matching translation keys through the app’s configured i18n adapter.
+
+Not every nested data structure in every scaffold is translation-aware yet. Where a runtime item type still only accepts plain strings, the scaffold keeps emitting literal strings until that widget contract is widened.
+
 ## `vuetify-ext bootstrap app`
 
 Bootstraps the current Vue app to use:
@@ -294,7 +320,9 @@ Supported flags:
 The generated report:
 
 - creates a starter `Form`
-- wires that form into a `Report`
+- exports `create<Name>Report(mode)` as a navigation-aware factory creator
+- returns a screen factory from `create<Name>Report(mode)` instead of returning a `Report` instance directly
+- wires the starter form into a `Report` inside that returned factory
 - exports both from the page index
 - defaults to a centered, fluid layout that matches the library’s current report pattern
 
@@ -429,6 +457,12 @@ vuetify-ext create page report people --non-interactive --title "People Workspac
 Scaffolds a reusable route descriptor under `src/routes/`.
 
 This command intentionally generates lightweight route metadata rather than a hard dependency on `vue-router`. The generated `open()` handler resolves a page factory and opens it through `AppManager`.
+
+Generated route openers also include grouped navigation configuration:
+
+- `navigation: { key, persist }`
+- route keys follow `routes.<route-name>.<target>.<mode>` for report/trigger/collection
+- dashboards use `routes.<route-name>.ui`
 
 ### Generated Files
 
@@ -845,9 +879,20 @@ Before patching the menu, the command verifies that `src/pages/<page>/index.*` e
 - `create<PageName>Collection`
 - `create<PageName>Dashboard`
 
-For target type `trigger`, the generated menu item uses `action: 'function'` and opens the trigger through `AppManager.showTrigger(...)`, because menu items do not have a direct `trigger` action type.
+The generated menu item now uses the native action that matches the target:
 
-For target type `dashboard`, the generated menu item also uses `action: 'function'` and opens the dashboard through `AppManager.showUI(...)`.
+- report -> `action: 'report'`
+- trigger -> `action: 'trigger'`
+- collection -> `action: 'collection'`
+- dashboard -> `action: 'ui'`
+
+The generated callback returns the page factory, not a pre-built instance.
+
+The generated menu item also includes grouped navigation metadata:
+
+- `navigation: () => ({ key, persist })`
+- the key follows the standard page convention such as `pages.people.report.display`
+- the menu stack path always pushes forward instead of replacing history
 
 `vuetify-ext add menu-item` is a direct alias for the same command.
 

@@ -26,6 +26,7 @@ import { Selector, type SelectorParams } from '../ui/selector';
 import { AppTitleBlock, EnvironmentTag, StatusBadge, UserArea, type AppTitleBlockParams, type EnvironmentTagParams, type StatusBadgeParams, type UserAreaParams } from '../ui/shell';
 import { Trigger, type TriggerParams } from '../ui/trigger';
 import { Master, type MasterOptions } from '../master';
+import { setVuetifyExtendedI18n, type AppNavigationOptions, type VuetifyExtendedI18nAdapter } from '../ui/runtime';
 
 export interface VuetifyExtendedDefaults {
   app?: AppParams;
@@ -71,6 +72,8 @@ export type VuetifyExtendedApiConfig =
 export interface VuetifyExtendedAppFactoryOptions {
   api?: VuetifyExtendedApiConfig;
   defaults?: VuetifyExtendedDefaults;
+  i18n?: VuetifyExtendedI18nAdapter;
+  navigation?: AppNavigationOptions;
   dialogs?: DialogOptions;
   notifications?: NotificationOptions;
   app?: AppMain | { params?: AppParams; options?: AppOptions };
@@ -121,6 +124,9 @@ function configureApi(config?: VuetifyExtendedApiConfig) {
 
 function createAppMain(options?: VuetifyExtendedAppFactoryOptions['app'], overrides?: Partial<AppOptions>) {
   if (options instanceof AppMain) {
+    if (overrides) {
+      options.setOptions(overrides);
+    }
     return options;
   }
 
@@ -204,6 +210,10 @@ export function createVuetifyExtendedApp(options: VuetifyExtendedAppFactoryOptio
     configureVuetifyExtendedDefaults(options.defaults);
   }
 
+  if (options.i18n) {
+    setVuetifyExtendedI18n(options.i18n);
+  }
+
   if (options.dialogs) {
     Dialogs.setOptions(options.dialogs);
   }
@@ -216,6 +226,7 @@ export function createVuetifyExtendedApp(options: VuetifyExtendedAppFactoryOptio
   AppManager.init();
 
   const appMain = createAppMain(options.app, {
+    ...(options.navigation ? { navigation: options.navigation } : {}),
     ...(options.menu ? { menu: options.menu } : {}),
     ...(options.udfs ? { udfs: options.udfs } : {}),
     ...(options.makeUDF ? { makeUDF: options.makeUDF } : {}),

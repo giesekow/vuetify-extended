@@ -158,7 +158,7 @@ export class DialogForm extends UIBase {
                   color: 'primary',
                   onClick: () => this.onCancelClicked()
                 },
-                () => 'Cancel'
+                () => this.$uiText('ve.common.cancel', 'Cancel')
               )
             ]
           ),
@@ -172,7 +172,7 @@ export class DialogForm extends UIBase {
               {
                 class: 'title'
               },
-              'Access Denied!'
+              this.$uiText('ve.common.accessDenied', 'Access Denied!')
             )
           ),
           h(
@@ -186,7 +186,7 @@ export class DialogForm extends UIBase {
                   color: 'primary',
                   onClick: () => this.onCancelClicked()
                 },
-                () => 'Cancel'
+                () => this.$uiText('ve.common.cancel', 'Cancel')
               )
             ]
           ),
@@ -216,7 +216,7 @@ export class DialogForm extends UIBase {
                 color: 'primary',
                 onClick: () => this.onCancelClicked()
               },
-              () => 'Cancel'
+              () => this.$uiText('ve.common.cancel', 'Cancel')
             )
           ]
         ),
@@ -230,7 +230,7 @@ export class DialogForm extends UIBase {
             {
               class: 'title'
             },
-            'Loading....'
+            this.$uiText('ve.common.loading', 'Loading...')
           )
         ),
         h(
@@ -240,11 +240,11 @@ export class DialogForm extends UIBase {
             h(VSpacer, {}),
             h(
               VBtn,
-              {
-                color: 'primary',
-                onClick: () => this.onCancelClicked()
-              },
-              () => 'Cancel'
+                {
+                  color: 'primary',
+                  onClick: () => this.onCancelClicked()
+                },
+                () => this.$uiText('ve.common.cancel', 'Cancel')
             )
           ]
         ),

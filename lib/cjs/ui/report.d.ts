@@ -6,12 +6,13 @@ import { Button, ButtonParams } from "./button";
 import { OnHandler } from "./lib";
 import { PRefs } from "./part";
 import { Refs } from "./field";
+import { UIText } from "./runtime";
 export type ReportButtonStyle = 'text' | 'outlined' | 'elevated';
 export interface ReportParams {
     objectType?: any;
     objectId?: any;
     selected?: any;
-    title?: string;
+    title?: UIText;
     confirmOnCancel?: boolean;
     hideMode?: boolean;
     cancelButton?: ButtonParams;
@@ -60,7 +61,7 @@ export interface ReportOptions {
     hasPrevForm?: (report: Report, index: number) => Promise<boolean | undefined> | boolean | undefined;
     removeEventListeners?: (report: Report) => Promise<void> | void;
     attachEventListeners?: (report: Report) => Promise<void> | void;
-    title?: (report: Report, index?: number) => string;
+    title?: (report: Report, index?: number) => UIText;
     sideButtons?: (props: any, context: any, report: Report) => Array<Button> | undefined;
 }
 export interface ExportTemplateInfo {

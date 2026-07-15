@@ -2,7 +2,7 @@
 
 ## Overview
 
-`vuetify-extended` is a library for building Vue 3 + Vuetify 3 user interfaces entirely in TypeScript. Instead of writing most UI in `.vue` single-file components, you compose screens using classes and helper factories.
+`vuetify-extended` is a library for building Vue 3 + Vuetify 4 user interfaces entirely in TypeScript. Instead of writing most UI in `.vue` single-file components, you compose screens using classes and helper factories.
 
 The library is especially oriented toward:
 
@@ -13,6 +13,11 @@ The library is especially oriented toward:
 - Apps that prefer programmatic UI assembly
 
 It also now ships a small CLI entrypoint, `vuetify-ext`, for scaffolding the recommended host-app bootstrap.
+
+For the runtime architecture around localization, browser/device navigation, and persisted shell state, see:
+
+- [Runtime Guides](./runtime/README.md)
+- [Runtime Improvements Design Notes](./runtime-improvements.md)
 
 ## Repository Layout
 
@@ -157,6 +162,100 @@ The `setup` module exports the high-level bootstrap helpers:
 - `validateVuetifyExtendedSetup(...)`
 
 These helpers package the most common host-app setup work into a single entrypoint while keeping the low-level classes available.
+
+They now also support two important runtime integrations directly from bootstrap:
+
+- `i18n`
+  Registers the global text/formatting adapter used by `UIText`, `UIBase.$text(...)`, `UIBase.$uiText(...)`, notifications, dialogs, shell widgets, forms, reports, triggers, and other built-in UI labels.
+- `navigation`
+  Configures `AppMain` history/persistence behavior including browser history, restore-on-load, storage mode, and custom persistence adapters.
+
+Typical host-app shape:
+
+```ts
+createVuetifyExtendedApp({
+  app: {
+    params: {
+      title: { key: 'app.title', fallback: 'Workspace' },
+      showHeader: true,
+    },
+  },
+  i18n: {
+    localeRef,
+    t: (key, values) => i18n.global.t(key, values),
+    formatDate: (value, options) => new Intl.DateTimeFormat(localeRef.value, options).format(new Date(value)),
+    formatNumber: (value, options) => new Intl.NumberFormat(localeRef.value, options).format(value),
+    formatCurrency: (value, options) => new Intl.NumberFormat(localeRef.value, { style: 'currency', currency: 'EUR', ...(options || {}) }).format(value),
+  },
+  navigation: {
+    enabled: true,
+    history: true,
+    persist: true,
+    restoreOnLoad: true,
+    storageMode: 'web-session',
+  },
+})
+```
+
+For a full step-by-step explanation of both:
+
+- a `vue-i18n` integration
+- a lightweight custom translation adapter without `vue-i18n`
+
+read [Localization](./runtime/Localization.md).
+
+## Runtime Text and Navigation
+
+The library now supports shared runtime text resolution and shared runtime navigation restoration.
+
+For practical integration guides, read:
+
+- [Localization](./runtime/Localization.md)
+- [Navigation](./runtime/Navigation.md)
+- [Persistence](./runtime/Persistence.md)
+
+### `UIText`
+
+Public text-bearing params across the shell/runtime now commonly accept:
+
+```ts
+type UIText =
+  | string
+  | { key: string; fallback?: string; values?: Record<string, any> }
+  | (() => string)
+```
+
+Use cases:
+
+- plain text
+  Quick fixed labels.
+- keyed descriptors
+  Host-app translation through the configured i18n adapter.
+- lazy callback text
+  Dynamic labels that are computed at render time.
+
+### Browser / Device History
+
+`AppMain` now mirrors its stack into browser history:
+
+- `showMenu`, `showReport`, `showTrigger`, `showCollection`, and `showUI` push history entries
+- `replace: true` replaces the current history state
+- browser back/forward restores the stack through serialized navigation entries
+- Capacitor hardware back delegates into the same `AppMain.$back()` flow
+
+### Refresh / Resume Persistence
+
+When navigation persistence is enabled:
+
+- the current stack snapshot is saved after stack changes
+- unload/background lifecycle hooks also flush the current snapshot
+- browser environments default to `web-session`
+- Capacitor environments default to `capacitor-preferences`
+- entries are included in persisted restore by default when they are reconstructable
+- `persistState === false` suppresses extra serialized screen state, but does not remove the entry from the restored stack
+- `excludeFromRestore === true` explicitly removes an entry from refresh/resume restore
+
+For persisted restore to work reliably, register reconstructable screens with `AppManager.registerScreen(...)` and navigate with `navigationKey` plus serializable `navigationParams`.
 
 ## CLI
 
@@ -383,7 +482,7 @@ Common usage patterns include:
 
 The dependency list shows this package is designed for rich enterprise-style screens. Integrations include:
 
-- Vuetify 3
+- Vuetify 4
 - Vue 3
 - Feathers client
 - Socket.IO

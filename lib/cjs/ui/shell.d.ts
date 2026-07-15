@@ -1,15 +1,16 @@
 import { VNode } from "vue";
 import { UIBase } from "./base";
 import { Button } from "./button";
+import { type UIText } from "./runtime";
 export interface ShellResponsiveVisibilityParams {
     hideOnMobile?: boolean;
     hideOnNonMobile?: boolean;
     mobileLocation?: 'header' | 'drawer';
 }
 export interface AppTitleBlockParams extends ShellResponsiveVisibilityParams {
-    title?: string;
-    subtitle?: string;
-    overline?: string;
+    title?: UIText;
+    subtitle?: UIText;
+    overline?: UIText;
     icon?: string;
     image?: string;
     color?: string;
@@ -24,12 +25,12 @@ export declare class AppTitleBlock extends UIBase {
     render(): VNode | undefined;
 }
 export interface EnvironmentTagParams extends ShellResponsiveVisibilityParams {
-    text?: string;
+    text?: UIText;
     color?: string;
     variant?: 'flat' | 'text' | 'outlined' | 'plain' | 'elevated' | 'tonal';
     size?: 'x-small' | 'small' | 'default' | 'large' | 'x-large';
     disabled?: boolean;
-    title?: string;
+    title?: UIText;
 }
 export interface EnvironmentTagOptions {
     onClicked?: (widget: EnvironmentTag) => Promise<void> | void;
@@ -45,7 +46,7 @@ export declare class EnvironmentTag extends UIBase {
     render(): VNode | undefined;
 }
 export interface StatusBadgeParams extends ShellResponsiveVisibilityParams {
-    text?: string;
+    text?: UIText;
     icon?: string;
     color?: string;
     variant?: 'flat' | 'text' | 'outlined' | 'plain' | 'elevated' | 'tonal';
@@ -61,7 +62,7 @@ export declare class StatusBadge extends UIBase {
 }
 export interface ShellIconActionParams extends ShellResponsiveVisibilityParams {
     icon?: string;
-    title?: string;
+    title?: UIText;
     color?: string;
     variant?: 'flat' | 'text' | 'outlined' | 'plain' | 'elevated' | 'tonal';
     size?: 'x-small' | 'small' | 'default' | 'large' | 'x-large';
@@ -83,9 +84,9 @@ export declare class ShellIconAction extends UIBase {
     render(): VNode | undefined;
 }
 export interface UserAreaParams extends ShellResponsiveVisibilityParams {
-    name?: string;
-    subtitle?: string;
-    email?: string;
+    name?: UIText;
+    subtitle?: UIText;
+    email?: UIText;
     accountId?: string;
     initials?: string;
     icon?: string;

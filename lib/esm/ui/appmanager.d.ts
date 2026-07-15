@@ -1,5 +1,6 @@
 import { PrinterBase } from "../misc";
 import { AppMain } from "./appmain";
+import type { AppScreenParams } from "./appmain";
 import { ReportMode, UIBase } from "./base";
 import { Collection } from "./collection";
 import { DialogForm } from "./dialogform";
@@ -8,11 +9,14 @@ import { Menu } from "./menu";
 import { Report } from "./report";
 import { Selector } from "./selector";
 import { Trigger } from "./trigger";
+import { type NavigationEntry, type NavigationPersistIntent, type NavigationRegistryEntry, type NavigationScreenFactory, type NavigationScreenType } from "./runtime";
 export declare class AppManager {
     private static app;
     private static printer;
     private static channel;
     private static appData;
+    private static navigationRegistry;
+    private static navigationItemCache;
     static set(key: string | symbol, value: any): void;
     static get(key: string | symbol): any;
     static clear(): void;
@@ -27,15 +31,43 @@ export declare class AppManager {
     static once(name: string, listener: EventListener, reference?: string | symbol): void;
     static clearListeners(reference?: string | symbol): void;
     static removeListener(name: string, listenerToRemove?: EventListener): void;
-    static showMenu(menu: Menu, params?: any): Boolean;
+    static registerScreen<T extends UIBase>(key: string, entry: Omit<NavigationRegistryEntry<T>, 'key'> | NavigationRegistryEntry<T>): NavigationRegistryEntry<T>;
+    static unregisterScreen(key: string): void;
+    static resolveScreenRegistration(key?: string): NavigationRegistryEntry<any> | undefined;
+    static attachNavigation<T extends UIBase>(item: T, template: {
+        key?: string;
+        type?: NavigationScreenType;
+        persistState?: NavigationPersistIntent;
+        excludeFromRestore?: boolean;
+    }): T;
+    private static isDevelopmentMode;
+    private static warnNavigation;
+    private static canAccessResolvedScreen;
+    static normalizeScreenParams(params?: AppScreenParams, fallbackType?: NavigationScreenType): AppScreenParams;
+    static prepareScreenTarget<T extends UIBase>(type: NavigationScreenType, target: T | NavigationScreenFactory<T>, params?: AppScreenParams): Promise<{
+        item?: T;
+        params: AppScreenParams;
+    }>;
+    static cacheNavigationItem(entryId: string, item: UIBase): void;
+    static clearNavigationCache(entryId?: string): void;
+    static resolveNavigationEntry(entry: NavigationEntry): Promise<UIBase | undefined>;
+    static buildNavigationEntry(type: NavigationScreenType, item: UIBase, params?: any, existingEntry?: NavigationEntry): Promise<NavigationEntry>;
+    static showMenu(menu: Menu | NavigationScreenFactory<Menu>, params?: AppScreenParams): Boolean;
     static getUDFs(objectType: string | string[]): Promise<any[]>;
     static makeUDF(options: any, mode?: ReportMode): Field | undefined;
-    static showCollection(collection: Collection, params?: any, replace?: boolean): boolean;
-    static showTrigger(trigger: Trigger, params?: any, replace?: boolean): boolean;
-    static showReport(report: Report, params?: any, replace?: boolean): boolean;
+    static showCollection(collection: Collection | NavigationScreenFactory<Collection>, params?: AppScreenParams, replace?: boolean): boolean;
+    static showTrigger(trigger: Trigger | NavigationScreenFactory<Trigger>, params?: AppScreenParams, replace?: boolean): boolean;
+    static showReport(report: Report | NavigationScreenFactory<Report>, params?: AppScreenParams, replace?: boolean): boolean;
     static showDialog(dialog: DialogForm, params?: any): boolean;
     static showSelector(selector: Selector, params?: any): boolean;
-    static showUI(ui: UIBase, params?: any, replace?: boolean): boolean;
+    static showUI(ui: UIBase | NavigationScreenFactory<UIBase>, params?: AppScreenParams, replace?: boolean): boolean;
     static reload(): boolean;
     static back(): void;
+    static syncNavigationState(options?: {
+        replaceHistory?: boolean;
+        skipHistory?: boolean;
+    }): Promise<boolean>;
+    static supportsHistory(): boolean;
+    static goBackWithFallback(fallback: () => Promise<void> | void): Promise<void>;
+    static backHistorySilently(): boolean;
 }

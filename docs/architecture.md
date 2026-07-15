@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`vuetify-extended` is a TypeScript-first UI toolkit built on top of Vue 3 and Vuetify 3. Its main goal is to let application developers define screens, forms, and UI behavior in TypeScript classes instead of Vue SFC templates.
+`vuetify-extended` is a TypeScript-first UI toolkit built on top of Vue 3 and Vuetify 4. Its main goal is to let application developers define screens, forms, and UI behavior in TypeScript classes instead of Vue SFC templates.
 
 The library is not a thin wrapper around Vuetify components. It adds:
 
@@ -85,6 +85,20 @@ This is handled by `src/setup`.
 - `validateVuetifyExtendedSetup(...)` checks the most common bootstrap mistakes
 
 This layer does not replace the lower-level primitives. It packages them into a cleaner host-app entrypoint and now works cleanly with the optional `AppMain` header/footer shell.
+
+## Runtime Improvements
+
+Three closely related runtime improvements are now part of the runtime architecture:
+
+- multi-language UI support through a shared i18n adapter
+- browser/device history integration backed by serialized navigation entries
+- persisted `AppMain` / `AppManager` stack restoration across refresh and app resume
+
+These decisions are captured in:
+
+- [Runtime Improvements Design Notes](./runtime-improvements.md)
+
+That document remains the deeper decision record for the current implementation and future follow-up work around the same runtime surfaces.
 
 ## High-Level Runtime View
 

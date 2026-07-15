@@ -22,7 +22,7 @@ npm run build
 
 ## What It Includes
 
-- Vue 3 + Vuetify 3 + Vite
+- Vue 3 + Vuetify 4 + Vite
 - `createVuetifyExtendedApp(...)` bootstrap usage
 - `src/bootstrap.ts` for app/bootstrap wiring so `main.ts` stays clean
 - Dialogs and notifications roots mounted from the package

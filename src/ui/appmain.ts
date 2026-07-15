@@ -1,6 +1,6 @@
 import { VNode, Ref, isVNode } from "vue";
 import { ReportMode, UIBase } from "./base";
-import { Menu } from "./menu";
+import { Menu, prepareMenuReplayTarget } from "./menu";
 import { Report } from "./report";
 import { Collection } from "./collection";
 import { Selector } from "./selector";
@@ -9,17 +9,19 @@ import { sleep } from "../misc";
 import { Dialogs } from "./dialogs";
 import { Field } from "./field";
 import { Button } from "./button";
+import { AppManager } from "./appmanager";
 import { Api } from "../api";
 import { DialogForm } from "./dialogform";
 import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent } from "./shortcut";
 import { VApp, VAppBar, VAppBarTitle, VBtn, VCard, VCardText, VFooter, VMain, VMenu, VNavigationDrawer, VDivider } from 'vuetify/components';
 import { Master } from "../master";
+import { attachCapacitorBackButton, createNavigationPersistenceAdapter, createNavigationId, detectCapacitorEnvironment, isValidSnapshot, makeSerializable, navigationStorageKey, resolveDefaultNavigationStorageMode, type AppNavigationOptions, type AppSnapshot, type InlineNavigationOptions, type NavigationEntry, type NavigationMenuRestoreStep, type NavigationPersistenceAdapter, type NavigationScreenFactory, type NavigationScreenType, type NavigationStorageMode, type UIText } from "./runtime";
 
 export interface AppParams {
   ref?: string;
   udfQuery?: any;
-  title?: string;
-  mobileTitle?: string;
+  title?: UIText;
+  mobileTitle?: UIText;
   mobileLogo?: string;
   showHeader?: boolean;
   showFooter?: boolean;
@@ -28,7 +30,7 @@ export interface AppParams {
   fabColor?: string;
   fabPosition?: 'bottom-right'|'bottom-left';
   fabDirection?: 'up'|'left';
-  fabLabel?: string;
+  fabLabel?: UIText;
   fabShortcut?: string;
   headerLayout?: 'balanced'|'auto'|'stacked';
   footerLayout?: 'balanced'|'auto'|'stacked';
@@ -55,6 +57,7 @@ export interface AppOptions {
   udfs?: (app: AppMain, objectType: string|string[], query: any) => Promise<any[]>;
   makeUDF?: (app: AppMain, options: any) => Field|undefined;
   fabButtons?: AppFabButtonsFactory;
+  navigation?: AppNavigationOptions;
   header?: (app: AppMain) => AppShellContent | AppShellContent[];
   footer?: (app: AppMain) => AppShellContent | AppShellContent[];
   headerStart?: (app: AppMain) => AppShellContent | AppShellContent[];
@@ -73,16 +76,26 @@ export interface AppScreenParams {
   fabColor?: string;
   fabPosition?: 'bottom-right'|'bottom-left';
   fabDirection?: 'up'|'left';
-  fabLabel?: string;
+  fabLabel?: UIText;
   fabShortcut?: string;
   fabButtons?: AppFabButtonsFactory;
+  navigationKey?: string;
+  navigationType?: NavigationScreenType;
+  navigationTitle?: UIText;
+  navigationParams?: any;
+  navigationState?: any;
+  navigationMenuRestorePath?: NavigationMenuRestoreStep[];
+  persistState?: boolean | 'default' | 'local';
+  excludeFromRestore?: boolean;
+  navigation?: InlineNavigationOptions<any>;
   [key: string]: any;
 }
 
 export interface AppStackItem {
   type: "menu"|"report"|"trigger"|"collection"|"selector"|"ui";
   item: UIBase,
-  params: AppScreenParams
+  params: AppScreenParams,
+  navigation?: NavigationEntry
 }
 
 export class AppMain extends UIBase {
@@ -110,6 +123,26 @@ export class AppMain extends UIBase {
   private footerHeight: Ref<number>;
   private footerElement?: HTMLElement;
   private footerResizeObserver?: ResizeObserver;
+  private navigationPersistence?: NavigationPersistenceAdapter;
+  private navigationOptions: AppNavigationOptions;
+  private browserNavigationAttached = false;
+  private ignoreNextPopState = false;
+  private restoringNavigation = false;
+  private pendingManagedBackToken?: symbol;
+  private pendingManagedBackFallback?: () => Promise<void> | void;
+  private pendingManagedBackTimer?: ReturnType<typeof setTimeout>;
+  private detachCapacitorBackHandler?: () => void;
+  private readonly boundPopStateHandler = (ev: PopStateEvent) => {
+    void this.onPopState(ev);
+  };
+  private readonly boundPersistenceFlushHandler = () => {
+    void this.syncCurrentNavigationState();
+  };
+  private readonly boundVisibilityHandler = () => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      void this.syncCurrentNavigationState();
+    }
+  };
   private static defaultParams: AppParams = {
     showHeader: false,
     showFooter: false,
@@ -118,7 +151,7 @@ export class AppMain extends UIBase {
     fabColor: 'primary',
     fabPosition: 'bottom-right',
     fabDirection: 'up',
-    fabLabel: 'Quick Actions',
+    fabLabel: { key: 've.app.quickActions', fallback: 'Quick Actions' },
     fabShortcut: undefined,
     headerLayout: 'balanced',
     footerLayout: 'balanced',
@@ -144,6 +177,15 @@ export class AppMain extends UIBase {
     this.compactShellLayout = this.$makeRef(typeof window !== 'undefined' ? window.innerWidth < 960 : false);
     this.mobileHeaderDrawerOpen = this.$makeRef(false);
     this.footerHeight = this.$makeRef(0);
+    this.navigationOptions = {
+      enabled: false,
+      history: true,
+      persist: true,
+      restoreOnLoad: true,
+      storageMode: resolveDefaultNavigationStorageMode(),
+      storageKey: navigationStorageKey(),
+      ...(options?.navigation || {}),
+    };
   }
 
   static setDefault(value: AppParams, reset?: boolean): void {
@@ -162,6 +204,29 @@ export class AppMain extends UIBase {
     this.params.value = {...this.params.value, ...params};
   }
 
+  setOptions(options: Partial<AppOptions>) {
+    if (!options) {
+      return;
+    }
+
+    const navigation = options.navigation;
+    const rest = { ...options };
+    delete (rest as any).navigation;
+
+    this.options = {
+      ...this.options,
+      ...rest,
+      ...(navigation ? { navigation } : {}),
+    };
+
+    if (navigation) {
+      this.navigationOptions = {
+        ...this.navigationOptions,
+        ...navigation,
+      };
+    }
+  }
+
   get $params(): AppParams {
     return this.params.value;
   }
@@ -174,9 +239,459 @@ export class AppMain extends UIBase {
     return this.activeItemRefState;
   }
 
+  get $supportsBrowserHistory() {
+    return this.supportsBrowserHistory();
+  }
+
+  get $navigationEnabled() {
+    return this.navigationEnabled();
+  }
+
   private syncStackRefs() {
     this.stackRefState.value = [...this.stack];
     this.activeItemRefState.value = this.getActiveStackItem();
+  }
+
+  private navigationEnabled() {
+    return this.navigationOptions.enabled === true;
+  }
+
+  private supportsBrowserHistory() {
+    return this.navigationEnabled() && this.navigationOptions.history !== false && typeof window !== 'undefined' && !!window.history;
+  }
+
+  private supportsPersistence() {
+    return this.navigationEnabled() && this.navigationOptions.persist !== false;
+  }
+
+  private async ensureNavigationPersistence() {
+    if (this.navigationPersistence) {
+      return this.navigationPersistence;
+    }
+
+    if (this.navigationOptions.persistence) {
+      this.navigationPersistence = this.navigationOptions.persistence;
+      return this.navigationPersistence;
+    }
+
+    this.navigationPersistence = await createNavigationPersistenceAdapter(
+      this.navigationOptions.storageMode || resolveDefaultNavigationStorageMode(),
+      this.navigationOptions.storageKey,
+    );
+    return this.navigationPersistence;
+  }
+
+  private shouldIncludePersistedEntry(entry: NavigationEntry | undefined, _index: number) {
+    if (!entry || entry.excludeFromRestore === true) {
+      return false;
+    }
+
+    if (entry.type === 'menu') {
+      return true;
+    }
+
+    if (entry.key) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private createSnapshot(includeExcludedFromRestore: boolean = false, includeTransientState: boolean = false): AppSnapshot {
+    return {
+      version: 1,
+      savedAt: Date.now(),
+      stack: this.stack
+        .map((entry, index) => ({ navigation: entry.navigation, index }))
+        .filter(({ navigation, index }) => includeExcludedFromRestore || this.shouldIncludePersistedEntry(navigation, index))
+        .map(({ navigation }) => navigation)
+        .filter((entry): entry is NavigationEntry => !!entry)
+        .map((entry) => ({
+          ...entry,
+          params: makeSerializable(entry.params),
+          state: includeTransientState ? makeSerializable(entry.state) : this.createPersistedEntryState(entry),
+        })),
+    };
+  }
+
+  private createPersistedEntryState(entry: NavigationEntry) {
+    const serializedState = makeSerializable(entry.state);
+    if (entry.persistState !== false) {
+      return serializedState;
+    }
+
+    if (entry.type === 'collection' && serializedState && typeof serializedState === 'object') {
+      return {
+        restoreMode: 'shallow',
+        currentObject: (serializedState as any).currentObject,
+        prevState: (serializedState as any).prevState,
+        selectedIds: makeSerializable((serializedState as any).selectedIds),
+        currentIndex: (serializedState as any).currentIndex,
+      };
+    }
+
+    return undefined;
+  }
+
+  private createBrowserState() {
+    return {
+      __veNavigation: true,
+      snapshot: this.createSnapshot(true, true),
+    };
+  }
+
+  private serializeSnapshotEntry(entry?: NavigationEntry) {
+    if (!entry) {
+      return undefined;
+    }
+
+    return JSON.stringify({
+      type: entry.type,
+      key: entry.key,
+      mode: entry.mode,
+      params: makeSerializable(entry.params),
+      state: makeSerializable(entry.state),
+      menuRestorePath: makeSerializable(entry.menuRestorePath),
+    });
+  }
+
+  private shouldRewindBrowserHistoryAfterRestore(snapshot: AppSnapshot) {
+    if (!this.supportsBrowserHistory() || typeof window === 'undefined') {
+      return false;
+    }
+
+    const browserSnapshot = window.history.state?.snapshot;
+    if (!browserSnapshot || !isValidSnapshot(browserSnapshot)) {
+      return false;
+    }
+
+    const restoredActive = snapshot.stack[snapshot.stack.length - 1];
+    const browserActive = browserSnapshot.stack[browserSnapshot.stack.length - 1];
+    if (!restoredActive || !browserActive) {
+      return false;
+    }
+
+    if (restoredActive.type !== 'collection' || browserActive.type !== 'collection') {
+      return false;
+    }
+
+    if ((restoredActive.key || '') !== (browserActive.key || '')) {
+      return false;
+    }
+
+    if (browserActive.mode !== 'edit' && browserActive.mode !== 'display') {
+      return false;
+    }
+
+    const restoredState = restoredActive.state as any;
+    const browserState = browserActive.state as any;
+
+    if (restoredState?.restoreMode !== 'shallow') {
+      return false;
+    }
+
+    if (browserState?.currentObject !== 'report') {
+      return false;
+    }
+
+    return true;
+  }
+
+  private rewindBrowserHistorySilently() {
+    if (!this.supportsBrowserHistory() || typeof window === 'undefined') {
+      return false;
+    }
+
+    this.ignoreNextPopState = true;
+    window.history.back();
+    return true;
+  }
+
+  private async syncNavigationPersistence() {
+    if (!this.supportsPersistence() || this.restoringNavigation) {
+      return;
+    }
+
+    const adapter = await this.ensureNavigationPersistence();
+    const snapshot = this.createSnapshot(false);
+    if (snapshot.stack.length === 0) {
+      await adapter.clear();
+      return;
+    }
+
+    await adapter.save(snapshot);
+  }
+
+  async syncCurrentNavigationState(options?: { replaceHistory?: boolean; skipHistory?: boolean }) {
+    if (!this.navigationEnabled()) {
+      this.syncStackRefs();
+      return;
+    }
+
+    for (const entry of this.stack) {
+      if (entry.navigation) {
+        entry.navigation = await this.buildNavigationEntry(entry.navigation.type, entry.item, entry.params, entry.navigation);
+      }
+    }
+
+    this.syncStackRefs();
+    await this.syncNavigationPersistence();
+
+    if (options && !options.skipHistory) {
+      this.syncBrowserHistory(options?.replaceHistory);
+    }
+  }
+
+  private syncBrowserHistory(replace?: boolean) {
+    if (!this.supportsBrowserHistory() || this.restoringNavigation) {
+      return;
+    }
+
+    const state = this.createBrowserState();
+    try {
+      if (replace) {
+        window.history.replaceState(state, '', window.location.href);
+      } else {
+        window.history.pushState(state, '', window.location.href);
+      }
+    } catch (_error) {
+      //
+    }
+  }
+
+  private async afterStackChanged(options?: { replaceHistory?: boolean; skipHistory?: boolean }) {
+    this.syncStackRefs();
+    if (this.navigationEnabled()) {
+      await this.syncNavigationPersistence();
+    }
+
+    if (!options?.skipHistory) {
+      this.syncBrowserHistory(options?.replaceHistory);
+    }
+  }
+
+  private buildNavigationTitle(item: UIBase, params?: AppScreenParams) {
+    return params?.navigationTitle
+      ? this.$text(params.navigationTitle)
+      : this.$text((item as any)?.$params?.title || (item as any)?.$params?.text || '');
+  }
+
+  private async buildNavigationEntry(type: NavigationScreenType, item: UIBase, params?: AppScreenParams, existingEntry?: NavigationEntry) {
+    if (!this.navigationEnabled()) {
+      return undefined;
+    }
+
+    const entry = await AppManager.buildNavigationEntry(type, item, {
+      ...(params || {}),
+      navigationTitle: this.buildNavigationTitle(item, params),
+      navigationParams: params?.navigationParams,
+      navigationState: params?.navigationState,
+      navigationMenuRestorePath: params?.navigationMenuRestorePath,
+      persistState: params?.persistState,
+      excludeFromRestore: params?.excludeFromRestore,
+      navigationKey: params?.navigationKey,
+      mode: (item as any)?.$params?.mode,
+    }, existingEntry);
+
+    if (!entry.id) {
+      entry.id = createNavigationId();
+    }
+
+    AppManager.cacheNavigationItem(entry.id, item);
+    return entry;
+  }
+
+  private async rebuildStackFromEntries(entries: NavigationEntry[]) {
+    const nextStack: AppStackItem[] = [];
+
+    for (let index = 0; index < entries.length; index += 1) {
+      const entry = entries[index];
+      let item = await AppManager.resolveNavigationEntry(entry);
+      const previousStackItem = nextStack[nextStack.length - 1];
+
+      if (!item && entry.type === 'menu' && previousStackItem?.item instanceof Menu && entry.menuRestorePath?.length) {
+        const replayStep = entry.menuRestorePath[entry.menuRestorePath.length - 1];
+        const preparedReplay = await prepareMenuReplayTarget(previousStackItem.item, replayStep);
+        if (preparedReplay?.target) {
+          const replayParams: AppScreenParams = {
+            ...(preparedReplay.params || {}),
+            ...(entry.params || {}),
+            navigationKey: entry.key,
+            navigationType: entry.type,
+            navigationTitle: entry.title,
+            navigationParams: entry.params,
+            navigationState: entry.state,
+            navigationMenuRestorePath: entry.menuRestorePath,
+            persistState: entry.persistState,
+            excludeFromRestore: entry.excludeFromRestore,
+            navigation: {
+              ...((preparedReplay.params || {}).navigation || {}),
+              key: entry.key,
+              type: entry.type,
+              title: entry.title,
+              params: entry.params,
+              state: entry.state,
+              menuRestorePath: entry.menuRestorePath,
+              persist: entry.persistState,
+              excludeFromRestore: entry.excludeFromRestore,
+            },
+          };
+          const replayResolved = await AppManager.prepareScreenTarget('menu', preparedReplay.target, replayParams);
+          item = replayResolved.item;
+          if (item && typeof (item as any)?.access === 'function') {
+            const allowed = await (item as any).access();
+            if (!allowed) {
+              item = undefined;
+            }
+          }
+          if (item && preparedReplay.mode && (item as any)?.$params) {
+            (item as any).$params.mode = preparedReplay.mode;
+          }
+        }
+      }
+
+      if (!item && index === 0 && entry.type === 'menu') {
+        item = await this.menu();
+      }
+      if (!item) {
+        return false;
+      }
+
+      if (item instanceof Menu && previousStackItem?.item instanceof Menu) {
+        item.setParent(previousStackItem.item);
+      }
+      if (item instanceof Menu) {
+        item.setReplayPath(entry.menuRestorePath || []);
+      }
+
+      nextStack.push({
+        type: entry.type === 'dashboard' ? 'ui' : (entry.type as AppStackItem['type']),
+        item,
+        params: {
+          ...(entry.params || {}),
+          navigationKey: entry.key,
+          navigationTitle: entry.title,
+          navigationParams: entry.params,
+          navigationState: entry.state,
+          navigationMenuRestorePath: entry.menuRestorePath,
+          persistState: entry.persistState,
+          excludeFromRestore: entry.excludeFromRestore,
+        },
+        navigation: entry,
+      });
+    }
+
+    this.stack.forEach((entry) => entry.item.removeEventListeners());
+    this.stack = nextStack;
+    this.index.value = this.stack.length - 1;
+    await this.activateCurrentItem();
+    await this.syncNavigationPersistence();
+    return true;
+  }
+
+  private async restoreFromSnapshot(snapshot?: AppSnapshot) {
+    if (!snapshot || !isValidSnapshot(snapshot) || snapshot.stack.length === 0) {
+      return false;
+    }
+
+    this.restoringNavigation = true;
+    try {
+      const restored = await this.rebuildStackFromEntries(snapshot.stack);
+      return restored;
+    } finally {
+      this.restoringNavigation = false;
+    }
+  }
+
+  private async restorePersistedNavigation() {
+    if (!this.supportsPersistence() || this.navigationOptions.restoreOnLoad === false) {
+      return false;
+    }
+
+    const adapter = await this.ensureNavigationPersistence();
+    const snapshot = await adapter.load();
+    const restored = await this.restoreFromSnapshot(snapshot);
+    if (restored && snapshot && this.shouldRewindBrowserHistoryAfterRestore(snapshot)) {
+      this.rewindBrowserHistorySilently();
+    }
+    return restored;
+  }
+
+  private async onPopState(ev: PopStateEvent) {
+    if (this.ignoreNextPopState) {
+      this.ignoreNextPopState = false;
+      return;
+    }
+
+    const snapshot = ev.state?.snapshot;
+    if (!snapshot || !isValidSnapshot(snapshot)) {
+      if (this.pendingManagedBackToken) {
+        await this.runPendingManagedBackFallback();
+      }
+      return;
+    }
+
+    this.clearPendingManagedBack();
+    await this.restoreFromSnapshot(snapshot);
+  }
+
+  private clearPendingManagedBack() {
+    this.pendingManagedBackToken = undefined;
+    this.pendingManagedBackFallback = undefined;
+    if (this.pendingManagedBackTimer) {
+      clearTimeout(this.pendingManagedBackTimer);
+      this.pendingManagedBackTimer = undefined;
+    }
+  }
+
+  private async runPendingManagedBackFallback() {
+    const fallback = this.pendingManagedBackFallback;
+    this.clearPendingManagedBack();
+    if (fallback) {
+      await fallback();
+    }
+  }
+
+  private async requestManagedHistoryBack(fallback: () => Promise<void> | void) {
+    if (!this.supportsBrowserHistory() || typeof window === 'undefined') {
+      await fallback();
+      return;
+    }
+
+    this.clearPendingManagedBack();
+    const token = Symbol('managed-back');
+    this.pendingManagedBackToken = token;
+    this.pendingManagedBackFallback = fallback;
+    this.pendingManagedBackTimer = setTimeout(() => {
+      if (this.pendingManagedBackToken === token) {
+        void this.runPendingManagedBackFallback();
+      }
+    }, 150);
+
+    window.history.back();
+  }
+
+  private async popCurrentStackItemLocally(item?: UIBase) {
+    const target = item || this.getActiveStackItem()?.item;
+    if (!target) {
+      return;
+    }
+
+    const ui = this.stack.find((inst) => inst.item.$id === target.$id);
+    if (!ui) {
+      return;
+    }
+
+    const index = this.stack.indexOf(ui);
+    if (index < 0) {
+      return;
+    }
+
+    this.stack.splice(index, 1);
+    ui.item.clearListeners(this.$id);
+    this.index.value = this.stack.length - 1;
+    await this.activateCurrentItem();
+    await this.afterStackChanged({ replaceHistory: true, skipHistory: true });
   }
 
   props() {
@@ -237,7 +752,7 @@ export class AppMain extends UIBase {
                   boxSizing: 'border-box',
                 },
               },
-              [headerBar || header || h(VAppBarTitle, {}, () => this.params.value.title || 'Application')]
+              [headerBar || header || h(VAppBarTitle, {}, () => this.$text(this.params.value.title, this.$uiText('ve.app.title', 'Application')))]
             )
           ),
         ] : []),
@@ -425,8 +940,8 @@ export class AppMain extends UIBase {
           icon: config.fabIcon,
           size: 'large',
           elevation: 8,
-          title: config.fabLabel,
-          'aria-label': config.fabLabel,
+          title: this.$text(config.fabLabel),
+          'aria-label': this.$text(config.fabLabel),
           style: {
             borderRadius: '999px',
           },
@@ -755,7 +1270,7 @@ export class AppMain extends UIBase {
       return undefined;
     }
 
-    const title = this.params.value.mobileTitle || this.params.value.title || 'Application';
+    const title = this.$text(this.params.value.mobileTitle || this.params.value.title, this.$uiText('ve.app.title', 'Application'));
     const logo = this.params.value.mobileLogo;
     const h = this.$h;
 
@@ -848,8 +1363,8 @@ export class AppMain extends UIBase {
         icon: 'mdi-menu',
         variant: 'text',
         size: 'default',
-        title: 'Open header menu',
-        'aria-label': 'Open header menu',
+        title: this.$uiText('ve.app.openHeaderMenu', 'Open header menu'),
+        'aria-label': this.$uiText('ve.app.openHeaderMenu', 'Open header menu'),
         style: {
           height: '40px',
           width: '40px',
@@ -980,12 +1495,12 @@ export class AppMain extends UIBase {
             fontSize: '1rem',
             fontWeight: '700',
           },
-        }, 'Header Menu'),
+        }, this.$uiText('ve.app.headerMenu', 'Header Menu')),
         h(VBtn, {
           icon: 'mdi-close',
           variant: 'text',
           size: 'small',
-          'aria-label': 'Close header menu',
+          'aria-label': this.$uiText('ve.app.closeHeaderMenu', 'Close header menu'),
           onClick: () => {
             this.mobileHeaderDrawerOpen.value = false;
           },
@@ -1046,10 +1561,24 @@ export class AppMain extends UIBase {
   }
 
   async $reload() {
-    await this.loadApp();
+    await this.loadApp(false);
   }
 
-  private async loadApp() {
+  async $goBackWithFallback(fallback: () => Promise<void> | void) {
+    await this.requestManagedHistoryBack(fallback);
+  }
+
+  $backBrowserHistorySilently() {
+    if (!this.supportsBrowserHistory() || typeof window === 'undefined') {
+      return false;
+    }
+
+    this.ignoreNextPopState = true;
+    window.history.back();
+    return true;
+  }
+
+  private async loadApp(preferRestore: boolean = true) {
     this.fabOpen.value = false;
     this.mobileHeaderDrawerOpen.value = false;
     Dialogs.$showProgress({})
@@ -1063,9 +1592,18 @@ export class AppMain extends UIBase {
     this.selectors = [];
     this.index.value = -1;
     this.selectorCount.value = 0;
+    this.dialogs = [];
+    this.dialogCount.value = 0;
 
-    if (menu) {
-      await this.$showMenu(menu);
+    let restored = false;
+    if (preferRestore) {
+      restored = await this.restorePersistedNavigation();
+    }
+
+    if (!restored && menu) {
+      await this.$showMenu(menu, undefined, true);
+    } else if (restored) {
+      this.syncBrowserHistory(true);
     }
     this.loaded.value = true;
     Dialogs.$hideProgress();
@@ -1108,97 +1646,145 @@ export class AppMain extends UIBase {
       xl: options.gridSize?.xl,
       xxl: options.gridSize?.xxl,
       ...(options.defaultValue || options.defaultValue === 0  ? {default: options.defaultValue}: {}),
-      ...(options.fieldType === 'text' && options.isAutoGen && mode && ['create', 'edit'].includes(mode) ? {readonly: !options.autoGenInfo?.enableEdit, hint: 'Is Auto Generated', default: '<AUTO>'}: {})
+      ...(options.fieldType === 'text' && options.isAutoGen && mode && ['create', 'edit'].includes(mode) ? {
+        readonly: !options.autoGenInfo?.enableEdit,
+        hint: { key: 've.field.autoGenerated', fallback: 'Is Auto Generated' },
+        default: { key: 've.field.autoGeneratedPlaceholder', fallback: '<AUTO>' },
+      } : {})
     }, {
       selectOptions: () => options.options || []
     })
   }
 
-  async $showMenu(menu: Menu, params?: any) {
+  async $showMenu(menu: Menu | NavigationScreenFactory<Menu>, params?: AppScreenParams, replaceHistory?: boolean) {
+    const resolved = await AppManager.prepareScreenTarget('menu', menu, params);
+    if (!resolved.item) {
+      return;
+    }
+
     if (this.index.value >= 0 && this.index.value < this.stack.length) {
       this.stack[this.index.value].item.removeEventListeners();
     }
+
+    const navigation = await this.buildNavigationEntry('menu', resolved.item, resolved.params || {});
+    resolved.item.setReplayPath(navigation?.menuRestorePath || []);
 
     this.stack.push({
       type: "menu",
-      item: menu,
-      params: params || {}
+      item: resolved.item,
+      params: resolved.params || {},
+      navigation,
     })
 
     this.index.value = this.stack.length - 1;
     await this.activateCurrentItem();
+    await this.afterStackChanged({ replaceHistory });
   }
 
-  async $showReport(report: Report, params?: any, replace?: boolean) {
+  async $showReport(report: Report | NavigationScreenFactory<Report>, params?: AppScreenParams, replace?: boolean) {
+    const resolved = await AppManager.prepareScreenTarget('report', report, params);
+    if (!resolved.item) {
+      return;
+    }
 
     if (this.index.value >= 0 && this.index.value < this.stack.length) {
       this.stack[this.index.value].item.removeEventListeners();
     }
 
-    if (replace) await this.$pop()
+    if (replace) await this.$pop(undefined, true)
+
+    const navigation = await this.buildNavigationEntry('report', resolved.item, resolved.params || {});
 
     this.stack.push({
       type: "report",
-      item: report,
-      params: params || {}
+      item: resolved.item,
+      params: resolved.params || {},
+      navigation,
     })
 
     this.index.value = this.stack.length - 1;
     await this.activateCurrentItem();
+    await this.afterStackChanged({ replaceHistory: !!replace });
   }
 
-  async $showCollection(collection: Collection, params?: any, replace?: boolean) {
+  async $showCollection(collection: Collection | NavigationScreenFactory<Collection>, params?: AppScreenParams, replace?: boolean) {
+    const resolved = await AppManager.prepareScreenTarget('collection', collection, params);
+    if (!resolved.item) {
+      return;
+    }
 
     if (this.index.value >= 0 && this.index.value < this.stack.length) {
       this.stack[this.index.value].item.removeEventListeners();
     }
 
-    if (replace) await this.$pop()
+    if (replace) await this.$pop(undefined, true)
+
+    const navigation = await this.buildNavigationEntry('collection', resolved.item, resolved.params || {});
 
     this.stack.push({
       type: "collection",
-      item: collection,
-      params: params || {}
+      item: resolved.item,
+      params: resolved.params || {},
+      navigation,
     })
 
     this.index.value = this.stack.length - 1;
     await this.activateCurrentItem();
+    this.stack[this.index.value].navigation = await this.buildNavigationEntry('collection', resolved.item, resolved.params || {}, this.stack[this.index.value].navigation);
+    await this.afterStackChanged({ replaceHistory: !!replace });
   }
 
-  async $showTrigger(trigger: Trigger, params?: any, replace?: boolean) {
+  async $showTrigger(trigger: Trigger | NavigationScreenFactory<Trigger>, params?: AppScreenParams, replace?: boolean) {
+    const resolved = await AppManager.prepareScreenTarget('trigger', trigger, params);
+    if (!resolved.item) {
+      return;
+    }
 
     if (this.index.value >= 0 && this.index.value < this.stack.length) {
       this.stack[this.index.value].item.removeEventListeners();
     }
 
-    if (replace) await this.$pop()
+    if (replace) await this.$pop(undefined, true)
+
+    const navigation = await this.buildNavigationEntry('trigger', resolved.item, resolved.params || {});
 
     this.stack.push({
       type: "trigger",
-      item: trigger,
-      params: params || {}
+      item: resolved.item,
+      params: resolved.params || {},
+      navigation,
     })
 
     this.index.value = this.stack.length - 1;
     await this.activateCurrentItem();
+    await this.afterStackChanged({ replaceHistory: !!replace });
   }
 
-  async $showUI(ui: UIBase, params?: any, replace?: boolean) {
+  async $showUI(ui: UIBase | NavigationScreenFactory<UIBase>, params?: AppScreenParams, replace?: boolean) {
+    const resolved = await AppManager.prepareScreenTarget('ui', ui, params);
+    if (!resolved.item) {
+      return;
+    }
 
     if (this.index.value >= 0 && this.index.value < this.stack.length) {
       this.stack[this.index.value].item.removeEventListeners();
     }
 
-    if (replace) await this.$pop()
+    if (replace) await this.$pop(undefined, true)
+
+    const navType = resolved.params?.navigationType || resolved.params?.navigationEntry?.type || 'ui';
+    const navigation = await this.buildNavigationEntry(navType, resolved.item, resolved.params || {});
 
     this.stack.push({
       type: "ui",
-      item: ui,
-      params: params || {}
+      item: resolved.item,
+      params: resolved.params || {},
+      navigation,
     })
 
     this.index.value = this.stack.length - 1;
     await this.activateCurrentItem();
+    await this.afterStackChanged({ replaceHistory: !!replace });
   }
 
   async $showSelector(selector: Selector, params?: any) {
@@ -1230,6 +1816,28 @@ export class AppMain extends UIBase {
   async $back() {
     if (this.selectors.length > 0) {
       this.selectors[this.selectors.length - 1].forceCancel();
+      return;
+    }
+
+    if (this.dialogs.length > 0) {
+      this.dialogs[this.dialogs.length - 1].forceCancel();
+      return;
+    }
+
+    if (this.stack.length > 0) {
+      const active = this.getActiveStackItem()?.item as any;
+      if (active && typeof active.canHandleBack === 'function' && await active.canHandleBack()) {
+        const handled = typeof active.handleBack === 'function' ? await active.handleBack() : false;
+        if (handled) {
+          return;
+        }
+      }
+    }
+
+    if (this.stack.length > 1 && this.supportsBrowserHistory()) {
+      await this.requestManagedHistoryBack(async () => {
+        await this.popCurrentStackItemLocally();
+      });
     } else if (this.stack.length > 1) {
       this.stack[this.stack.length-1].item.forceCancel();
     } else {
@@ -1237,33 +1845,33 @@ export class AppMain extends UIBase {
     }
   }
 
-  async $pop(count?: number) {
+  async $pop(count?: number, skipHistory: boolean = false) {
     if (count === 0) return;
     const rem = count || 1;
     if (rem < this.stack.length) {
       this.index.value -= rem;
       for (let i = 0; i < rem; i++) {
         const info = this.stack.pop();
-        if (info) info.item.removeEventListeners();
+        if (info) {
+          info.item.removeEventListeners();
+        }
       }
       await this.activateCurrentItem();
+      await this.afterStackChanged({ replaceHistory: true, skipHistory });
     } else if (rem >= this.stack.length) {
-      this.loadApp();
+      await this.loadApp(false);
     }
   }
 
   private async onCancel(item: UIBase) {
     this.fabOpen.value = false;
-    const ui = this.stack.filter((inst) => inst.item.$id === item.$id)[0];
-    if (ui) {
-      const index = this.stack.indexOf(ui);
-      if (index >= 0) {
-        this.stack.splice(index, 1);
-        ui.item.clearListeners(this.$id);
-        this.index.value = this.stack.length - 1;
-        await this.activateCurrentItem();
-      }
+    if (this.supportsBrowserHistory() && this.stack.length > 1) {
+      await this.requestManagedHistoryBack(async () => {
+        await this.popCurrentStackItemLocally(item);
+      });
+      return;
     }
+    await this.popCurrentStackItemLocally(item);
   }
 
   private async onSelectorCancel(item: UIBase) {
@@ -1324,6 +1932,25 @@ export class AppMain extends UIBase {
       this.shortcutHandler = (ev: KeyboardEvent) => this.onAppKeydown(ev);
       window.addEventListener('keydown', this.shortcutHandler);
     }
+    if (typeof window !== 'undefined' && !this.browserNavigationAttached && this.supportsBrowserHistory()) {
+      this.browserNavigationAttached = true;
+      window.addEventListener('popstate', this.boundPopStateHandler);
+      if (!window.history.state?.__veNavigation) {
+        this.syncBrowserHistory(true);
+      }
+    }
+    if (typeof window !== 'undefined' && this.navigationEnabled()) {
+      window.addEventListener('beforeunload', this.boundPersistenceFlushHandler);
+      window.addEventListener('pagehide', this.boundPersistenceFlushHandler);
+      document.addEventListener('visibilitychange', this.boundVisibilityHandler);
+    }
+    if (detectCapacitorEnvironment() && !this.detachCapacitorBackHandler) {
+      void attachCapacitorBackButton(async () => {
+        await this.$back();
+      }).then((detach) => {
+        this.detachCapacitorBackHandler = detach;
+      });
+    }
   }
 
   removeEventListeners() {
@@ -1333,6 +1960,19 @@ export class AppMain extends UIBase {
     if (typeof window !== 'undefined' && this.shortcutHandler) {
       window.removeEventListener('keydown', this.shortcutHandler);
       this.shortcutHandler = undefined;
+    }
+    if (typeof window !== 'undefined' && this.browserNavigationAttached) {
+      window.removeEventListener('popstate', this.boundPopStateHandler);
+      this.browserNavigationAttached = false;
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('beforeunload', this.boundPersistenceFlushHandler);
+      window.removeEventListener('pagehide', this.boundPersistenceFlushHandler);
+      document.removeEventListener('visibilitychange', this.boundVisibilityHandler);
+    }
+    if (this.detachCapacitorBackHandler) {
+      this.detachCapacitorBackHandler();
+      this.detachCapacitorBackHandler = undefined;
     }
   }
 

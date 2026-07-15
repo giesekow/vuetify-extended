@@ -19,6 +19,7 @@ import nestedProperty from "nested-property";
 import { OnHandler } from "./lib";
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
+import { UIText } from "./runtime";
 
 
 export type FieldType = 'text'|'select'|'autocomplete'|'label'|
@@ -114,9 +115,9 @@ export const fieldTypeOptions = [
 export interface FieldParams {
   ref?: string;
   type?: FieldType;
-  label?: string;
+  label?: UIText;
   storage?: string;
-  placeholder?: string;
+  placeholder?: UIText;
   multiple?: boolean;
   options?: any;
   readonly?: boolean;
@@ -124,7 +125,7 @@ export interface FieldParams {
   idField?: string;
   lang?: 'html'|'json'|'javascript'|'python'|'text'|'ejs'|'latex';
   codeTheme?: 'chrome'|'xcode';
-  hint?: string;
+  hint?: UIText;
   icon?: string;
   clearable?: boolean;
   autofocus?: boolean;
@@ -160,8 +161,8 @@ export interface FieldParams {
   searchPageSize?: number;
   cacheSearchResults?: boolean;
   keepSelectedItemsInOptions?: boolean;
-  autocompleteLoadMoreText?: string;
-  autocompleteLoadingMoreText?: string;
+  autocompleteLoadMoreText?: UIText;
+  autocompleteLoadingMoreText?: UIText;
   previewFullscreen?: boolean;
   hideMapText?: boolean;
   mapTextPageSize?: number;
@@ -690,7 +691,7 @@ export class Field extends UIBase {
       const isImage = str.includes('image');
       return {
         key: `${index}-${str.slice(0, 24)}`,
-        label: values.length > 1 ? `File ${index + 1}` : (this.params.value.label || 'File'),
+        label: values.length > 1 ? `File ${index + 1}` : (this.resolvedLabel() || 'File'),
         mimeType: isImage ? 'image/*' : '',
         size: undefined,
         previewUrl: str,
@@ -1249,7 +1250,7 @@ export class Field extends UIBase {
   private showPreviewFullscreen(html: string) {
     void Dialogs.$iframe({
       srcdoc: html,
-      title: this.params.value.label || 'Preview',
+      title: this.$text(this.params.value.label, this.$uiText('ve.field.preview', 'Preview')),
       fullscreen: true,
     });
   }
@@ -1914,22 +1915,38 @@ export class Field extends UIBase {
         return this.options.autocompleteNoSearchText(this);
       }
 
-      return `Type at least ${this.autocompleteMinSearchChars()} character(s) to search`;
+      return this.$uiText(
+        've.field.autocomplete.typeMinChars',
+        `Type at least ${this.autocompleteMinSearchChars()} character(s) to search`,
+        { count: this.autocompleteMinSearchChars() }
+      );
     }
 
     if (this.options.autocompleteNoDataText) {
-      return this.options.autocompleteNoDataText(this, search) || 'No matching records found';
+      return this.options.autocompleteNoDataText(this, search) || this.$uiText('ve.field.autocomplete.noMatches', 'No matching records found');
     }
 
-    return 'No matching records found';
+    return this.$uiText('ve.field.autocomplete.noMatches', 'No matching records found');
   }
 
   private autocompleteLoadMoreText() {
-    return this.params.value.autocompleteLoadMoreText || 'Load more...';
+    return this.$text(this.params.value.autocompleteLoadMoreText, this.$uiText('ve.field.autocomplete.loadMore', 'Load more...'));
   }
 
   private autocompleteLoadingMoreText() {
-    return this.params.value.autocompleteLoadingMoreText || 'Loading more...';
+    return this.$text(this.params.value.autocompleteLoadingMoreText, this.$uiText('ve.field.autocomplete.loadingMore', 'Loading more...'));
+  }
+
+  private resolvedLabel() {
+    return this.$text(this.params.value.label);
+  }
+
+  private resolvedHint() {
+    return this.$text(this.params.value.hint);
+  }
+
+  private resolvedPlaceholder() {
+    return this.$text(this.params.value.placeholder);
   }
 
   messageFormat(data: any): any[] {
@@ -2127,10 +2144,10 @@ export class Field extends UIBase {
           ...this.modelBinding(),
           ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
-          label: this.params.value.label || "",
-          hint: this.params.value.hint || "",
-          persistentHint: this.params.value.hint ? true : false,
-          placeholder: this.params.value.placeholder || "",
+          label: this.resolvedLabel(),
+          hint: this.resolvedHint(),
+          persistentHint: !!this.params.value.hint,
+          placeholder: this.resolvedPlaceholder(),
           clearable: this.params.value.clearable || false,
           color: this.params.value.color || "primary",
           variant: this.params.value.variant || Field.defaultParams?.variant,
@@ -2152,10 +2169,10 @@ export class Field extends UIBase {
           ...this.modelBinding(),
           ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
-          label: this.params.value.label || "",
-          hint: this.params.value.hint || "",
-          persistentHint: this.params.value.hint ? true : false,
-          placeholder: this.params.value.placeholder || "",
+          label: this.resolvedLabel(),
+          hint: this.resolvedHint(),
+          persistentHint: !!this.params.value.hint,
+          placeholder: this.resolvedPlaceholder(),
           clearable: this.params.value.clearable || false,
           color: this.params.value.color || "primary",
           variant: this.params.value.variant || Field.defaultParams?.variant,
@@ -2177,7 +2194,7 @@ export class Field extends UIBase {
       {
         class: this.params.value.class || ['text-subtitle-2'],
         style: this.params.value.style || {},
-        innerHTML: this.params.value.label
+        innerHTML: this.resolvedLabel()
       },
     );
   }
@@ -2202,10 +2219,10 @@ export class Field extends UIBase {
         ...this.modelBinding(),
         ...this.inputIconProps(),
         autofocus: this.params.value.autofocus,
-        label: this.params.value.label || "",
-        hint: this.params.value.hint || "",
-        persistentHint: this.params.value.hint ? true : false,
-        placeholder: this.params.value.placeholder || "",
+        label: this.resolvedLabel(),
+        hint: this.resolvedHint(),
+        persistentHint: !!this.params.value.hint,
+        placeholder: this.resolvedPlaceholder(),
         clearable: this.params.value.clearable || false,
         color: this.params.value.color || "primary",
         variant: this.params.value.variant || Field.defaultParams?.variant,
@@ -2229,7 +2246,7 @@ export class Field extends UIBase {
         'div',
         {
           class: ['ml-4', 'mb-4'],
-          innerHTML: this.params.value.label
+          innerHTML: this.resolvedLabel()
         }
       ),
       h(
@@ -2237,10 +2254,10 @@ export class Field extends UIBase {
         {
           ...this.modelBinding(),
           autofocus: this.params.value.autofocus,
-          label: this.params.value.label || "",
-          hint: this.params.value.hint || "",
-          persistentHint: this.params.value.hint ? true : false,
-          placeholder: this.params.value.placeholder || "",
+          label: this.resolvedLabel(),
+          hint: this.resolvedHint(),
+          persistentHint: !!this.params.value.hint,
+          placeholder: this.resolvedPlaceholder(),
           clearable: this.params.value.clearable || false,
           color: this.params.value.color || "primary",
           variant: this.params.value.variant || Field.defaultParams?.variant,
@@ -2289,7 +2306,7 @@ export class Field extends UIBase {
         'div',
         {
           class: ['ml-4', 'mb-4'],
-          innerHTML: this.params.value.label
+          innerHTML: this.resolvedLabel()
         }
       ),
       ...(this.selectItems.value || []).map(
@@ -2302,9 +2319,9 @@ export class Field extends UIBase {
             class: ['vef-check-select'].concat(this.params.value.class || []),
             style: this.params.value.style || {},
             color: this.params.value.color || "primary",
-            hint: this.params.value.hint || "",
+            hint: this.resolvedHint(),
             multiple: this.params.value.multiple,
-            persistentHint: this.params.value.hint ? true : false,
+            persistentHint: !!this.params.value.hint,
             inline: this.params.value.inline,
           },
           {
@@ -2330,10 +2347,10 @@ export class Field extends UIBase {
         ...this.modelBinding(),
         ...this.inputIconProps(),
         autofocus: this.params.value.autofocus,
-        label: this.params.value.label || "",
-        hint: this.params.value.hint || "",
-        persistentHint: this.params.value.hint ? true : false,
-        placeholder: this.params.value.placeholder || "",
+        label: this.resolvedLabel(),
+        hint: this.resolvedHint(),
+        persistentHint: !!this.params.value.hint,
+        placeholder: this.resolvedPlaceholder(),
         clearable: this.params.value.clearable || false,
         color: this.params.value.color || "primary",
         variant: this.params.value.variant || Field.defaultParams?.variant,
@@ -2438,6 +2455,7 @@ export class Field extends UIBase {
   private richWidgetContext(): RichWidgetContext {
     return {
       $h: this.$h,
+      $text: (value: any, fallback?: string) => this.$text(value, fallback),
       $readonly: this.$readonly,
       params: this.params,
       modelValue: this.modelValue,
@@ -2717,10 +2735,10 @@ export class Field extends UIBase {
         ...this.modelBinding(),
         ...this.inputIconProps(),
         autofocus: this.params.value.autofocus,
-        label: this.params.value.label || "",
-        hint: this.params.value.hint || "",
-        persistentHint: this.params.value.hint ? true : false,
-        placeholder: this.params.value.placeholder || "",
+        label: this.resolvedLabel(),
+        hint: this.resolvedHint(),
+        persistentHint: !!this.params.value.hint,
+        placeholder: this.resolvedPlaceholder(),
         clearable: this.params.value.clearable || false,
         color: this.params.value.color || "primary",
         variant: this.params.value.variant || Field.defaultParams?.variant,
@@ -2751,8 +2769,8 @@ export class Field extends UIBase {
         ...this.modelBinding(),
         ...this.inputIconProps(),
         autofocus: this.params.value.autofocus,
-        label: this.params.value.label || "",
-        placeholder: this.params.value.placeholder || "",
+        label: this.resolvedLabel(),
+        placeholder: this.resolvedPlaceholder(),
         color: this.params.value.color || "primary",
         variant: this.params.value.variant || Field.defaultParams?.variant || 'outlined',
         readonly: this.$readonly,
@@ -2778,10 +2796,10 @@ export class Field extends UIBase {
           ...this.modelBinding(),
           ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
-          label: this.params.value.label || "",
-          hint: this.params.value.hint || "",
-          persistentHint: this.params.value.hint ? true : false,
-          placeholder: this.params.value.placeholder || "",
+          label: this.resolvedLabel(),
+          hint: this.resolvedHint(),
+          persistentHint: !!this.params.value.hint,
+          placeholder: this.resolvedPlaceholder(),
           clearable: this.params.value.clearable || false,
           color: this.params.value.color || "primary",
           variant: this.params.value.variant || Field.defaultParams?.variant,
@@ -2803,10 +2821,10 @@ export class Field extends UIBase {
           ...this.modelBinding(),
           ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
-          label: this.params.value.label || "",
-          hint: this.params.value.hint || "",
-          persistentHint: this.params.value.hint ? true : false,
-          placeholder: this.params.value.placeholder || "",
+          label: this.resolvedLabel(),
+          hint: this.resolvedHint(),
+          persistentHint: !!this.params.value.hint,
+          placeholder: this.resolvedPlaceholder(),
           clearable: this.params.value.clearable || false,
           color: this.params.value.color || "primary",
           variant: this.params.value.variant || Field.defaultParams?.variant,
@@ -2830,10 +2848,10 @@ export class Field extends UIBase {
           modelValue: this.modelValue.value,
           ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
-          label: this.params.value.label || "",
-          hint: this.params.value.hint || "",
-          persistentHint: this.params.value.hint ? true : false,
-          placeholder: this.params.value.placeholder || "",
+          label: this.resolvedLabel(),
+          hint: this.resolvedHint(),
+          persistentHint: !!this.params.value.hint,
+          placeholder: this.resolvedPlaceholder(),
           clearable: this.params.value.clearable || false,
           color: this.params.value.color || "primary",
           variant: this.params.value.variant || Field.defaultParams?.variant,
@@ -2858,10 +2876,10 @@ export class Field extends UIBase {
           modelValue: this.modelValue.value,
           ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
-          label: this.params.value.label || "",
-          hint: this.params.value.hint || "",
-          persistentHint: this.params.value.hint ? true : false,
-          placeholder: this.params.value.placeholder || "",
+          label: this.resolvedLabel(),
+          hint: this.resolvedHint(),
+          persistentHint: !!this.params.value.hint,
+          placeholder: this.resolvedPlaceholder(),
           clearable: this.params.value.clearable || false,
           color: this.params.value.color || "primary",
           variant: this.params.value.variant || Field.defaultParams?.variant,
@@ -2889,7 +2907,7 @@ export class Field extends UIBase {
         'div',
         {
           class: ['mb-2', 'ml-4'],
-          innerHTML: this.params.value.label || ""
+          innerHTML: this.resolvedLabel()
         },
       ),
       h(
@@ -2898,10 +2916,10 @@ export class Field extends UIBase {
           modelValue: this.modelValue.value,
           'model-value': this.modelValue.value,
           autofocus: this.params.value.autofocus,
-          label: this.params.value.label || "",
-          hint: this.params.value.hint || "",
-          persistentHint: this.params.value.hint ? true : false,
-          placeholder: this.params.value.placeholder || "",
+          label: this.resolvedLabel(),
+          hint: this.resolvedHint(),
+          persistentHint: !!this.params.value.hint,
+          placeholder: this.resolvedPlaceholder(),
           clearable: this.params.value.clearable || false,
           color: this.params.value.color || "primary",
           variant: this.params.value.variant || Field.defaultParams?.variant,
@@ -2928,10 +2946,10 @@ export class Field extends UIBase {
           ...this.modelBinding(),
           ...this.inputIconProps(),
           autofocus: this.params.value.autofocus,
-        label: this.params.value.label || "",
-        hint: this.params.value.hint || "",
-        persistentHint: this.params.value.hint ? true : false,
-        placeholder: this.params.value.placeholder || "",
+        label: this.resolvedLabel(),
+        hint: this.resolvedHint(),
+        persistentHint: !!this.params.value.hint,
+        placeholder: this.resolvedPlaceholder(),
         clearable: this.params.value.clearable || false,
         color: this.params.value.color || "primary",
         variant: this.params.value.variant || Field.defaultParams?.variant,
@@ -2953,10 +2971,10 @@ export class Field extends UIBase {
         ...this.modelBinding(),
         ...this.inputIconProps(),
         autofocus: this.params.value.autofocus,
-        label: this.params.value.label || "",
-        hint: this.params.value.hint || "",
-        persistentHint: this.params.value.hint ? true : false,
-        placeholder: this.params.value.placeholder || "",
+        label: this.resolvedLabel(),
+        hint: this.resolvedHint(),
+        persistentHint: !!this.params.value.hint,
+        placeholder: this.resolvedPlaceholder(),
         clearable: this.params.value.clearable || false,
         color: this.params.value.color || "primary",
         variant: this.params.value.variant || Field.defaultParams?.variant,
@@ -2977,10 +2995,10 @@ export class Field extends UIBase {
       {
         ...this.modelBinding(),
         autofocus: this.params.value.autofocus,
-        label: this.params.value.label || "",
-        hint: this.params.value.hint || "",
-        persistentHint: this.params.value.hint ? true : false,
-        placeholder: this.params.value.placeholder || "",
+        label: this.resolvedLabel(),
+        hint: this.resolvedHint(),
+        persistentHint: !!this.params.value.hint,
+        placeholder: this.resolvedPlaceholder(),
         clearable: this.params.value.clearable || false,
         color: this.params.value.color || "primary",
         variant: this.params.value.variant || Field.defaultParams?.variant,
@@ -3029,7 +3047,7 @@ export class Field extends UIBase {
               'div',
               {
               },
-              this.params.value.label
+              this.$text(this.params.value.label)
             )
           ]
         ),
@@ -3209,8 +3227,8 @@ export class Field extends UIBase {
             {
               ...this.componentOptions(),
               modelValue: this.selectedFiles.value,
-              title: this.params.value.label || '',
-              subtitle: this.params.value.hint || this.params.value.placeholder || '',
+              title: this.resolvedLabel(),
+              subtitle: this.resolvedHint() || this.resolvedPlaceholder(),
               autofocus: this.params.value.autofocus,
               clearable: this.params.value.clearable !== false,
               disabled: this.$readonly,
@@ -3227,7 +3245,9 @@ export class Field extends UIBase {
               },
               onRejected: (files: File[]) => {
                 if (files?.length) {
-                  Dialogs.$error(`Unsupported file type: ${files.map((file) => file.name).join(', ')}`);
+                  Dialogs.$error(this.$uiText('ve.field.fileUpload.unsupportedType', `Unsupported file type: ${files.map((file) => file.name).join(', ')}`, {
+                    files: files.map((file) => file.name).join(', '),
+                  }));
                 }
               },
               "onUpdate:focused": (ev: any) => this.onFocusChanged(ev),
@@ -3337,7 +3357,7 @@ export class Field extends UIBase {
                     void this.$uploadAssets();
                   },
                 },
-                () => 'Upload Selected Files',
+                () => this.$uiText('ve.field.fileUpload.uploadSelected', 'Upload Selected Files'),
               ),
               h(
                 VBtn,
@@ -3348,7 +3368,7 @@ export class Field extends UIBase {
                     void this.$clearSelectedFiles();
                   },
                 },
-                () => 'Clear Selected Files',
+                () => this.$uiText('ve.field.fileUpload.clearSelected', 'Clear Selected Files'),
               ),
             ],
           ),
@@ -3369,7 +3389,7 @@ export class Field extends UIBase {
 
     if (isImageData) {
       void Dialogs.$imagePreview(data, {
-        title: this.params.value.label,
+        title: this.$text(this.params.value.label),
         fullscreen: this.params.value.previewFullscreen !== false,
       });
       return;
@@ -3377,7 +3397,7 @@ export class Field extends UIBase {
 
     if (isPdfData) {
       void Dialogs.$documentPreview(data, {
-        title: this.params.value.label,
+        title: this.$text(this.params.value.label),
         fullscreen: this.params.value.previewFullscreen !== false,
       });
       return;
@@ -3385,7 +3405,7 @@ export class Field extends UIBase {
 
     void Dialogs.$iframe({
       src: data,
-      title: this.params.value.label,
+      title: this.$text(this.params.value.label),
       fullscreen: this.params.value.previewFullscreen !== false,
       downloadUrl: data,
     });
@@ -3533,10 +3553,10 @@ export class Field extends UIBase {
       {
         ...this.modelBinding(),
         autofocus: this.params.value.autofocus,
-        label: this.params.value.label || "",
-        hint: this.params.value.hint || "",
-        persistentHint: this.params.value.hint ? true : false,
-        placeholder: this.params.value.placeholder || "",
+        label: this.resolvedLabel(),
+        hint: this.resolvedHint(),
+        persistentHint: !!this.params.value.hint,
+        placeholder: this.resolvedPlaceholder(),
         clearable: this.params.value.clearable || false,
         color: this.params.value.color || "primary",
         variant: this.params.value.variant || Field.defaultParams?.variant,
@@ -3555,10 +3575,10 @@ export class Field extends UIBase {
       {
         ...this.modelBinding(),
         autofocus: this.params.value.autofocus,
-        label: this.params.value.label || "",
-        hint: this.params.value.hint || "",
-        persistentHint: this.params.value.hint ? true : false,
-        placeholder: this.params.value.placeholder || "",
+        label: this.resolvedLabel(),
+        hint: this.resolvedHint(),
+        persistentHint: !!this.params.value.hint,
+        placeholder: this.resolvedPlaceholder(),
         clearable: this.params.value.clearable || false,
         color: this.params.value.color || "primary",
         variant: this.params.value.variant || Field.defaultParams?.variant,

@@ -18,6 +18,7 @@ import { type SelectorParams } from '../ui/selector';
 import { type AppTitleBlockParams, type EnvironmentTagParams, type StatusBadgeParams, type UserAreaParams } from '../ui/shell';
 import { type TriggerParams } from '../ui/trigger';
 import { type MasterOptions } from '../master';
+import { type AppNavigationOptions, type VuetifyExtendedI18nAdapter } from '../ui/runtime';
 export interface VuetifyExtendedDefaults {
     app?: AppParams;
     appTitleBlock?: AppTitleBlockParams;
@@ -57,6 +58,8 @@ export type VuetifyExtendedApiConfig = {
 export interface VuetifyExtendedAppFactoryOptions {
     api?: VuetifyExtendedApiConfig;
     defaults?: VuetifyExtendedDefaults;
+    i18n?: VuetifyExtendedI18nAdapter;
+    navigation?: AppNavigationOptions;
     dialogs?: DialogOptions;
     notifications?: NotificationOptions;
     app?: AppMain | {

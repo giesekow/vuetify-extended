@@ -19,6 +19,12 @@ This folder collects project-level documentation for `vuetify-extended`.
 - [Architecture](./architecture.md)
   A deep look at the library structure, data flow, runtime lifecycle, and design tradeoffs.
 
+- [Runtime Guides](./runtime/README.md)
+  Practical usage guides for localization, browser/device history, and persisted shell restoration.
+
+- [Runtime Improvements Design Notes](./runtime-improvements.md)
+  Design rationale behind localization, history integration, and persisted `AppMain` / `AppManager` navigation state.
+
 - [General Information](./general-information.md)
   A practical reference covering modules, exported factories, conventions, build outputs, and maintenance notes.
 
@@ -33,18 +39,20 @@ This folder collects project-level documentation for `vuetify-extended`.
 1. Start with the root [`README.md`](../README.md) for setup and everyday usage.
 2. Read [CLI Reference](./cli/README.md) if you want to scaffold a new host app bootstrap through `vuetify-ext`.
 3. Read [Architecture](./architecture.md) to understand how the library is organized internally.
-4. Use [API Reference](./api/Index.md) and [UI Reference](./ui/Index.md) when you need module-level details for params, options, and runtime behavior.
+4. Read [Runtime Guides](./runtime/README.md) if you are integrating localization, browser/device navigation, or state restoration into a host app.
+5. Read [Runtime Improvements Design Notes](./runtime-improvements.md) if you need the lower-level design rationale behind those runtime features.
+6. Use [API Reference](./api/Index.md) and [UI Reference](./ui/Index.md) when you need module-level details for params, options, and runtime behavior.
    The most detailed deep-reference pages are currently [Field](./ui/Field.md) and [Dashboard](./ui/Dashboard.md).
-5. Use [Misc Reference](./misc/Index.md) for shared helper functions such as Excel, validation, and print utilities.
-6. Use [General Information](./general-information.md) as a quick reference while extending the library.
-7. Use [Test App](../test/README.md) when you want to manually verify UI workflows.
-8. Use [Starter Template](../starter-template/README.md) when you want a clean package-based host app starting point.
+7. Use [Misc Reference](./misc/Index.md) for shared helper functions such as Excel, validation, and print utilities.
+8. Use [General Information](./general-information.md) as a quick reference while extending the library.
+9. Use [Test App](../test/README.md) when you want to manually verify UI workflows.
+10. Use [Starter Template](../starter-template/README.md) when you want a clean package-based host app starting point.
 
 ## Scope
 
 These docs describe the code currently present in this repository:
 
-- TypeScript-first UI composition on top of Vue 3 and Vuetify 3
+- TypeScript-first UI composition on top of Vue 3 and Vuetify 4
 - A shared API facade with both Feathers and axios-backed Keycloak integrations
 - A setup/bootstrap layer for API, defaults, dialogs, and app-shell wiring
 - A growing package CLI for setup and scaffolding

@@ -153,6 +153,8 @@ export function createMainMenu() {
   const routeSource = fs.readFileSync(path.join(cwd, 'src/routes/people-route.ts'), 'utf8');
   const routesIndexSource = fs.readFileSync(path.join(cwd, 'src/routes/index.ts'), 'utf8');
   assert.match(routeSource, /AppManager\.showReport/);
+  assert.match(routeSource, /navigation:\s*\{/);
+  assert.match(routeSource, /key:\s*['"]routes\.people-route\.report\.display['"]/);
   assert.match(routesIndexSource, /peopleRoute/);
 
   result = runCli(cwd, ['create', 'dialog-form', 'quick-edit', '--non-interactive', '--title', 'Quick Edit']);
@@ -247,7 +249,10 @@ export function buildHeaderEnd(_app: AppMain) {
   assertSuccess(result, 'add menu-item alias');
   const menuSource = fs.readFileSync(path.join(cwd, 'src/menu/index.ts'), 'utf8');
   assert.match(menuSource, /\$MI\(/);
-  assert.match(menuSource, /AppManager\.showUI\(dashboard\)/);
+  assert.match(menuSource, /action:\s*'ui'/);
+  assert.match(menuSource, /ui:\s*async\s*\(\)\s*=>\s*createOpsDashboard\(\)/);
+  assert.match(menuSource, /navigation:\s*\(\)\s*=>\s*\(\{/);
+  assert.match(menuSource, /key:\s*['"]pages\.ops\.ui['"]/);
 
   result = runCli(cwd, ['create', 'sub-menu', 'settings', '--non-interactive', '--title', 'Settings', '--text', 'Settings Hub', '--sub-text', 'Open workspace settings tools.', '--icon', 'mdi-cog-outline', '--color', 'secondary']);
   assertSuccess(result, 'create sub-menu');

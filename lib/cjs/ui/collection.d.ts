@@ -4,6 +4,15 @@ import { Trigger } from "./trigger";
 import { Report } from "./report";
 import { Selector } from "./selector";
 import { OnHandler } from "./lib";
+type CollectionViewState = 'report' | 'selector' | 'trigger' | undefined;
+interface CollectionNavigationState {
+    restoreMode?: 'full' | 'shallow';
+    currentObject?: CollectionViewState;
+    prevState?: CollectionViewState;
+    selectedItems?: any[];
+    selectedIds?: any[];
+    currentIndex?: number;
+}
 export interface CollectionParams {
     ref?: string;
     readonly?: boolean;
@@ -32,6 +41,7 @@ export declare class Collection extends UIBase {
     private prevState;
     private selectedItems;
     private currentIndex;
+    private suppressNavigationSync;
     private static defaultParams;
     constructor(params?: CollectionParams, options?: CollectionOptions);
     get $currentReport(): Report | undefined;
@@ -54,9 +64,18 @@ export declare class Collection extends UIBase {
     trigger(): Promise<Trigger | undefined>;
     report(): Promise<Report | undefined>;
     show(): Promise<void>;
-    showSelector(): Promise<void>;
-    showTrigger(): Promise<true | undefined>;
-    showReport(item?: any): Promise<void>;
+    showSelector(options?: {
+        replaceHistory?: boolean;
+        syncNavigation?: boolean;
+    }): Promise<void>;
+    showTrigger(options?: {
+        replaceHistory?: boolean;
+        syncNavigation?: boolean;
+    }): Promise<true | undefined>;
+    showReport(item?: any, options?: {
+        replaceHistory?: boolean;
+        syncNavigation?: boolean;
+    }): Promise<void>;
     private applySelectionContextToReport;
     private triggerSelected;
     private showReportWithIndex;
@@ -67,7 +86,16 @@ export declare class Collection extends UIBase {
     private onSelectorCancelled;
     private onTriggerCancelled;
     forceCancel(): Promise<void>;
+    canHandleBack(): Promise<boolean>;
+    handleBack(): Promise<boolean>;
+    serializeNavigationState(): Promise<CollectionNavigationState>;
+    restoreNavigationState(state: CollectionNavigationState): Promise<void>;
     setup(props: any, context: any): void;
     private handleOn;
+    private hasInternalBackState;
+    private buildSelectionItemsFromIds;
+    private restorePreviousStateLocally;
+    private syncNavigationState;
 }
 export declare const $COL: (params?: CollectionParams, options?: CollectionOptions) => Collection;
+export {};

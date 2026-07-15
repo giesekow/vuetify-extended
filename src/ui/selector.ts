@@ -4,14 +4,15 @@ import { VDivider, VRow, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VC
 import { Button, ButtonParams } from "./button";
 import { Master } from "../master";
 import { OnHandler } from "./lib";
+import { UIText } from "./runtime";
 
 export interface SelectorParams {
   ref?: string;
   invisible?: boolean;
   persistent?: boolean;
   multiple?: boolean;
-  title?: string;
-  subtitle?: string;
+  title?: UIText;
+  subtitle?: UIText;
   mode?: 'create'|'edit'|'display';
   cancelButton?: ButtonParams,
   saveButton?: ButtonParams,
@@ -256,7 +257,7 @@ export class Selector extends UIBase {
       () => h(
         'span',
         {},
-        this.$params.title || ''
+        this.$text(this.$params.title)
       )
     );
   }
@@ -269,7 +270,7 @@ export class Selector extends UIBase {
       () => h(
         'span',
         {},
-        this.params.value.subtitle || ""
+        this.$text(this.params.value.subtitle)
       )
     );
   }
@@ -288,7 +289,7 @@ export class Selector extends UIBase {
           {
             class: 'title'
           },
-          'Access Denied!'
+          this.$uiText('ve.common.accessDenied', 'Access Denied!')
         )
       )
     }
@@ -323,7 +324,7 @@ export class Selector extends UIBase {
           VAutocomplete,
           {
             variant: 'outlined',
-            placeholder: 'Search Object',
+            placeholder: this.$uiText('ve.selector.searchPlaceholder', 'Search Object'),
             density: 'compact',
             modelValue: this.storage.value,
             "onUpdate:modelValue": (value: any) => {
@@ -348,9 +349,9 @@ export class Selector extends UIBase {
     let message: string | undefined;
 
     if (this.loading.value) {
-      message = 'Loading options...';
+      message = this.$uiText('ve.selector.loadingOptions', 'Loading options...');
     } else if ((this.items.value || []).length === 0) {
-      message = 'No records available to select.';
+      message = this.$uiText('ve.selector.noRecords', 'No records available to select.');
     }
 
     if (!message) {
@@ -433,13 +434,13 @@ export class Selector extends UIBase {
   private buildDefaultButtons(): Button[] {
     return [
       new Button(
-        {text: 'Cancel', color: 'warning', ...(this.params.value.cancelButton || {})},
+        {text: this.$uiText('ve.common.cancel', 'Cancel'), color: 'warning', ...(this.params.value.cancelButton || {})},
         {
           onClicked: () => this.onCancelClicked()
         }
       ),
       new Button(
-        {text: 'Confirm', color: 'success', ...(this.params.value.saveButton || {}), disabled: this.storage.value ? false: true},
+        {text: this.$uiText('ve.common.confirm', 'Confirm'), color: 'success', ...(this.params.value.saveButton || {}), disabled: this.storage.value ? false: true},
         {
           onClicked: () => this.onSelectItem()
         }
