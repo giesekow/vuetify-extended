@@ -4,6 +4,9 @@ This folder collects project-level documentation for `vuetify-extended`.
 
 ## Contents
 
+- [CLI Reference](./cli/README.md)
+  Dedicated reference for the `vuetify-ext` scaffolding CLI and future subcommands.
+
 - [API Reference](./api/Index.md)
   Detailed backend/client reference for the shared `Api` facade, `AxiosApi`, and `FeathersApi`.
 
@@ -28,13 +31,14 @@ This folder collects project-level documentation for `vuetify-extended`.
 ## Recommended Reading Order
 
 1. Start with the root [`README.md`](../README.md) for setup and everyday usage.
-2. Read [Architecture](./architecture.md) to understand how the library is organized internally.
-3. Use [API Reference](./api/Index.md) and [UI Reference](./ui/Index.md) when you need module-level details for params, options, and runtime behavior.
+2. Read [CLI Reference](./cli/README.md) if you want to scaffold a new host app bootstrap through `vuetify-ext`.
+3. Read [Architecture](./architecture.md) to understand how the library is organized internally.
+4. Use [API Reference](./api/Index.md) and [UI Reference](./ui/Index.md) when you need module-level details for params, options, and runtime behavior.
    The most detailed deep-reference pages are currently [Field](./ui/Field.md) and [Dashboard](./ui/Dashboard.md).
-4. Use [Misc Reference](./misc/Index.md) for shared helper functions such as Excel, validation, and print utilities.
-5. Use [General Information](./general-information.md) as a quick reference while extending the library.
-6. Use [Test App](../test/README.md) when you want to manually verify UI workflows.
-7. Use [Starter Template](../starter-template/README.md) when you want a clean package-based host app starting point.
+5. Use [Misc Reference](./misc/Index.md) for shared helper functions such as Excel, validation, and print utilities.
+6. Use [General Information](./general-information.md) as a quick reference while extending the library.
+7. Use [Test App](../test/README.md) when you want to manually verify UI workflows.
+8. Use [Starter Template](../starter-template/README.md) when you want a clean package-based host app starting point.
 
 ## Scope
 
@@ -43,6 +47,7 @@ These docs describe the code currently present in this repository:
 - TypeScript-first UI composition on top of Vue 3 and Vuetify 3
 - A shared API facade with both Feathers and axios-backed Keycloak integrations
 - A setup/bootstrap layer for API, defaults, dialogs, and app-shell wiring
+- A growing package CLI for setup and scaffolding
 - Class-based screen, form, field, selector, dialog, and menu composition
 - Keyboard-first workflow helpers for menus, selectors, dialogs, forms, and reports
 - Optional `AppMain` header/footer shell scaffolding, structured regions, background layers, FAB quick actions, and full-screen utility screens

@@ -12,12 +12,15 @@ The library is especially oriented toward:
 - axios-backed applications that want the same service-oriented UI contract
 - Apps that prefer programmatic UI assembly
 
+It also now ships a small CLI entrypoint, `vuetify-ext`, for scaffolding the recommended host-app bootstrap.
+
 ## Repository Layout
 
 ```text
 src/
   api/         Shared Api facade
   axios-api/   Axios-backed API implementation with Keycloak support
+  cli/         Package CLI commands such as `vuetify-ext bootstrap app`
   css/         Shared stylesheet shipped with the package
   feathers-api/ Feathers client bootstrap and service helpers
   master/      Shared data model and persistence abstraction
@@ -154,6 +157,36 @@ The `setup` module exports the high-level bootstrap helpers:
 - `validateVuetifyExtendedSetup(...)`
 
 These helpers package the most common host-app setup work into a single entrypoint while keeping the low-level classes available.
+
+## CLI
+
+The package also ships a CLI entrypoint:
+
+- `vuetify-ext`
+
+Current command surface:
+
+- `vuetify-ext bootstrap app`
+
+Use this command when you want the package to scaffold the recommended host-app bootstrap around:
+
+- `createVuetifyExtendedApp(...)`
+- `AppMain`
+- `Dialogs.rootComponent()`
+- `Notifications.rootComponent()`
+
+It now also scaffolds the recommended source layout for future code generation:
+
+- `src/api`
+- `src/bootstrap`
+- `src/menu`
+- `src/pages/<page-name>`
+
+The bootstrap command is interactive by default and can collect backend/API/Keycloak details while scaffolding `src/api/index.*`.
+
+For unattended workflows, use `--non-interactive` together with the documented CLI flags.
+
+See [CLI Reference](./cli/README.md) for the detailed command contract, supported entry files, generated files, and current limitations.
 
 ## `feathers-api`
 
