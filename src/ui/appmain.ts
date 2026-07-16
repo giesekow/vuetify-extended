@@ -93,6 +93,7 @@ export interface AppSideNavOptions {
 
 export interface AppScreenParams {
   showFab?: boolean;
+  hideSideNavs?: boolean;
   fabIcon?: string;
   fabColor?: string;
   fabPosition?: 'bottom-right'|'bottom-left';
@@ -1120,9 +1121,12 @@ export class AppMain extends UIBase {
     const footerBar = this.renderShellBar('footer');
     const showHeader = this.params.value.showHeader || !!headerBar || !!header;
     const showFooter = this.params.value.showFooter || !!footerBar || !!footer;
-    const sideNavDrawers = (['left', 'right'] as AppSideNavSide[])
-      .map((side) => this.renderSideNavDrawer(side))
-      .filter((drawer): drawer is VNode => !!drawer);
+    const hideSideNavs = this.shouldHideSideNavsForActiveItem();
+    const sideNavDrawers = hideSideNavs
+      ? []
+      : (['left', 'right'] as AppSideNavSide[])
+          .map((side) => this.renderSideNavDrawer(side))
+          .filter((drawer): drawer is VNode => !!drawer);
 
     if (!showHeader && !showFooter && sideNavDrawers.length === 0) {
       return this.wrapWithFab(content, showFooter);
@@ -1281,13 +1285,29 @@ export class AppMain extends UIBase {
     return this.stack[this.index.value];
   }
 
-  private resolveFabConfig() {
-    const active = this.getActiveStackItem();
+  private resolveActiveScreenConfig(active: AppStackItem | undefined = this.getActiveStackItem()) {
+    const itemParams = ((active?.item as any)?.$params || {}) as Record<string, any>;
     const itemScreen = ((active?.item as any)?.$screenParams || (active?.item as any)?.$appScreenParams || {}) as AppScreenParams;
-    const screen = {
+    const baseScreen: AppScreenParams = {};
+
+    if (typeof itemParams.hideSideNavs === 'boolean') {
+      baseScreen.hideSideNavs = itemParams.hideSideNavs;
+    }
+
+    return {
       ...itemScreen,
+      ...baseScreen,
       ...(active?.params || {}),
     } as AppScreenParams;
+  }
+
+  private shouldHideSideNavsForActiveItem() {
+    return this.resolveActiveScreenConfig().hideSideNavs === true;
+  }
+
+  private resolveFabConfig() {
+    const active = this.getActiveStackItem();
+    const screen = this.resolveActiveScreenConfig(active);
     return {
       showFab: screen.showFab ?? this.params.value.showFab,
       fabIcon: screen.fabIcon ?? this.params.value.fabIcon,
@@ -1382,6 +1402,10 @@ export class AppMain extends UIBase {
 
   private shouldShowTemporarySideNavToggle(side: AppSideNavSide) {
     const options = this.getSideNavOptions(side);
+    if (this.shouldHideSideNavsForActiveItem()) {
+      return false;
+    }
+
     if (!this.shouldRenderSideNav(side)) {
       return false;
     }

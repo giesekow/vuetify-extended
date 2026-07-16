@@ -80,6 +80,7 @@ export interface AppSideNavOptions {
 }
 export interface AppScreenParams {
     showFab?: boolean;
+    hideSideNavs?: boolean;
     fabIcon?: string;
     fabColor?: string;
     fabPosition?: 'bottom-right' | 'bottom-left';
@@ -227,6 +228,8 @@ export declare class AppMain extends UIBase {
     private wrapStackItemContent;
     private wrapWithFab;
     private getActiveStackItem;
+    private resolveActiveScreenConfig;
+    private shouldHideSideNavsForActiveItem;
     private resolveFabConfig;
     private resolveFabButtonSource;
     private buildFabButtons;

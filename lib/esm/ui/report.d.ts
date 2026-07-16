@@ -13,6 +13,7 @@ export interface ReportParams {
     objectId?: any;
     selected?: any;
     title?: UIText;
+    hideSideNavs?: boolean;
     confirmOnCancel?: boolean;
     hideMode?: boolean;
     cancelButton?: ButtonParams;

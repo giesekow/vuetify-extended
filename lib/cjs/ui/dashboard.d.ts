@@ -11,6 +11,7 @@ export interface DashboardParams {
     title?: UIText;
     subtitle?: UIText;
     invisible?: boolean;
+    hideSideNavs?: boolean;
     fluid?: boolean;
     width?: number | string;
     maxWidth?: number | string;

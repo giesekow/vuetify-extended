@@ -17,6 +17,7 @@ export interface CollectionParams {
     ref?: string;
     readonly?: boolean;
     invisible?: boolean;
+    hideSideNavs?: boolean;
     idField?: string;
     objectType?: string;
     selectionOnly?: boolean;
@@ -53,6 +54,7 @@ export declare class Collection extends UIBase {
     get $readonly(): any;
     setParams(params: CollectionParams): void;
     get $params(): CollectionParams;
+    get $appScreenParams(): Record<string, any> | undefined;
     props(): never[];
     render(props: any, context: any): VNode | VNode[] | undefined;
     private buildSelectionContext;

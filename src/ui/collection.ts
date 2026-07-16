@@ -24,6 +24,7 @@ export interface CollectionParams {
   ref?: string;
   readonly?: boolean;
   invisible?: boolean;
+  hideSideNavs?: boolean;
   idField?: string;
   objectType?: string;
   selectionOnly?: boolean;
@@ -101,6 +102,32 @@ export class Collection extends UIBase {
 
   get $params(): CollectionParams {
     return this.params.value;
+  }
+
+  get $appScreenParams() {
+    const activeItem = this.currentObject?.value === 'report'
+      ? this.currentReport
+      : this.currentObject?.value === 'trigger'
+        ? this.currentTrigger
+        : this.currentObject?.value === 'selector'
+          ? this.currentSelector
+          : undefined;
+
+    if (!activeItem) {
+      return undefined;
+    }
+
+    const itemParams = ((activeItem as any).$params || {}) as Record<string, any>;
+    const itemScreen = (((activeItem as any).$appScreenParams || (activeItem as any).$screenParams || {}) as Record<string, any>);
+    const screen: Record<string, any> = {
+      ...itemScreen,
+    };
+
+    if (typeof itemParams.hideSideNavs === 'boolean' && screen.hideSideNavs === undefined) {
+      screen.hideSideNavs = itemParams.hideSideNavs;
+    }
+
+    return screen;
   }
 
   props() {

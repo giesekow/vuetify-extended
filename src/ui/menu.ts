@@ -365,6 +365,8 @@ export class Menu extends UIBase {
   private renderSideNav(props: any, context: any) {
     const h = this.$h;
     const attrs = context?.attrs || {};
+    const showSideNavCloseButton = attrs?.sideNavShowCloseButton && typeof attrs?.sideNavOnClose === 'function';
+    const showSideNavTitle = !this.params.value.hideTitle && !!this.params.value.title;
 
     if (!this.loaded.value) {
       void this.prepareChildren();
@@ -383,7 +385,7 @@ export class Menu extends UIBase {
         },
       },
       [
-        ...(!this.params.value.hideTitle && this.params.value.title ? [
+        ...(showSideNavTitle || showSideNavCloseButton ? [
           h(
             'div',
             {
@@ -404,20 +406,28 @@ export class Menu extends UIBase {
                   },
                 },
                 [
-                  h(
-                    'div',
-                    {
+                  ...(showSideNavTitle ? [
+                    h(
+                      'div',
+                      {
+                        style: {
+                          fontSize: '1rem',
+                          fontWeight: '700',
+                          lineHeight: '1.3',
+                          minWidth: 0,
+                          flex: '1 1 auto',
+                        },
+                      },
+                      this.$text(this.params.value.title),
+                    ),
+                  ] : [
+                    h('div', {
                       style: {
-                        fontSize: '1rem',
-                        fontWeight: '700',
-                        lineHeight: '1.3',
-                        minWidth: 0,
                         flex: '1 1 auto',
                       },
-                    },
-                    this.$text(this.params.value.title),
-                  ),
-                  ...(attrs?.sideNavShowCloseButton && typeof attrs?.sideNavOnClose === 'function' ? [
+                    }),
+                  ]),
+                  ...(showSideNavCloseButton ? [
                     h(VBtn, {
                       icon: 'mdi-close',
                       variant: 'text',

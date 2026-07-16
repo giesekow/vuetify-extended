@@ -19,6 +19,7 @@ export interface TriggerParams {
   invisible?: boolean;
   title?: UIText;
   subtitle?: UIText;
+  hideSideNavs?: boolean;
   mode?: 'create'|'edit'|'display';
   cancelButton?: ButtonParams,
   removeButton?: ButtonParams,
