@@ -13,6 +13,7 @@ Card-based application/menu screen with menu items, keyboard shortcuts, active-c
 - Menu items can render shortcuts in text or compact form.
 - Menu item actions can open `report`, `collection`, `trigger`, `menu`, or generic `ui` targets.
 - Menu items can pass grouped `navigation`, `showParams`, and `replace` metadata into the underlying `AppManager.show...(...)` call.
+- The same `Menu` class also renders inside `AppMain` side drawers through `presentation: 'side-nav'`.
 
 ## Reference
 
@@ -22,6 +23,9 @@ Card-based application/menu screen with menu items, keyboard shortcuts, active-c
 export interface MenuParams {
   ref?: string;
   title?: string;
+  presentation?: 'screen'|'side-nav';
+  hideTitle?: boolean;
+  hideBackButton?: boolean;
   maxWidth?: number|string;
   minWidth?: number|string;
   width?: number|string;
@@ -46,6 +50,16 @@ export interface MenuParams {
   keyboardNavigation?: boolean;
 }
 ```
+
+Drawer usage notes:
+
+- `presentation: 'screen'`
+  Normal full-screen/card-grid menu behavior.
+- `presentation: 'side-nav'`
+  Drawer-friendly list rendering used by `AppMain` side navigation.
+- `hideBackButton`
+  Useful for shell menus that should never render nested back actions inside the drawer.
+- side-nav presentation intentionally does not attach global keyboard shortcuts or arrow-key handlers, so the drawer does not compete with active form/report input in the main content area
 
 ### `MenuOptions`
 

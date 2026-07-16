@@ -2,6 +2,8 @@ import { Fragment, VNode, cloneVNode, defineComponent, h, ref, watch, onUnmounte
 import { EventEmitter } from './lib';
 import { Master } from '../master';
 import { formatCurrencyText, formatDateText, formatNumberText, isRTLLocale, resolveUIText, type NavigationEntry, type UIText } from './runtime';
+import type { NavigationScreenFactory } from './runtime';
+import type { Menu } from './menu';
 
 export class BaseComponent extends EventEmitter {
   private dataStore: any = {};
@@ -102,6 +104,7 @@ export class BaseComponent extends EventEmitter {
 }
 
 export type ReportMode = "display"|"edit"|"create";
+export type MenuTarget = Menu | NavigationScreenFactory<Menu>;
 
 export class UIBase extends BaseComponent {
 
@@ -155,6 +158,10 @@ export class UIBase extends BaseComponent {
 
   async restoreNavigationState(_state: any, _entry?: NavigationEntry): Promise<void> {
     //
+  }
+
+  async getRightMenuTarget(): Promise<MenuTarget | undefined> {
+    return undefined;
   }
 
   $text(value: UIText | undefined | null, fallback: string = '') {

@@ -1,5 +1,5 @@
 import { VNode, Ref } from "vue";
-import { ReportMode, UIBase } from "./base";
+import { MenuTarget, ReportMode, UIBase } from "./base";
 import { VDivider, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VLayout, VCol, VRow, VContainer, VBtn, VMenu, VProgressLinear } from 'vuetify/components';
 import { Master } from "../master";
 import { Form } from './form';
@@ -71,6 +71,7 @@ export interface ReportOptions {
   attachEventListeners?: (report: Report) => Promise<void>|void
   title?: (report: Report, index?: number) => UIText
   sideButtons?: (props: any, context: any, report: Report) => Array<Button>|undefined
+  rightMenu?: (report: Report) => Promise<MenuTarget | undefined> | MenuTarget | undefined
 }
 
 export interface ExportTemplateInfo {
@@ -255,6 +256,15 @@ export class Report extends UIBase {
 
   async access(mode: any): Promise<boolean> {
     return this.options.access ? await this.options.access(this, mode) : true;
+  }
+
+  async getRightMenuTarget(): Promise<MenuTarget | undefined> {
+    const formMenu = this.currentForm ? await this.currentForm.getRightMenuTarget() : undefined;
+    if (formMenu) {
+      return formMenu;
+    }
+
+    return this.options.rightMenu ? await this.options.rightMenu(this) : undefined;
   }
 
   async form(props: any, context: any, index: number): Promise<Form|undefined> {
@@ -512,10 +522,12 @@ export class Report extends UIBase {
         this.currentFormRenderKey.value += 1;
         this.currentIndex.value = index;
         this.syncStepRefs();
+        this.emit('right-menu-changed', this);
         this.currentForm.clearListeners(this.$id);
         this.currentForm.on('saved', () => this.save(), this.$id);
         this.currentForm.on('prev', () => this.onprev(), this.$id);
         this.currentForm.on('cancel', () => this.oncancel(), this.$id);
+        this.currentForm.on('right-menu-changed', () => this.emit('right-menu-changed', this), this.$id);
         this.currentForm.attachEventListeners();
         this.focusCurrentForm();
       }
@@ -525,6 +537,7 @@ export class Report extends UIBase {
       this.currentFormRenderKey.value += 1;
       this.currentIndex.value = -1;
       this.syncStepRefs();
+      this.emit('right-menu-changed', this);
     }
     
   }

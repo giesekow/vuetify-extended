@@ -2,6 +2,8 @@ import { VNode, h, ref, watch } from 'vue';
 import { EventEmitter } from './lib';
 import { Master } from '../master';
 import { type NavigationEntry, type UIText } from './runtime';
+import type { NavigationScreenFactory } from './runtime';
+import type { Menu } from './menu';
 export declare class BaseComponent extends EventEmitter {
     private dataStore;
     private forceRenderListeners;
@@ -25,6 +27,7 @@ export declare class BaseComponent extends EventEmitter {
     removeEventListeners(): void;
 }
 export type ReportMode = "display" | "edit" | "create";
+export type MenuTarget = Menu | NavigationScreenFactory<Menu>;
 export declare class UIBase extends BaseComponent {
     private parent;
     private master?;
@@ -42,6 +45,7 @@ export declare class UIBase extends BaseComponent {
     handleBack(): Promise<boolean>;
     serializeNavigationState(_entry?: NavigationEntry): Promise<any>;
     restoreNavigationState(_state: any, _entry?: NavigationEntry): Promise<void>;
+    getRightMenuTarget(): Promise<MenuTarget | undefined>;
     $text(value: UIText | undefined | null, fallback?: string): string;
     $uiText(key: string, fallback?: string, values?: Record<string, any>): string;
     $formatDate(value: any, options?: any): any;

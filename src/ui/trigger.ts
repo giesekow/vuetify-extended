@@ -1,5 +1,5 @@
 import { VNode, Ref, nextTick } from "vue";
-import { ReportMode, UIBase } from "./base";
+import { MenuTarget, ReportMode, UIBase } from "./base";
 import { VDivider, VRow, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VCardSubtitle, VTextField, VCol, VContainer, VLayout, VAutocomplete, VBtn, VMenu } from 'vuetify/components';
 import { Button, ButtonParams } from "./button";
 import { VDataTableServer } from 'vuetify/components';
@@ -74,6 +74,7 @@ export interface TriggerOptions {
   beforeExport?: (trigger: Trigger, mode?: ReportMode) => Promise<any|undefined>|any|undefined;
   exportTemplate?: (trigger: Trigger, mode?: ReportMode) => Promise<ExportTemplateInfo|undefined>|ExportTemplateInfo|undefined;
   sideButtons?: (props: any, context: any, trigger: Trigger) => Array<Button>|undefined;
+  rightMenu?: (trigger: Trigger) => Promise<MenuTarget | undefined> | MenuTarget | undefined;
 }
 
 export interface ServerTableOptions {
@@ -225,6 +226,10 @@ export class Trigger extends UIBase {
 
   async access(mode?: any): Promise<boolean> {
     return this.options.access ? await this.options.access(this, mode) : true;
+  }
+
+  async getRightMenuTarget(): Promise<MenuTarget | undefined> {
+    return this.options.rightMenu ? await this.options.rightMenu(this) : undefined;
   }
 
   async removeAccess (): Promise<boolean> {

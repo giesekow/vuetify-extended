@@ -9,6 +9,7 @@ Static coordinator used by host apps and library internals to initialize, regist
 ## Highlights
 
 - Provides `showMenu`, `showReport`, `showTrigger`, `showCollection`, and `showUI` entry points.
+- Provides shell-level `showLeftMenu` / `showRightMenu` APIs for drawer navigation.
 - Acts as the bridge between independent UI objects and the mounted `AppMain` instance.
 - Exposes app/setup state used by bootstrap validation.
 - Provides the registry and serialization bridge used by `AppMain` history/persistence restore.
@@ -18,6 +19,7 @@ Practical guides:
 
 - [Navigation](../runtime/Navigation.md)
 - [Persistence](../runtime/Persistence.md)
+- [Side Navigation](../runtime/SideNavigation.md)
 
 ## Reference
 
@@ -34,6 +36,16 @@ export class AppManager {
 - `static init()`
 - `static setApp(app: AppMain)`
 - `static showMenu(menuOrFactory, params?: any)`
+- `static showLeftMenu(menuOrFactory, params?: any)`
+- `static showRightMenu(menuOrFactory, params?: any)`
+- `static hideLeftMenu()`
+- `static hideRightMenu()`
+- `static clearLeftMenu()`
+- `static clearRightMenu()`
+- `static toggleLeftMenu()`
+- `static toggleRightMenu()`
+- `static refreshLeftMenu()`
+- `static refreshRightMenu()`
 - `static showReport(reportOrFactory, params?: any, replace?: boolean)`
 - `static showTrigger(triggerOrFactory, params?: any, replace?: boolean)`
 - `static showCollection(collectionOrFactory, params?: any, replace?: boolean)`

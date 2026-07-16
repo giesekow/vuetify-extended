@@ -53,6 +53,16 @@ export declare class AppManager {
     static resolveNavigationEntry(entry: NavigationEntry): Promise<UIBase | undefined>;
     static buildNavigationEntry(type: NavigationScreenType, item: UIBase, params?: any, existingEntry?: NavigationEntry): Promise<NavigationEntry>;
     static showMenu(menu: Menu | NavigationScreenFactory<Menu>, params?: AppScreenParams): Boolean;
+    static showLeftMenu(menu: Menu | NavigationScreenFactory<Menu>, params?: AppScreenParams): boolean;
+    static showRightMenu(menu: Menu | NavigationScreenFactory<Menu>, params?: AppScreenParams): boolean;
+    static hideLeftMenu(): boolean;
+    static hideRightMenu(): boolean;
+    static clearLeftMenu(): boolean;
+    static clearRightMenu(): boolean;
+    static toggleLeftMenu(): boolean;
+    static toggleRightMenu(): boolean;
+    static refreshLeftMenu(): Promise<boolean>;
+    static refreshRightMenu(): Promise<boolean>;
     static getUDFs(objectType: string | string[]): Promise<any[]>;
     static makeUDF(options: any, mode?: ReportMode): Field | undefined;
     static showCollection(collection: Collection | NavigationScreenFactory<Collection>, params?: AppScreenParams, replace?: boolean): boolean;

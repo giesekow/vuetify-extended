@@ -1,5 +1,5 @@
 import { VNode, Ref, nextTick } from "vue";
-import { ReportMode, UIBase } from "./base";
+import { MenuTarget, ReportMode, UIBase } from "./base";
 import { VDivider, VRow, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VForm, VCardSubtitle } from 'vuetify/components';
 import { Master } from "../master";
 import { Part, PartParams, PRefs } from "./part";
@@ -59,6 +59,7 @@ export interface FormOptions {
   access?: (form: Form, mode: any) => Promise<boolean>|boolean;
   processUDF?: (form: Form, udfs: any[]) => Promise<any[]>;
   setup?: (form: Form) => void,
+  rightMenu?: (form: Form) => Promise<MenuTarget | undefined> | MenuTarget | undefined;
   preUDFOptions?: PartParams;
   postUDFOptions?: PartParams;
   on?: (form: Form) => OnHandler;
@@ -174,6 +175,10 @@ export class Form extends UIBase {
 
   async access(mode: any): Promise<boolean> {
     return this.options.access ? await this.options.access(this, mode) : true;
+  }
+
+  async getRightMenuTarget(): Promise<MenuTarget | undefined> {
+    return this.options.rightMenu ? await this.options.rightMenu(this) : undefined;
   }
 
   async processUDF(udfs: any[]): Promise<any[]> {

@@ -1,5 +1,5 @@
 import { VNode, Ref } from "vue";
-import { UIBase } from "./base";
+import { MenuTarget, UIBase } from "./base";
 import { Trigger } from "./trigger";
 import { Report } from "./report";
 import { Selector } from "./selector";
@@ -214,6 +214,18 @@ export class Collection extends UIBase {
     return undefined;
   }
 
+  async getRightMenuTarget(): Promise<MenuTarget | undefined> {
+    if (this.currentObject.value === 'report' && this.currentReport) {
+      return await this.currentReport.getRightMenuTarget();
+    }
+
+    if (this.currentObject.value === 'trigger' && this.currentTrigger) {
+      return await this.currentTrigger.getRightMenuTarget();
+    }
+
+    return undefined;
+  }
+
   async show() {
     if (this.currentObject.value) return;
     
@@ -240,6 +252,7 @@ export class Collection extends UIBase {
         this.currentSelector.$params.returnObject = true;
         this.currentSelector.$params.multiple = this.params.value.multiple;
         this.currentSelector.show();
+        this.emit('right-menu-changed', this);
         await this.syncNavigationState(options?.replaceHistory ?? true, options?.syncNavigation === true);
       }
     } else {
@@ -249,6 +262,7 @@ export class Collection extends UIBase {
       this.currentSelector.$params.multiple = this.params.value.multiple;
       this.currentObject.value = 'selector';
       this.currentSelector.show();
+      this.emit('right-menu-changed', this);
       await this.syncNavigationState(options?.replaceHistory ?? true, options?.syncNavigation === true);
     }
   }
@@ -265,6 +279,7 @@ export class Collection extends UIBase {
         this.currentTrigger.$params.multiple = this.params.value.multiple;
         this.currentObject.value = 'trigger';
         this.currentTrigger.show();
+        this.emit('right-menu-changed', this);
         await this.syncNavigationState(options?.replaceHistory ?? true, options?.syncNavigation !== false);
         return true;
       }
@@ -274,6 +289,7 @@ export class Collection extends UIBase {
       this.currentTrigger.$params.multiple = this.params.value.multiple;
       this.currentObject.value = 'trigger';
       this.currentTrigger.show();
+      this.emit('right-menu-changed', this);
       await this.syncNavigationState(options?.replaceHistory ?? true, options?.syncNavigation !== false);
       return true;
     }
@@ -310,10 +326,12 @@ export class Collection extends UIBase {
       this.currentReport.on('saved', () => this.reportSaved(item));
       this.currentReport.on('cancel', () => this.reportCancelled());
       this.currentReport.on('finished', () => this.reportFinished());
+      this.currentReport.on('right-menu-changed', () => this.emit('right-menu-changed', this), this.$id);
 
       await this.currentReport.loadObject();
       this.currentObject.value = 'report';
       this.currentReport.show();
+      this.emit('right-menu-changed', this);
       await this.syncNavigationState(options?.replaceHistory ?? true, options?.syncNavigation !== false);
     }
   }

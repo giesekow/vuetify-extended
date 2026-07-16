@@ -15,12 +15,14 @@ Top-level application shell and stack host for menus, reports, collections, shel
 - Can integrate browser history with the internal stack so browser back/forward mirrors `AppMain` navigation.
 - Can persist restorable stack snapshots across refresh/resume through configurable storage adapters.
 - Supports global text localization through the shared `UIText`/i18n runtime used across shell titles, buttons, dialogs, forms, reports, and triggers.
+- Supports left/right side navigation drawers backed by normal `Menu` instances.
 
 Practical guides:
 
 - [Localization](../runtime/Localization.md)
 - [Navigation](../runtime/Navigation.md)
 - [Persistence](../runtime/Persistence.md)
+- [Side Navigation](../runtime/SideNavigation.md)
 
 ## Reference
 
@@ -66,6 +68,10 @@ export interface AppParams {
 ```ts
 export interface AppOptions {
   menu?: (app: AppMain) => Promise<Menu|undefined>|Menu|undefined;
+  leftNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
+  rightNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
+  leftNavOptions?: AppSideNavOptions;
+  rightNavOptions?: AppSideNavOptions;
   udfs?: (app: AppMain, objectType: string|string[], query: any) => Promise<any[]>;
   makeUDF?: (app: AppMain, options: any) => Field|undefined;
   fabButtons?: AppFabButtonsFactory;
@@ -78,6 +84,22 @@ export interface AppOptions {
   footerStart?: (app: AppMain) => AppShellContent | AppShellContent[];
   footerCenter?: (app: AppMain) => AppShellContent | AppShellContent[];
   footerEnd?: (app: AppMain) => AppShellContent | AppShellContent[];
+}
+```
+
+### `AppSideNavOptions`
+
+```ts
+export interface AppSideNavOptions {
+  enabled?: boolean;
+  side?: 'left' | 'right';
+  mode?: 'persistent' | 'temporary' | 'rail';
+  width?: number | string;
+  open?: boolean;
+  overlay?: boolean;
+  breakpoint?: number;
+  autoCloseOnNavigate?: boolean;
+  mobileMode?: 'temporary' | 'rail';
 }
 ```
 
@@ -227,6 +249,16 @@ new AppMain(
 
 - `render(props: any, context: any)`
 - `$showMenu(menu, params?, replaceHistory?)`
+- `$showLeftMenu(menuOrFactory, params?)`
+- `$showRightMenu(menuOrFactory, params?)`
+- `$hideLeftMenu()`
+- `$hideRightMenu()`
+- `$clearLeftMenu()`
+- `$clearRightMenu()`
+- `$toggleLeftMenu()`
+- `$toggleRightMenu()`
+- `$refreshLeftMenu()`
+- `$refreshRightMenu()`
 - `$showReport(report, params?, replace?)`
 - `$showTrigger(trigger, params?, replace?)`
 - `$showCollection(collection, params?, replace?)`

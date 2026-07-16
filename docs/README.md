@@ -20,7 +20,7 @@ This folder collects project-level documentation for `vuetify-extended`.
   A deep look at the library structure, data flow, runtime lifecycle, and design tradeoffs.
 
 - [Runtime Guides](./runtime/README.md)
-  Practical usage guides for localization, browser/device history, and persisted shell restoration.
+  Practical usage guides for localization, browser/device history, persisted shell restoration, and the planned side-navigation architecture.
 
 - [Runtime Improvements Design Notes](./runtime-improvements.md)
   Design rationale behind localization, history integration, and persisted `AppMain` / `AppManager` navigation state.

@@ -1,5 +1,5 @@
 import { VNode } from "vue";
-import { ReportMode, UIBase } from "./base";
+import { MenuTarget, ReportMode, UIBase } from "./base";
 import { Master } from "../master";
 import { Part, PartParams, PRefs } from "./part";
 import { Button, ButtonParams } from "./button";
@@ -53,6 +53,7 @@ export interface FormOptions {
     access?: (form: Form, mode: any) => Promise<boolean> | boolean;
     processUDF?: (form: Form, udfs: any[]) => Promise<any[]>;
     setup?: (form: Form) => void;
+    rightMenu?: (form: Form) => Promise<MenuTarget | undefined> | MenuTarget | undefined;
     preUDFOptions?: PartParams;
     postUDFOptions?: PartParams;
     on?: (form: Form) => OnHandler;
@@ -90,6 +91,7 @@ export declare class Form extends UIBase {
     afterSaved(): Promise<void>;
     cancel(): Promise<void>;
     access(mode: any): Promise<boolean>;
+    getRightMenuTarget(): Promise<MenuTarget | undefined>;
     processUDF(udfs: any[]): Promise<any[]>;
     props(): never[];
     topChildren(props: any, context: any): Array<Part>;

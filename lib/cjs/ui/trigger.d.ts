@@ -1,5 +1,5 @@
 import { VNode } from "vue";
-import { ReportMode, UIBase } from "./base";
+import { MenuTarget, ReportMode, UIBase } from "./base";
 import { Button, ButtonParams } from "./button";
 import { OnHandler } from "./lib";
 import { Part, PRefs } from "./part";
@@ -65,6 +65,7 @@ export interface TriggerOptions {
     beforeExport?: (trigger: Trigger, mode?: ReportMode) => Promise<any | undefined> | any | undefined;
     exportTemplate?: (trigger: Trigger, mode?: ReportMode) => Promise<ExportTemplateInfo | undefined> | ExportTemplateInfo | undefined;
     sideButtons?: (props: any, context: any, trigger: Trigger) => Array<Button> | undefined;
+    rightMenu?: (trigger: Trigger) => Promise<MenuTarget | undefined> | MenuTarget | undefined;
 }
 export interface ServerTableOptions {
     page: number;
@@ -115,6 +116,7 @@ export declare class Trigger extends UIBase {
     saved(): Promise<void>;
     cancel(): Promise<void>;
     access(mode?: any): Promise<boolean>;
+    getRightMenuTarget(): Promise<MenuTarget | undefined>;
     removeAccess(): Promise<boolean>;
     canRemove(item: any): Promise<boolean>;
     remove(item: any): Promise<boolean | string>;

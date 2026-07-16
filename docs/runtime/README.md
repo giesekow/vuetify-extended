@@ -27,9 +27,13 @@ If you want the original design rationale and architectural tradeoffs behind the
 - [Persistence](./Persistence.md)
   How refresh/resume restoration works, what should be persisted, and how to choose the right `storageMode`.
 
+- [Side Navigation](./SideNavigation.md)
+  Planned design for left/right shell navigation drawers, contextual right-menu ownership, and the implementation sequence for adding them.
+
 ## Recommended Reading Order
 
 1. Read [Localization](./Localization.md) if you are introducing multiple languages or locale-aware formatting.
 2. Read [Navigation](./Navigation.md) before building a workflow that relies on browser back, device back, or screen restoration.
 3. Read [Persistence](./Persistence.md) when you want users to resume workflows after refresh, reload, or app resume.
-4. Use [AppMain](../ui/AppMain.md) and [AppManager](../ui/AppManager.md) as API reference once the concepts are clear.
+4. Read [Side Navigation](./SideNavigation.md) before implementing left/right shell drawers or contextual page-tool menus.
+5. Use [AppMain](../ui/AppMain.md) and [AppManager](../ui/AppManager.md) as API reference once the concepts are clear.

@@ -10,6 +10,9 @@ type MenuScreenTarget<T extends UIBase> = T | NavigationScreenFactory<T>;
 export interface MenuParams {
     ref?: string;
     title?: UIText;
+    presentation?: 'screen' | 'side-nav';
+    hideTitle?: boolean;
+    hideBackButton?: boolean;
     maxWidth?: number | string;
     minWidth?: number | string;
     width?: number | string;
@@ -68,6 +71,8 @@ export declare class Menu extends UIBase {
     build(props: any, context: any): VNode<import("vue").RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;
+    private renderSideNav;
+    private isSideNavPresentation;
     private renderMenuItemShortcut;
     private normalizeCssSize;
     private clampToViewport;

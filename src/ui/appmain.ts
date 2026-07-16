@@ -1,5 +1,5 @@
-import { VNode, Ref, isVNode } from "vue";
-import { ReportMode, UIBase } from "./base";
+import { VNode, Ref, ShallowRef, isVNode, shallowRef } from "vue";
+import { MenuTarget, ReportMode, UIBase } from "./base";
 import { Menu, prepareMenuReplayTarget } from "./menu";
 import { Report } from "./report";
 import { Collection } from "./collection";
@@ -13,7 +13,7 @@ import { AppManager } from "./appmanager";
 import { Api } from "../api";
 import { DialogForm } from "./dialogform";
 import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent } from "./shortcut";
-import { VApp, VAppBar, VAppBarTitle, VBtn, VCard, VCardText, VFooter, VMain, VMenu, VNavigationDrawer, VDivider } from 'vuetify/components';
+import { VApp, VAppBar, VAppBarTitle, VBtn, VCard, VCardText, VFooter, VMain, VMenu, VNavigationDrawer, VDivider, VContainer, VInput, VTextField } from 'vuetify/components';
 import { Master } from "../master";
 import { attachCapacitorBackButton, createNavigationPersistenceAdapter, createNavigationId, detectCapacitorEnvironment, isValidSnapshot, makeSerializable, navigationStorageKey, resolveDefaultNavigationStorageMode, type AppNavigationOptions, type AppSnapshot, type InlineNavigationOptions, type NavigationEntry, type NavigationMenuRestoreStep, type NavigationPersistenceAdapter, type NavigationScreenFactory, type NavigationScreenType, type NavigationStorageMode, type UIText } from "./runtime";
 
@@ -54,6 +54,10 @@ export type AppShellContent = UIBase | VNode | string | number | boolean | null 
 
 export interface AppOptions {
   menu?: (app: AppMain) => Promise<Menu|undefined>|Menu|undefined;
+  leftNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
+  rightNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
+  leftNavOptions?: AppSideNavOptions;
+  rightNavOptions?: AppSideNavOptions;
   udfs?: (app: AppMain, objectType: string|string[], query: any) => Promise<any[]>;
   makeUDF?: (app: AppMain, options: any) => Field|undefined;
   fabButtons?: AppFabButtonsFactory;
@@ -69,6 +73,23 @@ export interface AppOptions {
 }
 
 export type AppFabButtonsFactory = Button[] | ((app: AppMain, item?: UIBase, stackItem?: AppStackItem) => Button[]);
+
+export interface AppSideNavOptions {
+  enabled?: boolean;
+  side?: 'left' | 'right';
+  mode?: 'persistent' | 'temporary' | 'rail';
+  width?: number | string;
+  open?: boolean;
+  overlay?: boolean;
+  breakpoint?: number;
+  autoCloseOnNavigate?: boolean;
+  mobileMode?: 'temporary' | 'rail';
+  showToggleButton?: boolean;
+  toggleIcon?: string;
+  toggleColor?: string;
+  toggleVariant?: string;
+  toggleTooltip?: UIText;
+}
 
 export interface AppScreenParams {
   showFab?: boolean;
@@ -98,6 +119,16 @@ export interface AppStackItem {
   navigation?: NavigationEntry
 }
 
+type AppSideNavSide = 'left' | 'right';
+type AppSideNavSource = 'contextual' | 'runtime' | 'configured' | undefined;
+
+interface AppSideNavTargetState {
+  target?: MenuTarget;
+  params?: AppScreenParams;
+  source?: AppSideNavSource;
+  token?: unknown;
+}
+
 export class AppMain extends UIBase {
   private params: Ref<AppParams>;
   private options: AppOptions;
@@ -123,6 +154,23 @@ export class AppMain extends UIBase {
   private footerHeight: Ref<number>;
   private footerElement?: HTMLElement;
   private footerResizeObserver?: ResizeObserver;
+  private viewportWidth: Ref<number>;
+  private leftSideMenu: ShallowRef<Menu | undefined>;
+  private rightSideMenu: ShallowRef<Menu | undefined>;
+  private leftSideMenuOpen: Ref<boolean>;
+  private rightSideMenuOpen: Ref<boolean>;
+  private leftSideMenuSource: AppSideNavSource;
+  private rightSideMenuSource: AppSideNavSource;
+  private leftSideMenuState?: AppSideNavTargetState;
+  private rightSideMenuState?: AppSideNavTargetState;
+  private leftSideMenuTouched = false;
+  private rightSideMenuTouched = false;
+  private leftSideMenuRuntime?: AppSideNavTargetState;
+  private rightSideMenuRuntime?: AppSideNavTargetState;
+  private leftSideMenuRuntimeRevision = 0;
+  private rightSideMenuRuntimeRevision = 0;
+  private leftSideMenuSuppressedToken?: unknown;
+  private rightSideMenuSuppressedToken?: unknown;
   private navigationPersistence?: NavigationPersistenceAdapter;
   private navigationOptions: AppNavigationOptions;
   private browserNavigationAttached = false;
@@ -177,6 +225,13 @@ export class AppMain extends UIBase {
     this.compactShellLayout = this.$makeRef(typeof window !== 'undefined' ? window.innerWidth < 960 : false);
     this.mobileHeaderDrawerOpen = this.$makeRef(false);
     this.footerHeight = this.$makeRef(0);
+    this.viewportWidth = this.$makeRef(typeof window !== 'undefined' ? window.innerWidth : 1280);
+    this.leftSideMenu = shallowRef();
+    this.rightSideMenu = shallowRef();
+    this.leftSideMenuOpen = this.$makeRef(false);
+    this.rightSideMenuOpen = this.$makeRef(false);
+    this.leftSideMenuSource = undefined;
+    this.rightSideMenuSource = undefined;
     this.navigationOptions = {
       enabled: false,
       history: true,
@@ -225,6 +280,10 @@ export class AppMain extends UIBase {
         ...navigation,
       };
     }
+
+    if (this.loaded.value) {
+      void this.refreshSideMenus();
+    }
   }
 
   get $params(): AppParams {
@@ -262,6 +321,348 @@ export class AppMain extends UIBase {
 
   private supportsPersistence() {
     return this.navigationEnabled() && this.navigationOptions.persist !== false;
+  }
+
+  private getSideNavOptions(side: AppSideNavSide): AppSideNavOptions {
+    const raw = side === 'left' ? this.options.leftNavOptions : this.options.rightNavOptions;
+    return {
+      enabled: true,
+      side,
+      mode: side === 'left' ? 'persistent' : 'temporary',
+      width: side === 'left' ? 320 : 340,
+      autoCloseOnNavigate: true,
+      mobileMode: 'temporary',
+      ...(raw || {}),
+    };
+  }
+
+  private sideNavMenuRef(side: AppSideNavSide) {
+    return side === 'left' ? this.leftSideMenu : this.rightSideMenu;
+  }
+
+  private sideNavOpenRef(side: AppSideNavSide) {
+    return side === 'left' ? this.leftSideMenuOpen : this.rightSideMenuOpen;
+  }
+
+  private sideNavState(side: AppSideNavSide) {
+    return side === 'left' ? this.leftSideMenuState : this.rightSideMenuState;
+  }
+
+  private setSideNavState(side: AppSideNavSide, state?: AppSideNavTargetState) {
+    if (side === 'left') {
+      this.leftSideMenuState = state;
+    } else {
+      this.rightSideMenuState = state;
+    }
+  }
+
+  private suppressedSideNavToken(side: AppSideNavSide) {
+    return side === 'left' ? this.leftSideMenuSuppressedToken : this.rightSideMenuSuppressedToken;
+  }
+
+  private setSuppressedSideNavToken(side: AppSideNavSide, token?: unknown) {
+    if (side === 'left') {
+      this.leftSideMenuSuppressedToken = token;
+    } else {
+      this.rightSideMenuSuppressedToken = token;
+    }
+  }
+
+  private setSideNavSource(side: AppSideNavSide, source: AppSideNavSource) {
+    if (side === 'left') {
+      this.leftSideMenuSource = source;
+    } else {
+      this.rightSideMenuSource = source;
+    }
+  }
+
+  private setSideNavTouched(side: AppSideNavSide, value: boolean) {
+    if (side === 'left') {
+      this.leftSideMenuTouched = value;
+    } else {
+      this.rightSideMenuTouched = value;
+    }
+  }
+
+  private isSideNavTouched(side: AppSideNavSide) {
+    return side === 'left' ? this.leftSideMenuTouched : this.rightSideMenuTouched;
+  }
+
+  private isSideNavMobile(side: AppSideNavSide) {
+    return this.viewportWidth.value <= (this.getSideNavOptions(side).breakpoint || 959);
+  }
+
+  private isSideNavTemporary(side: AppSideNavSide) {
+    const options = this.getSideNavOptions(side);
+    if (this.isSideNavMobile(side)) {
+      return options.mobileMode !== 'rail';
+    }
+
+    return options.mode === 'temporary';
+  }
+
+  private defaultSideNavOpen(side: AppSideNavSide) {
+    const options = this.getSideNavOptions(side);
+    if (options.open !== undefined) {
+      return options.open;
+    }
+
+    if (this.isSideNavMobile(side)) {
+      return false;
+    }
+
+    return side === 'left' && options.mode !== 'temporary';
+  }
+
+  private setSideNavOpen(side: AppSideNavSide, value: boolean, touched: boolean = true) {
+    if (touched) {
+      this.setSideNavTouched(side, true);
+    }
+
+    this.sideNavOpenRef(side).value = value;
+    if (value && this.isSideNavMobile(side)) {
+      this.sideNavOpenRef(side === 'left' ? 'right' : 'left').value = false;
+    }
+  }
+
+  private shouldRenderSideNav(side: AppSideNavSide) {
+    return this.getSideNavOptions(side).enabled !== false;
+  }
+
+  private async resolveConfiguredSideNavTarget(side: AppSideNavSide): Promise<MenuTarget | undefined> {
+    const resolver = side === 'left' ? this.options.leftNav : this.options.rightNav;
+    if (!resolver) {
+      return undefined;
+    }
+
+    return await resolver(this);
+  }
+
+  private async resolveContextualRightMenuState(): Promise<AppSideNavTargetState> {
+    const activeItem = this.getActiveStackItem()?.item;
+    if (!activeItem) {
+      return {};
+    }
+
+    if (activeItem instanceof Collection) {
+      const report = activeItem.$currentReport;
+      const trigger = activeItem.$currentTrigger;
+      if (report?.$currentForm) {
+        const formTarget = await report.$currentForm.getRightMenuTarget();
+        if (formTarget) {
+          return {
+            target: formTarget,
+            source: 'contextual',
+            token: report.$currentForm.$id,
+          };
+        }
+      }
+
+      if (report) {
+        const reportTarget = await report.getRightMenuTarget();
+        if (reportTarget) {
+          return {
+            target: reportTarget,
+            source: 'contextual',
+            token: report.$id,
+          };
+        }
+      }
+
+      if (trigger) {
+        const triggerTarget = await trigger.getRightMenuTarget();
+        if (triggerTarget) {
+          return {
+            target: triggerTarget,
+            source: 'contextual',
+            token: trigger.$id,
+          };
+        }
+      }
+
+      return {};
+    }
+
+    if (activeItem instanceof Report) {
+      if (activeItem.$currentForm) {
+        const formTarget = await activeItem.$currentForm.getRightMenuTarget();
+        if (formTarget) {
+          return {
+            target: formTarget,
+            source: 'contextual',
+            token: activeItem.$currentForm.$id,
+          };
+        }
+      }
+
+      const reportTarget = await activeItem.getRightMenuTarget();
+      if (reportTarget) {
+        return {
+          target: reportTarget,
+          source: 'contextual',
+          token: activeItem.$id,
+        };
+      }
+
+      return {};
+    }
+
+    if (!activeItem || typeof activeItem.getRightMenuTarget !== 'function') {
+      return {};
+    }
+
+    const target = await activeItem.getRightMenuTarget();
+    if (!target) {
+      return {};
+    }
+
+    return {
+      target,
+      source: 'contextual',
+      token: activeItem.$id,
+    };
+  }
+
+  private async resolveSideNavTarget(side: AppSideNavSide): Promise<AppSideNavTargetState> {
+    if (side === 'right') {
+      const contextualState = await this.resolveContextualRightMenuState();
+      if (contextualState.target) {
+        return contextualState;
+      }
+    }
+
+    const runtimeState = side === 'left' ? this.leftSideMenuRuntime : this.rightSideMenuRuntime;
+    if (runtimeState?.target) {
+      return runtimeState;
+    }
+
+    const configuredTarget = await this.resolveConfiguredSideNavTarget(side);
+    if (configuredTarget) {
+      return {
+        target: configuredTarget,
+        source: 'configured',
+        token: side === 'left' ? this.options.leftNav : this.options.rightNav,
+      };
+    }
+
+    return {};
+  }
+
+  private applySideNavPresentation(menu: Menu) {
+    menu.setParent(this);
+    menu.setParams({
+      presentation: 'side-nav',
+      hideBackButton: true,
+    });
+  }
+
+  private async resolveSideNavMenu(side: AppSideNavSide, forceReload: boolean = false) {
+    if (!this.shouldRenderSideNav(side)) {
+      this.sideNavMenuRef(side).value = undefined;
+      this.sideNavOpenRef(side).value = false;
+      this.setSideNavSource(side, undefined);
+      this.setSideNavState(side, undefined);
+      this.setSideNavTouched(side, false);
+      return;
+    }
+
+    const resolvedState = await this.resolveSideNavTarget(side);
+    const suppressedToken = this.suppressedSideNavToken(side);
+    if (suppressedToken !== undefined && resolvedState.token !== undefined && suppressedToken === resolvedState.token) {
+      this.sideNavMenuRef(side).value = undefined;
+      this.sideNavOpenRef(side).value = false;
+      this.setSideNavSource(side, undefined);
+      this.setSideNavState(side, undefined);
+      this.setSideNavTouched(side, false);
+      return;
+    }
+
+    if (suppressedToken !== undefined && resolvedState.token !== suppressedToken) {
+      this.setSuppressedSideNavToken(side, undefined);
+    }
+
+    if (!resolvedState.target) {
+      this.sideNavMenuRef(side).value = undefined;
+      this.sideNavOpenRef(side).value = false;
+      this.setSideNavSource(side, undefined);
+      this.setSideNavState(side, undefined);
+      this.setSideNavTouched(side, false);
+      return;
+    }
+
+    const prepared = await AppManager.prepareScreenTarget('menu', resolvedState.target as any, resolvedState.params);
+    const menu = prepared.item;
+    if (!menu) {
+      this.sideNavMenuRef(side).value = undefined;
+      this.sideNavOpenRef(side).value = false;
+      this.setSideNavSource(side, undefined);
+      this.setSideNavState(side, undefined);
+      this.setSideNavTouched(side, false);
+      return;
+    }
+
+    const allowed = typeof (menu as any)?.access === 'function' ? await (menu as any).access() : true;
+    if (!allowed) {
+      this.sideNavMenuRef(side).value = undefined;
+      this.sideNavOpenRef(side).value = false;
+      this.setSideNavSource(side, undefined);
+      this.setSideNavState(side, undefined);
+      this.setSideNavTouched(side, false);
+      return;
+    }
+
+    this.applySideNavPresentation(menu);
+
+    const current = this.sideNavMenuRef(side).value;
+    const sameMenuInstance = current?.$id === menu.$id;
+    this.sideNavMenuRef(side).value = menu;
+    this.setSideNavSource(side, resolvedState.source);
+    this.setSideNavState(side, resolvedState);
+
+    if (!this.isSideNavTouched(side)) {
+      this.sideNavOpenRef(side).value = this.defaultSideNavOpen(side);
+    }
+
+    if (sameMenuInstance || forceReload) {
+      await menu.$reload();
+    }
+  }
+
+  private async refreshSideMenus(forceReload: boolean = false) {
+    await this.resolveSideNavMenu('left', forceReload);
+    await this.resolveSideNavMenu('right', forceReload);
+  }
+
+  private closeTemporarySideNavsOnNavigate() {
+    (['left', 'right'] as AppSideNavSide[]).forEach((side) => {
+      const options = this.getSideNavOptions(side);
+      if (options.autoCloseOnNavigate === false) {
+        return;
+      }
+
+      if (this.isSideNavTemporary(side)) {
+        this.sideNavOpenRef(side).value = false;
+      }
+    });
+  }
+
+  private clearSideNav(side: AppSideNavSide) {
+    const currentState = this.sideNavState(side);
+    if (currentState?.token !== undefined) {
+      this.setSuppressedSideNavToken(side, currentState.token);
+    }
+
+    if (side === 'left') {
+      this.leftSideMenuRuntime = undefined;
+    } else {
+      this.rightSideMenuRuntime = undefined;
+    }
+
+    this.sideNavMenuRef(side).value = undefined;
+    this.sideNavOpenRef(side).value = false;
+    this.setSideNavSource(side, undefined);
+    this.setSideNavState(side, undefined);
+    this.setSideNavTouched(side, false);
   }
 
   private async ensureNavigationPersistence() {
@@ -719,9 +1120,11 @@ export class AppMain extends UIBase {
     const footerBar = this.renderShellBar('footer');
     const showHeader = this.params.value.showHeader || !!headerBar || !!header;
     const showFooter = this.params.value.showFooter || !!footerBar || !!footer;
-    const compactHeaderDrawer = this.renderCompactHeaderDrawer(showHeader);
+    const sideNavDrawers = (['left', 'right'] as AppSideNavSide[])
+      .map((side) => this.renderSideNavDrawer(side))
+      .filter((drawer): drawer is VNode => !!drawer);
 
-    if (!showHeader && !showFooter) {
+    if (!showHeader && !showFooter && sideNavDrawers.length === 0) {
       return this.wrapWithFab(content, showFooter);
     }
 
@@ -731,7 +1134,6 @@ export class AppMain extends UIBase {
         class: ['vuetify-extended-app-shell'],
       },
       () => [
-        ...(compactHeaderDrawer ? [compactHeaderDrawer] : []),
         ...(showHeader ? [
           h(
             VAppBar,
@@ -797,6 +1199,7 @@ export class AppMain extends UIBase {
             () => footerBar || footer || ''
           ),
         ] : []),
+        ...sideNavDrawers
       ]
     );
   }
@@ -847,14 +1250,27 @@ export class AppMain extends UIBase {
   private wrapWithFab(content: VNode | VNode[] | undefined, showFooter: boolean = false) {
     const h = this.$h;
     const fab = this.renderFabActions(showFooter);
+    const leftNavToggle = this.renderTemporarySideNavToggle('left');
+    const rightNavToggle = this.renderTemporaryRightNavToggle();
     if (!fab) {
-      return content;
+      if (!leftNavToggle && !rightNavToggle) {
+        return content;
+      }
+
+      const nodes = Array.isArray(content) ? content : (content ? [content] : []);
+      return [
+        ...nodes,
+        ...(leftNavToggle ? [leftNavToggle] : []),
+        ...(rightNavToggle ? [rightNavToggle] : []),
+      ];
     }
 
     const nodes = Array.isArray(content) ? content : (content ? [content] : []);
     return [
       ...nodes,
       fab,
+      ...(leftNavToggle ? [leftNavToggle] : []),
+      ...(rightNavToggle ? [rightNavToggle] : []),
     ];
   }
 
@@ -962,6 +1378,74 @@ export class AppMain extends UIBase {
         }, () => buttons.map((button) => h('div', { style: { display: 'flex', width: '100%' } }, [h(button.component, { style: { width: '100%' } })])))),
       }),
     ]);
+  }
+
+  private shouldShowTemporarySideNavToggle(side: AppSideNavSide) {
+    const options = this.getSideNavOptions(side);
+    if (!this.shouldRenderSideNav(side)) {
+      return false;
+    }
+
+    if (!this.isSideNavTemporary(side)) {
+      return false;
+    }
+
+    if (options.showToggleButton === false) {
+      return false;
+    }
+
+    if (this.sideNavMenuRef(side).value) {
+      return true;
+    }
+
+    return side === 'left' ? !!this.options.leftNav : !!this.options.rightNav;
+  }
+
+  private renderTemporarySideNavToggle(side: AppSideNavSide) {
+    if (!this.shouldShowTemporarySideNavToggle(side)) {
+      return undefined;
+    }
+
+    const options = this.getSideNavOptions(side);
+    const h = this.$h;
+    const tooltip = this.$text(
+      options.toggleTooltip,
+      this.$uiText(
+        side === 'left' ? 've.app.openLeftNav' : 've.app.openRightNav',
+        side === 'left' ? 'Open navigation panel' : 'Open tools panel',
+      ),
+    );
+    const onClick = side === 'left'
+      ? () => { void this.$toggleLeftMenu(); }
+      : () => { void this.$toggleRightMenu(); };
+
+    return h('div', {
+      style: {
+        position: 'fixed',
+        top: 'calc(var(--v-layout-top, 0px) + 16px)',
+        left: side === 'left' ? '24px' : undefined,
+        right: side === 'right' ? '24px' : undefined,
+        zIndex: 1195,
+      },
+    }, [
+      h(VBtn, {
+        icon: options.toggleIcon || (side === 'left' ? 'mdi-menu' : 'mdi-tune'),
+        color: options.toggleColor || 'primary',
+        variant: options.toggleVariant || 'elevated',
+        elevation: 8,
+        size: 'default',
+        title: tooltip,
+        'aria-label': tooltip,
+        onClick,
+        style: {
+          borderRadius: '999px',
+        },
+      } as any),
+    ]);
+  }
+
+  private renderTemporaryRightNavToggle() {
+    return this.renderTemporarySideNavToggle('right');
   }
 
   private triggerComponentShortcut(target: any, ev: KeyboardEvent) {
@@ -1239,6 +1723,7 @@ export class AppMain extends UIBase {
       position: 'relative',
       minHeight: '100%',
       paddingBottom: reserveFooterSpace ? '72px' : undefined,
+      boxSizing: 'border-box',
     };
   }
 
@@ -1540,11 +2025,69 @@ export class AppMain extends UIBase {
     return h('span', {}, String(item));
   }
 
+  private renderSideNavDrawer(side: AppSideNavSide) {
+    const menu = this.sideNavMenuRef(side).value;
+    if (!menu) {
+      return undefined;
+    }
+
+    const options = this.getSideNavOptions(side);
+    const mobile = this.isSideNavMobile(side);
+    const temporary = this.isSideNavTemporary(side);
+    const permanent = !temporary;
+    const rail = !temporary && (mobile ? options.mobileMode === 'rail' : options.mode === 'rail');
+    const width = typeof options.width === 'number'
+      ? options.width
+      : options.width !== undefined && options.width !== null && options.width !== ''
+        ? options.width
+        : (side === 'left' ? 320 : 340);
+    const h = this.$h;
+
+    return h(
+      VNavigationDrawer,
+      {
+        modelValue: this.sideNavOpenRef(side).value,
+        'onUpdate:modelValue': (value: boolean) => {
+          this.setSideNavOpen(side, value);
+        },
+        location: side,
+        temporary,
+        permanent,
+        rail,
+        width,
+        scrim: temporary || options.overlay === true,
+        app: true,
+      } as any,
+      () => h(
+        'div',
+        {
+          style: {
+            height: '100%',
+            minHeight: 0,
+          },
+        },
+        [h(menu.component, {
+          key: `${side}-${String(menu.$id)}`,
+          sideNavShowCloseButton: temporary,
+          sideNavCloseTooltip: this.$uiText(
+            side === 'left' ? 've.app.closeLeftNav' : 've.app.closeRightNav',
+            side === 'left' ? 'Close navigation panel' : 'Close tools panel',
+          ),
+          sideNavOnClose: () => {
+            this.setSideNavOpen(side, false);
+          },
+        })],
+      ),
+    );
+  }
+
   private async activateCurrentItem(index: number = this.index.value) {
     this.syncStackRefs();
     this.fabOpen.value = false;
     this.mobileHeaderDrawerOpen.value = false;
+    this.closeTemporarySideNavsOnNavigate();
     if (index < 0 || index >= this.stack.length) {
+      await this.refreshSideMenus();
       return;
     }
 
@@ -1556,8 +2099,13 @@ export class AppMain extends UIBase {
       this.stack[index].item.clearListeners(this.$id);
       this.stack[index].item.on('cancel', (item: any) => this.onCancel(item), this.$id);
       this.stack[index].item.on('finished', (item: any) => this.onCancel(item), this.$id);
+      this.stack[index].item.on('right-menu-changed', () => {
+        void this.$refreshRightMenu();
+      }, this.$id);
       await this.stack[index].item.show();
     }
+
+    await this.refreshSideMenus();
   }
 
   async $reload() {
@@ -1581,6 +2129,22 @@ export class AppMain extends UIBase {
   private async loadApp(preferRestore: boolean = true) {
     this.fabOpen.value = false;
     this.mobileHeaderDrawerOpen.value = false;
+    this.leftSideMenu.value = undefined;
+    this.rightSideMenu.value = undefined;
+    this.leftSideMenuOpen.value = false;
+    this.rightSideMenuOpen.value = false;
+    this.leftSideMenuSource = undefined;
+    this.rightSideMenuSource = undefined;
+    this.leftSideMenuState = undefined;
+    this.rightSideMenuState = undefined;
+    this.leftSideMenuTouched = false;
+    this.rightSideMenuTouched = false;
+    this.leftSideMenuRuntime = undefined;
+    this.rightSideMenuRuntime = undefined;
+    this.leftSideMenuRuntimeRevision = 0;
+    this.rightSideMenuRuntimeRevision = 0;
+    this.leftSideMenuSuppressedToken = undefined;
+    this.rightSideMenuSuppressedToken = undefined;
     Dialogs.$showProgress({})
     const menu = await this.menu();
 
@@ -1679,6 +2243,80 @@ export class AppMain extends UIBase {
     this.index.value = this.stack.length - 1;
     await this.activateCurrentItem();
     await this.afterStackChanged({ replaceHistory });
+  }
+
+  async $showLeftMenu(menu: MenuTarget, params?: AppScreenParams) {
+    this.leftSideMenuRuntimeRevision += 1;
+    this.leftSideMenuRuntime = {
+      target: menu,
+      params,
+      source: 'runtime',
+      token: this.leftSideMenuRuntimeRevision,
+    };
+    this.setSuppressedSideNavToken('left', undefined);
+    this.setSideNavTouched('left', false);
+    await this.resolveSideNavMenu('left', true);
+    if (this.leftSideMenu.value) {
+      this.setSideNavOpen('left', true);
+    }
+  }
+
+  async $showRightMenu(menu: MenuTarget, params?: AppScreenParams) {
+    this.rightSideMenuRuntimeRevision += 1;
+    this.rightSideMenuRuntime = {
+      target: menu,
+      params,
+      source: 'runtime',
+      token: this.rightSideMenuRuntimeRevision,
+    };
+    this.setSuppressedSideNavToken('right', undefined);
+    this.setSideNavTouched('right', false);
+    await this.resolveSideNavMenu('right', true);
+    if (this.rightSideMenu.value) {
+      this.setSideNavOpen('right', true);
+    }
+  }
+
+  $hideLeftMenu() {
+    this.setSideNavOpen('left', false);
+  }
+
+  $hideRightMenu() {
+    this.setSideNavOpen('right', false);
+  }
+
+  $clearLeftMenu() {
+    this.clearSideNav('left');
+  }
+
+  $clearRightMenu() {
+    this.clearSideNav('right');
+  }
+
+  async $refreshLeftMenu() {
+    await this.resolveSideNavMenu('left', true);
+  }
+
+  async $refreshRightMenu() {
+    await this.resolveSideNavMenu('right', true);
+  }
+
+  async $toggleLeftMenu() {
+    if (!this.leftSideMenu.value) {
+      await this.resolveSideNavMenu('left', true);
+    }
+    if (this.leftSideMenu.value) {
+      this.setSideNavOpen('left', !this.leftSideMenuOpen.value);
+    }
+  }
+
+  async $toggleRightMenu() {
+    if (!this.rightSideMenu.value) {
+      await this.resolveSideNavMenu('right', true);
+    }
+    if (this.rightSideMenu.value) {
+      this.setSideNavOpen('right', !this.rightSideMenuOpen.value);
+    }
   }
 
   async $showReport(report: Report | NavigationScreenFactory<Report>, params?: AppScreenParams, replace?: boolean) {
@@ -1977,6 +2615,7 @@ export class AppMain extends UIBase {
   }
 
   private syncShellLayoutBreakpoint(matches?: boolean) {
+    this.viewportWidth.value = typeof window !== 'undefined' ? window.innerWidth : this.viewportWidth.value;
     this.compactShellLayout.value = matches ?? (typeof window !== 'undefined' ? window.innerWidth < 960 : false);
     if (!this.compactShellLayout.value) {
       this.mobileHeaderDrawerOpen.value = false;
@@ -2039,6 +2678,7 @@ export class AppMain extends UIBase {
   private updateFooterHeight() {
     this.footerHeight.value = this.footerElement?.offsetHeight || 0;
   }
+
 
   private disconnectFooterObserver() {
     if (this.footerResizeObserver) {

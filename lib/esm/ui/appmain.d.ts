@@ -1,5 +1,5 @@
 import { VNode, Ref } from "vue";
-import { ReportMode, UIBase } from "./base";
+import { MenuTarget, ReportMode, UIBase } from "./base";
 import { Menu } from "./menu";
 import { Report } from "./report";
 import { Collection } from "./collection";
@@ -44,6 +44,10 @@ export interface AppParams {
 export type AppShellContent = UIBase | VNode | string | number | boolean | null | undefined;
 export interface AppOptions {
     menu?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
+    leftNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
+    rightNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
+    leftNavOptions?: AppSideNavOptions;
+    rightNavOptions?: AppSideNavOptions;
     udfs?: (app: AppMain, objectType: string | string[], query: any) => Promise<any[]>;
     makeUDF?: (app: AppMain, options: any) => Field | undefined;
     fabButtons?: AppFabButtonsFactory;
@@ -58,6 +62,22 @@ export interface AppOptions {
     footerEnd?: (app: AppMain) => AppShellContent | AppShellContent[];
 }
 export type AppFabButtonsFactory = Button[] | ((app: AppMain, item?: UIBase, stackItem?: AppStackItem) => Button[]);
+export interface AppSideNavOptions {
+    enabled?: boolean;
+    side?: 'left' | 'right';
+    mode?: 'persistent' | 'temporary' | 'rail';
+    width?: number | string;
+    open?: boolean;
+    overlay?: boolean;
+    breakpoint?: number;
+    autoCloseOnNavigate?: boolean;
+    mobileMode?: 'temporary' | 'rail';
+    showToggleButton?: boolean;
+    toggleIcon?: string;
+    toggleColor?: string;
+    toggleVariant?: string;
+    toggleTooltip?: UIText;
+}
 export interface AppScreenParams {
     showFab?: boolean;
     fabIcon?: string;
@@ -108,6 +128,23 @@ export declare class AppMain extends UIBase {
     private footerHeight;
     private footerElement?;
     private footerResizeObserver?;
+    private viewportWidth;
+    private leftSideMenu;
+    private rightSideMenu;
+    private leftSideMenuOpen;
+    private rightSideMenuOpen;
+    private leftSideMenuSource;
+    private rightSideMenuSource;
+    private leftSideMenuState?;
+    private rightSideMenuState?;
+    private leftSideMenuTouched;
+    private rightSideMenuTouched;
+    private leftSideMenuRuntime?;
+    private rightSideMenuRuntime?;
+    private leftSideMenuRuntimeRevision;
+    private rightSideMenuRuntimeRevision;
+    private leftSideMenuSuppressedToken?;
+    private rightSideMenuSuppressedToken?;
     private navigationPersistence?;
     private navigationOptions;
     private browserNavigationAttached;
@@ -135,6 +172,29 @@ export declare class AppMain extends UIBase {
     private navigationEnabled;
     private supportsBrowserHistory;
     private supportsPersistence;
+    private getSideNavOptions;
+    private sideNavMenuRef;
+    private sideNavOpenRef;
+    private sideNavState;
+    private setSideNavState;
+    private suppressedSideNavToken;
+    private setSuppressedSideNavToken;
+    private setSideNavSource;
+    private setSideNavTouched;
+    private isSideNavTouched;
+    private isSideNavMobile;
+    private isSideNavTemporary;
+    private defaultSideNavOpen;
+    private setSideNavOpen;
+    private shouldRenderSideNav;
+    private resolveConfiguredSideNavTarget;
+    private resolveContextualRightMenuState;
+    private resolveSideNavTarget;
+    private applySideNavPresentation;
+    private resolveSideNavMenu;
+    private refreshSideMenus;
+    private closeTemporarySideNavsOnNavigate;
+    private clearSideNav;
     private ensureNavigationPersistence;
     private shouldIncludePersistedEntry;
     private createSnapshot;
@@ -171,6 +231,9 @@ export declare class AppMain extends UIBase {
     private resolveFabButtonSource;
     private buildFabButtons;
     private renderFabActions;
+    private shouldShowTemporarySideNavToggle;
+    private renderTemporarySideNavToggle;
+    private renderTemporaryRightNavToggle;
     private triggerComponentShortcut;
     private triggerActiveScreenShortcut;
     private triggerFabButtonShortcut;
@@ -198,6 +261,7 @@ export declare class AppMain extends UIBase {
     private shouldHideShellItem;
     private renderCompactHeaderDrawer;
     private normalizeShellItem;
+    private renderSideNavDrawer;
     private activateCurrentItem;
     $reload(): Promise<void>;
     $goBackWithFallback(fallback: () => Promise<void> | void): Promise<void>;
@@ -206,6 +270,16 @@ export declare class AppMain extends UIBase {
     $getUDFs(objectType: string | string[]): Promise<any[]>;
     $makeUDF(options: any, mode?: ReportMode): Field | undefined;
     $showMenu(menu: Menu | NavigationScreenFactory<Menu>, params?: AppScreenParams, replaceHistory?: boolean): Promise<void>;
+    $showLeftMenu(menu: MenuTarget, params?: AppScreenParams): Promise<void>;
+    $showRightMenu(menu: MenuTarget, params?: AppScreenParams): Promise<void>;
+    $hideLeftMenu(): void;
+    $hideRightMenu(): void;
+    $clearLeftMenu(): void;
+    $clearRightMenu(): void;
+    $refreshLeftMenu(): Promise<void>;
+    $refreshRightMenu(): Promise<void>;
+    $toggleLeftMenu(): Promise<void>;
+    $toggleRightMenu(): Promise<void>;
     $showReport(report: Report | NavigationScreenFactory<Report>, params?: AppScreenParams, replace?: boolean): Promise<void>;
     $showCollection(collection: Collection | NavigationScreenFactory<Collection>, params?: AppScreenParams, replace?: boolean): Promise<void>;
     $showTrigger(trigger: Trigger | NavigationScreenFactory<Trigger>, params?: AppScreenParams, replace?: boolean): Promise<void>;

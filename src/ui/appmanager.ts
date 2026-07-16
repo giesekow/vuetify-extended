@@ -397,6 +397,86 @@ export class AppManager {
     return false;
   }
 
+  static showLeftMenu(menu: Menu | NavigationScreenFactory<Menu>, params?: AppScreenParams) {
+    if (AppManager.app) {
+      AppManager.app.$showLeftMenu(menu, params);
+      return true;
+    }
+    return false;
+  }
+
+  static showRightMenu(menu: Menu | NavigationScreenFactory<Menu>, params?: AppScreenParams) {
+    if (AppManager.app) {
+      AppManager.app.$showRightMenu(menu, params);
+      return true;
+    }
+    return false;
+  }
+
+  static hideLeftMenu() {
+    if (AppManager.app) {
+      AppManager.app.$hideLeftMenu();
+      return true;
+    }
+    return false;
+  }
+
+  static hideRightMenu() {
+    if (AppManager.app) {
+      AppManager.app.$hideRightMenu();
+      return true;
+    }
+    return false;
+  }
+
+  static clearLeftMenu() {
+    if (AppManager.app) {
+      AppManager.app.$clearLeftMenu();
+      return true;
+    }
+    return false;
+  }
+
+  static clearRightMenu() {
+    if (AppManager.app) {
+      AppManager.app.$clearRightMenu();
+      return true;
+    }
+    return false;
+  }
+
+  static toggleLeftMenu() {
+    if (AppManager.app) {
+      AppManager.app.$toggleLeftMenu();
+      return true;
+    }
+    return false;
+  }
+
+  static toggleRightMenu() {
+    if (AppManager.app) {
+      AppManager.app.$toggleRightMenu();
+      return true;
+    }
+    return false;
+  }
+
+  static async refreshLeftMenu() {
+    if (AppManager.app) {
+      await AppManager.app.$refreshLeftMenu();
+      return true;
+    }
+    return false;
+  }
+
+  static async refreshRightMenu() {
+    if (AppManager.app) {
+      await AppManager.app.$refreshRightMenu();
+      return true;
+    }
+    return false;
+  }
+
   static async getUDFs(objectType: string|string[]): Promise<any[]> {
     if (AppManager.app) {
       return await AppManager.app.$getUDFs(objectType);

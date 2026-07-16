@@ -1,5 +1,5 @@
 import { VNode, Ref } from "vue";
-import { ReportMode, UIBase } from "./base";
+import { MenuTarget, ReportMode, UIBase } from "./base";
 import { Master } from "../master";
 import { Form } from './form';
 import { Button, ButtonParams } from "./button";
@@ -63,6 +63,7 @@ export interface ReportOptions {
     attachEventListeners?: (report: Report) => Promise<void> | void;
     title?: (report: Report, index?: number) => UIText;
     sideButtons?: (props: any, context: any, report: Report) => Array<Button> | undefined;
+    rightMenu?: (report: Report) => Promise<MenuTarget | undefined> | MenuTarget | undefined;
 }
 export interface ExportTemplateInfo {
     template?: any;
@@ -116,6 +117,7 @@ export declare class Report extends UIBase {
     saved(): Promise<void>;
     cancel(): Promise<void>;
     access(mode: any): Promise<boolean>;
+    getRightMenuTarget(): Promise<MenuTarget | undefined>;
     form(props: any, context: any, index: number): Promise<Form | undefined>;
     hasForm(props: any, context: any, index: number): Promise<boolean>;
     hasPrevForm(props: any, context: any, index: number): Promise<boolean | undefined>;

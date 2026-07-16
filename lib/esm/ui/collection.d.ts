@@ -1,5 +1,5 @@
 import { VNode } from "vue";
-import { UIBase } from "./base";
+import { MenuTarget, UIBase } from "./base";
 import { Trigger } from "./trigger";
 import { Report } from "./report";
 import { Selector } from "./selector";
@@ -63,6 +63,7 @@ export declare class Collection extends UIBase {
     selector(): Promise<Selector | undefined>;
     trigger(): Promise<Trigger | undefined>;
     report(): Promise<Report | undefined>;
+    getRightMenuTarget(): Promise<MenuTarget | undefined>;
     show(): Promise<void>;
     showSelector(options?: {
         replaceHistory?: boolean;

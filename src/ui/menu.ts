@@ -1,6 +1,6 @@
 import { VNode, Ref, nextTick } from "vue";
 import { ReportMode, UIBase } from "./base";
-import { VAvatar, VBtn, VCard, VCardTitle, VCol, VContainer, VIcon, VListItem, VRow } from 'vuetify/components';
+import { VAvatar, VBtn, VCard, VCardTitle, VCol, VContainer, VIcon, VList, VListItem, VRow } from 'vuetify/components';
 import { EventEmitter, OnHandler } from "./lib";
 import { Report } from "./report";
 import { Collection } from "./collection";
@@ -16,6 +16,9 @@ type MenuScreenTarget<T extends UIBase> = T | NavigationScreenFactory<T>;
 export interface MenuParams {
   ref?: string;
   title?: UIText;
+  presentation?: 'screen'|'side-nav';
+  hideTitle?: boolean;
+  hideBackButton?: boolean;
   maxWidth?: number|string;
   minWidth?: number|string;
   width?: number|string;
@@ -63,6 +66,7 @@ export class Menu extends UIBase {
   private replayPath: NavigationMenuRestoreStep[] = [];
   private static defaultParams: MenuParams = {
     keyboardNavigation: true,
+    presentation: 'screen',
   };
 
   constructor(params?: MenuParams, options?: MenuOptions) {
@@ -117,6 +121,10 @@ export class Menu extends UIBase {
   }
 
   render(props: any, context: any): VNode|undefined {
+    if (this.isSideNavPresentation()) {
+      return this.renderSideNav(props, context);
+    }
+
     const h = this.$h;
 
     return h(
@@ -273,8 +281,8 @@ export class Menu extends UIBase {
         }
 
         return [
-          title,
-          ...(this.hasParent() && this.childrenInstances.length > 6 ? [backTop] : []),
+          ...(this.params.value.hideTitle ? [] : [title]),
+          ...(this.hasParent() && !this.params.value.hideBackButton && this.childrenInstances.length > 6 ? [backTop] : []),
           ...this.childrenInstances.map((item, index) => h(
             VCol,
             {
@@ -348,10 +356,156 @@ export class Menu extends UIBase {
               )
             )
           )),
-          ...(this.hasParent() ? [back] : [])
+          ...(this.hasParent() && !this.params.value.hideBackButton ? [back] : [])
         ]
       }
     );
+  }
+
+  private renderSideNav(props: any, context: any) {
+    const h = this.$h;
+    const attrs = context?.attrs || {};
+
+    if (!this.loaded.value) {
+      void this.prepareChildren();
+    }
+
+    return h(
+      'div',
+      {
+        style: {
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          boxSizing: 'border-box',
+          overflow: 'hidden',
+        },
+      },
+      [
+        ...(!this.params.value.hideTitle && this.params.value.title ? [
+          h(
+            'div',
+            {
+              style: {
+                padding: '16px 16px 8px 16px',
+                flexShrink: 0,
+              },
+            },
+            [
+              h(
+                'div',
+                {
+                  style: {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                  },
+                },
+                [
+                  h(
+                    'div',
+                    {
+                      style: {
+                        fontSize: '1rem',
+                        fontWeight: '700',
+                        lineHeight: '1.3',
+                        minWidth: 0,
+                        flex: '1 1 auto',
+                      },
+                    },
+                    this.$text(this.params.value.title),
+                  ),
+                  ...(attrs?.sideNavShowCloseButton && typeof attrs?.sideNavOnClose === 'function' ? [
+                    h(VBtn, {
+                      icon: 'mdi-close',
+                      variant: 'text',
+                      size: 'small',
+                      title: this.$text(
+                        attrs?.sideNavCloseTooltip,
+                        this.$uiText('ve.app.closeSideNav', 'Close panel'),
+                      ),
+                      'aria-label': this.$text(
+                        attrs?.sideNavCloseTooltip,
+                        this.$uiText('ve.app.closeSideNav', 'Close panel'),
+                      ),
+                      onClick: () => {
+                        attrs.sideNavOnClose();
+                      },
+                    } as any),
+                  ] : []),
+                ],
+              ),
+            ],
+          ),
+        ] : []),
+        h(
+          'div',
+          {
+            style: {
+              flex: '1 1 auto',
+              minHeight: 0,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              padding: '8px',
+              boxSizing: 'border-box',
+            },
+          },
+          [
+            h(
+              VList,
+              {
+                density: this.params.value.dense ? 'compact' : 'comfortable',
+                nav: true,
+                style: {
+                  background: 'transparent',
+                },
+              },
+              () => this.childrenInstances.map((item, index) => h(
+                VListItem,
+                {
+                  key: `${index}-${this.$text(item.$params.text)}`,
+                  rounded: 'lg',
+                  active: this.params.value.keyboardNavigation ? index === this.activeIndex.value : false,
+                  color: item.$params.color || 'primary',
+                  onMouseenter: () => this.setActiveIndex(index),
+                  onClick: () => {
+                    this.setActiveIndex(index);
+                    void this.itemClicked(item);
+                  },
+                },
+                {
+                  prepend: () => item.$params.icon ? h(
+                    VAvatar,
+                    {
+                      size: 34,
+                      style: {
+                        background: item.$params.iconBackgroundColor || 'rgba(var(--v-theme-surface), 0.92)',
+                      },
+                    },
+                    () => h(
+                      VIcon,
+                      {
+                        color: item.$params.iconColor || item.$params.color || item.$params.textColor || 'currentColor',
+                      },
+                      () => item.$params.icon || '',
+                    ),
+                  ) : undefined,
+                  title: () => this.$text(item.$params.text),
+                  subtitle: () => this.$text(item.$params.subText),
+                  append: () => this.renderMenuItemShortcut(item),
+                },
+              )),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  private isSideNavPresentation() {
+    return this.params.value.presentation === 'side-nav';
   }
 
 
@@ -819,7 +973,7 @@ export class Menu extends UIBase {
   attachEventListeners() {
     super.attachEventListeners();
 
-    if (typeof window === 'undefined' || this.shortcutHandler) {
+    if (this.isSideNavPresentation() || typeof window === 'undefined' || this.shortcutHandler) {
       return;
     }
 
