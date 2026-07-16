@@ -61,6 +61,38 @@ Drawer usage notes:
   Useful for shell menus that should never render nested back actions inside the drawer.
 - side-nav presentation intentionally does not attach global keyboard shortcuts or arrow-key handlers, so the drawer does not compete with active form/report input in the main content area
 
+### Side-Nav Submenu Rules
+
+For `presentation: 'side-nav'`, menus support inline submenu expansion.
+
+Important constraint:
+
+- inline expansion applies only to `MenuItem.action === 'menu'`
+- only side-nav menus can use this inline reveal behavior
+- full-screen menus keep their existing nested menu/back navigation model
+
+Behavior by side-nav mode:
+
+- `submenuMode: 'screen'`
+  A submenu item keeps the current behavior and opens in the main content area.
+- `submenuMode: 'inline'`
+  A submenu item expands directly under its parent row inside the drawer.
+
+Inline drawer semantics:
+
+- child menus inherit side-nav presentation automatically
+- child menus should render with a small indent per level
+- child menus should not render a second page-style title or back button block
+- child workflow actions such as `report`, `collection`, `trigger`, and `ui` still open in the main content area
+- inline expansion is shell UI state only; it is not browser history state
+
+Accordion support:
+
+- configured through `AppSideNavOptions.accordion`
+- only applies when `submenuMode === 'inline'`
+- when `true`, only one sibling branch per level should remain expanded
+- when `false`, multiple branches may remain expanded
+
 ### `MenuOptions`
 
 ```ts

@@ -112,6 +112,8 @@ export function createMainApp(): AppMain {
         mode: 'temporary',
         width: 320,
         open: true,
+        submenuMode: 'inline',
+        accordion: true,
       },
       rightNavOptions: {
         enabled: true,

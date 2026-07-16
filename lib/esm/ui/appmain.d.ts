@@ -72,6 +72,8 @@ export interface AppSideNavOptions {
     breakpoint?: number;
     autoCloseOnNavigate?: boolean;
     mobileMode?: 'temporary' | 'rail';
+    submenuMode?: 'screen' | 'inline';
+    accordion?: boolean;
     showToggleButton?: boolean;
     toggleIcon?: string;
     toggleColor?: string;

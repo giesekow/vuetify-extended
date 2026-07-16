@@ -2,6 +2,7 @@
 import { $MN, $MI } from 'vuetify-extended';
 // vuetify-ext:menu-imports
 import { createPeopleReport } from '../pages/people';
+import { createPreferencesMenu } from './preferences';
 
 export function createSettingsMenu() {
   return $MN(
@@ -13,6 +14,18 @@ export function createSettingsMenu() {
     {
       children: async () => [
         // vuetify-ext:menu-items
+        $MI(
+          {
+            action: 'menu',
+            text: { key: 'menus.preferences.entry.text', fallback: 'Preferences' },
+            subText: { key: 'menus.preferences.entry.subText', fallback: 'Open a nested submenu example.' },
+            icon: 'mdi-tune',
+            color: 'secondary',
+          },
+          {
+            menu: async () => createPreferencesMenu(),
+          },
+        ),
         // vuetify-ext:menu-item:report:people
         $MI(
           {

@@ -191,6 +191,15 @@ export interface AppSideNavOptions {
 }
 ```
 
+Implemented nested drawer menu options:
+
+```ts
+export interface AppSideNavOptions {
+  submenuMode?: 'screen' | 'inline';
+  accordion?: boolean;
+}
+```
+
 Notes:
 
 - `enabled`
@@ -201,6 +210,18 @@ Notes:
   Determines small-screen fallback behavior.
 - `autoCloseOnNavigate`
   Especially useful for the right contextual tools drawer.
+- `submenuMode`
+  Side-nav submenu behavior selector.
+  - `'screen'`
+    Current behavior. A `MenuItem` with `action: 'menu'` opens the child menu in the main content area.
+  - `'inline'`
+    Drawer-tree behavior. A `MenuItem` with `action: 'menu'` expands the child menu directly under the parent item inside the drawer.
+- `accordion`
+  Side-nav tree behavior switch. Only relevant when `submenuMode === 'inline'`.
+  - `false` or `undefined`
+    Multiple submenu branches may stay expanded at the same time.
+  - `true`
+    Only one branch per drawer level should stay expanded at a time.
 
 ## `AppManager`
 
@@ -402,15 +423,66 @@ The `side-nav` mode should:
 - render well inside a `VNavigationDrawer`
 - optionally hide title/back when being used as shell navigation
 
-Important semantic rule:
+### Agreed Side-Nav Submenu Enhancement
 
-- a `MenuItem` with `action: 'menu'` inside side navigation still performs normal content/workflow navigation unless the host explicitly replaces the side menu through shell APIs
+We are extending the side-nav architecture with an optional inline submenu mode.
 
-So side navigation reuses menu actions, but does not redefine what those actions mean.
+Important constraint:
+
+- inline expansion is only for `side-nav menu -> side-nav submenu`
+- this applies only when a `MenuItem` has `action: 'menu'`
+- it does not change how `report`, `collection`, `trigger`, `ui`, or `function` actions work
+
+This means:
+
+- a `MenuItem` with `action: 'menu'` in full-screen `presentation: 'screen'` keeps the current main-area navigation behavior
+- a `MenuItem` with `action: 'menu'` in `presentation: 'side-nav'` may either:
+  - open in the main area when `submenuMode === 'screen'`
+  - expand inline in the drawer when `submenuMode === 'inline'`
+
+#### Inline mode behavior
+
+When `submenuMode === 'inline'`:
+
+- the clicked parent item becomes an expander node
+- the child `Menu` is resolved locally and rendered directly under that parent item
+- child items use a small visual indent per depth level
+- the child menu should inherit side-nav semantics automatically:
+  - `presentation: 'side-nav'`
+  - no page-style back button
+  - no full-screen vertical centering assumptions
+- the child menu title should not render as a second card/header block inside the tree
+- clicking a normal child action such as `report`, `collection`, or `trigger` still opens that workflow in the main content area
+
+#### Accordion behavior
+
+When `accordion === true`:
+
+- only one submenu branch at the same drawer level should stay expanded
+- expanding a sibling branch closes the previously expanded sibling branch
+- deeper descendants of the closed sibling branch should also collapse with it
+
+When `accordion === false`:
+
+- multiple branches may stay expanded
+- expansion state is local to the drawer instance
+
+#### History and persistence rules
+
+Inline drawer expansion is shell UI state only.
+
+It should not:
+
+- create `AppMain` stack entries
+- create browser history entries
+- replace the current main content screen
+- be treated as workflow navigation persistence state in the first pass
+
+That keeps inline submenu expansion lightweight and avoids mixing shell tree state with the main application history model.
 
 ## Contextual Right Menu API
 
-The planned declarative ownership points are:
+The declarative ownership points are:
 
 ## `FormOptions`
 
@@ -731,10 +803,15 @@ To keep the first implementation tight, we should explicitly avoid:
 
 - making side drawers part of browser history
 - introducing a brand-new side-nav tree model unrelated to `Menu`
-- supporting arbitrary nested expander behavior beyond what current menus already support
 - trying to persist left/right drawer open state as part of navigation restore
 - unifying mobile header drawer with left/right app side navigation in the first pass
 - giving `Selector` or `DialogForm` contextual ownership of side menus in the first pass
+
+Clarification after the side-nav submenu design update:
+
+- nested inline submenu support is now an explicit planned feature for `presentation: 'side-nav'`
+- we are still avoiding a separate tree-navigation model unrelated to `Menu`
+- we are still not turning inline expansion into browser-history or workflow-persistence state
 
 ## Example Target Usage
 

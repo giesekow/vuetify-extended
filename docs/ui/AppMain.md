@@ -103,6 +103,28 @@ export interface AppSideNavOptions {
 }
 ```
 
+Nested drawer menu options:
+
+```ts
+export interface AppSideNavOptions {
+  submenuMode?: 'screen' | 'inline';
+  accordion?: boolean;
+}
+```
+
+Meaning:
+
+- `submenuMode: 'screen'`
+  Keeps the current behavior for submenu items in drawers. A menu item with `action: 'menu'` opens the child menu in the main content area.
+- `submenuMode: 'inline'`
+  Side-nav tree behavior. A menu item with `action: 'menu'` expands its child menu inside the drawer under the parent item.
+- `accordion`
+  Tree-expansion rule for inline submenus. Only applies when `submenuMode === 'inline'`.
+  - `true`
+    Keep one expanded branch per drawer level.
+  - `false`
+    Allow multiple expanded branches.
+
 ### `AppScreenParams`
 
 ```ts
@@ -275,6 +297,17 @@ Each `$show...(...)` method accepts either:
 - a factory function `(entry) => instance` for navigation-aware and restoreable flows
 
 For screens that should survive browser back/forward or refresh/resume restore, prefer the factory form.
+
+## Side-Nav Tree Behavior
+
+For left/right drawers, the submenu behavior is:
+
+- only `MenuItem.action === 'menu'` is eligible for inline drawer expansion
+- `report`, `collection`, `trigger`, `ui`, and `function` actions keep their current main-area behavior
+- inline expansion is shell UI state only and is not added to browser history
+- inline expansion does not replace the current stack item in `AppMain`
+
+This keeps side-nav submenu trees useful without changing the existing screen-navigation meaning of menu items.
 
 Notes:
 

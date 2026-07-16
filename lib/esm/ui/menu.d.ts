@@ -46,6 +46,7 @@ export declare class Menu extends UIBase {
     private params;
     private options;
     private childrenInstances;
+    private sideNavExpandedItems;
     private loaded;
     private shortcutHandler?;
     private resizeHandler?;
@@ -55,6 +56,7 @@ export declare class Menu extends UIBase {
     private hostElement;
     private contentElement;
     private cardElements;
+    private sideNavChildMenus;
     private replayPath;
     private static defaultParams;
     constructor(params?: MenuParams, options?: MenuOptions);
@@ -74,6 +76,16 @@ export declare class Menu extends UIBase {
     private renderSideNav;
     private isSideNavPresentation;
     private renderMenuItemShortcut;
+    private sideNavSubmenuMode;
+    private sideNavAccordion;
+    private isInlineSideNavSubmenuItem;
+    private isSideNavItemExpanded;
+    private collapseAllSideNavBranches;
+    private collapseSideNavItem;
+    private resolveInlineSideNavMenu;
+    private toggleInlineSideNavItem;
+    private renderSideNavItemAppend;
+    private renderSideNavItems;
     private normalizeCssSize;
     private clampToViewport;
     private menuCardSizingStyle;

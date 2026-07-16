@@ -84,6 +84,8 @@ export interface AppSideNavOptions {
   breakpoint?: number;
   autoCloseOnNavigate?: boolean;
   mobileMode?: 'temporary' | 'rail';
+  submenuMode?: 'screen' | 'inline';
+  accordion?: boolean;
   showToggleButton?: boolean;
   toggleIcon?: string;
   toggleColor?: string;
@@ -2093,6 +2095,8 @@ export class AppMain extends UIBase {
         [h(menu.component, {
           key: `${side}-${String(menu.$id)}`,
           sideNavShowCloseButton: temporary,
+          sideNavSubmenuMode: options.submenuMode || 'screen',
+          sideNavAccordion: options.accordion === true,
           sideNavCloseTooltip: this.$uiText(
             side === 'left' ? 've.app.closeLeftNav' : 've.app.closeRightNav',
             side === 'left' ? 'Close navigation panel' : 'Close tools panel',

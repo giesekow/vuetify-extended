@@ -54,6 +54,7 @@ export class Menu extends UIBase {
   private params: Ref<MenuParams>;
   private options: MenuOptions;
   private childrenInstances: Array<MenuItem> = [];
+  private sideNavExpandedItems: Ref<MenuItem[]>;
   private loaded: Ref<boolean>;
   private shortcutHandler?: (ev: KeyboardEvent) => void;
   private resizeHandler?: () => void;
@@ -63,6 +64,7 @@ export class Menu extends UIBase {
   private hostElement: Ref<HTMLElement|undefined>;
   private contentElement: Ref<HTMLElement|undefined>;
   private cardElements: Array<HTMLElement | undefined> = [];
+  private sideNavChildMenus = new Map<MenuItem, Menu | undefined>();
   private replayPath: NavigationMenuRestoreStep[] = [];
   private static defaultParams: MenuParams = {
     keyboardNavigation: true,
@@ -74,6 +76,7 @@ export class Menu extends UIBase {
     this.params = this.$makeRef({...Menu.defaultParams, ...(params || {})});
     this.options = options || {};
     this.loaded = this.$makeRef(false);
+    this.sideNavExpandedItems = this.$makeRef([]);
     this.activeIndex = this.$makeRef(-1);
     this.menuTopOffset = this.$makeRef(0);
     this.hostElement = this.$makeRef();
@@ -121,7 +124,7 @@ export class Menu extends UIBase {
   }
 
   render(props: any, context: any): VNode|undefined {
-    if (this.isSideNavPresentation()) {
+    if (this.isSideNavPresentation(context)) {
       return this.renderSideNav(props, context);
     }
 
@@ -366,7 +369,8 @@ export class Menu extends UIBase {
     const h = this.$h;
     const attrs = context?.attrs || {};
     const showSideNavCloseButton = attrs?.sideNavShowCloseButton && typeof attrs?.sideNavOnClose === 'function';
-    const showSideNavTitle = !this.params.value.hideTitle && !!this.params.value.title;
+    const sideNavTitle = attrs?.sideNavTitle ?? this.params.value.title;
+    const showSideNavTitle = !(attrs?.sideNavHideTitle ?? this.params.value.hideTitle) && !!sideNavTitle;
 
     if (!this.loaded.value) {
       void this.prepareChildren();
@@ -418,7 +422,7 @@ export class Menu extends UIBase {
                           flex: '1 1 auto',
                         },
                       },
-                      this.$text(this.params.value.title),
+                      this.$text(sideNavTitle),
                     ),
                   ] : [
                     h('div', {
@@ -472,41 +476,7 @@ export class Menu extends UIBase {
                   background: 'transparent',
                 },
               },
-              () => this.childrenInstances.map((item, index) => h(
-                VListItem,
-                {
-                  key: `${index}-${this.$text(item.$params.text)}`,
-                  rounded: 'lg',
-                  active: this.params.value.keyboardNavigation ? index === this.activeIndex.value : false,
-                  color: item.$params.color || 'primary',
-                  onMouseenter: () => this.setActiveIndex(index),
-                  onClick: () => {
-                    this.setActiveIndex(index);
-                    void this.itemClicked(item);
-                  },
-                },
-                {
-                  prepend: () => item.$params.icon ? h(
-                    VAvatar,
-                    {
-                      size: 34,
-                      style: {
-                        background: item.$params.iconBackgroundColor || 'rgba(var(--v-theme-surface), 0.92)',
-                      },
-                    },
-                    () => h(
-                      VIcon,
-                      {
-                        color: item.$params.iconColor || item.$params.color || item.$params.textColor || 'currentColor',
-                      },
-                      () => item.$params.icon || '',
-                    ),
-                  ) : undefined,
-                  title: () => this.$text(item.$params.text),
-                  subtitle: () => this.$text(item.$params.subText),
-                  append: () => this.renderMenuItemShortcut(item),
-                },
-              )),
+              () => this.renderSideNavItems(attrs),
             ),
           ],
         ),
@@ -514,8 +484,8 @@ export class Menu extends UIBase {
     );
   }
 
-  private isSideNavPresentation() {
-    return this.params.value.presentation === 'side-nav';
+  private isSideNavPresentation(context?: any) {
+    return context?.attrs?.sideNavForcePresentation === true || this.params.value.presentation === 'side-nav';
   }
 
 
@@ -621,6 +591,192 @@ export class Menu extends UIBase {
     );
   }
 
+  private sideNavSubmenuMode(attrs: any): 'screen' | 'inline' {
+    return attrs?.sideNavSubmenuMode === 'inline' ? 'inline' : 'screen';
+  }
+
+  private sideNavAccordion(attrs: any) {
+    return attrs?.sideNavAccordion === true;
+  }
+
+  private isInlineSideNavSubmenuItem(item: MenuItem, attrs: any) {
+    return this.sideNavSubmenuMode(attrs) === 'inline' && item.$params.action === 'menu';
+  }
+
+  private isSideNavItemExpanded(item: MenuItem) {
+    return this.sideNavExpandedItems.value.includes(item);
+  }
+
+  private collapseAllSideNavBranches() {
+    const expanded = [...this.sideNavExpandedItems.value];
+    expanded.forEach((item) => {
+      this.collapseSideNavItem(item);
+    });
+  }
+
+  private collapseSideNavItem(item: MenuItem) {
+    const childMenu = this.sideNavChildMenus.get(item);
+    childMenu?.collapseAllSideNavBranches();
+    this.sideNavChildMenus.delete(item);
+    this.sideNavExpandedItems.value = this.sideNavExpandedItems.value.filter((candidate) => candidate !== item);
+  }
+
+  private async resolveInlineSideNavMenu(item: MenuItem): Promise<Menu | undefined> {
+    const mode = item.$params.mode;
+    const { params } = await resolveMenuItemNavigationContext(item, mode);
+    const preferFactory = !!(params.navigation?.key || params.navigationKey);
+    const target = await resolveMenuItemTarget(item, (currentMode) => item.menu(currentMode), mode, undefined, preferFactory);
+    if (!target) {
+      this.sideNavChildMenus.delete(item);
+      return undefined;
+    }
+
+    const resolved = await AppManager.prepareScreenTarget('menu', target, params);
+    const menu = resolved.item;
+    if (!menu) {
+      this.sideNavChildMenus.delete(item);
+      return undefined;
+    }
+
+    const allowed = typeof (menu as any)?.access === 'function' ? await (menu as any).access() : true;
+    if (!allowed) {
+      this.sideNavChildMenus.delete(item);
+      return undefined;
+    }
+
+    this.sideNavChildMenus.set(item, menu);
+    return menu;
+  }
+
+  private async toggleInlineSideNavItem(item: MenuItem, attrs: any) {
+    if (this.isSideNavItemExpanded(item)) {
+      this.collapseSideNavItem(item);
+      return;
+    }
+
+    const menu = await this.resolveInlineSideNavMenu(item);
+    if (!menu) {
+      return;
+    }
+
+    if (this.sideNavAccordion(attrs)) {
+      const expanded = [...this.sideNavExpandedItems.value];
+      expanded.forEach((candidate) => {
+        if (candidate !== item) {
+          this.collapseSideNavItem(candidate);
+        }
+      });
+      this.sideNavExpandedItems.value = [item];
+      return;
+    }
+
+    this.sideNavExpandedItems.value = [...this.sideNavExpandedItems.value, item];
+  }
+
+  private renderSideNavItemAppend(item: MenuItem, attrs: any) {
+    const h = this.$h;
+    const shortcut = this.renderMenuItemShortcut(item);
+    const inlineSubmenu = this.isInlineSideNavSubmenuItem(item, attrs);
+    const chevron = inlineSubmenu
+      ? h(VIcon, {
+          icon: this.isSideNavItemExpanded(item) ? 'mdi-chevron-down' : 'mdi-chevron-right',
+          size: '18',
+          style: {
+            opacity: 0.88,
+          },
+        })
+      : undefined;
+
+    if (!shortcut && !chevron) {
+      return undefined;
+    }
+
+    return h('div', {
+      style: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '8px',
+      },
+    }, [
+      ...(shortcut ? [shortcut] : []),
+      ...(chevron ? [chevron] : []),
+    ]);
+  }
+
+  private renderSideNavItems(attrs: any) {
+    const h = this.$h;
+
+    return this.childrenInstances.map((item, index) => {
+      const inlineSubmenu = this.isInlineSideNavSubmenuItem(item, attrs);
+      const expanded = inlineSubmenu && this.isSideNavItemExpanded(item);
+      const childMenu = expanded ? this.sideNavChildMenus.get(item) : undefined;
+
+      return h('div', {
+        key: `${index}-${this.$text(item.$params.text)}`,
+        style: {
+          width: '100%',
+        },
+      }, [
+        h(
+          VListItem,
+          {
+            rounded: 'lg',
+            active: this.params.value.keyboardNavigation ? index === this.activeIndex.value : false,
+            color: item.$params.color || 'primary',
+            onMouseenter: () => this.setActiveIndex(index),
+            onClick: async () => {
+              this.setActiveIndex(index);
+              if (inlineSubmenu) {
+                await this.toggleInlineSideNavItem(item, attrs);
+                return;
+              }
+              await this.itemClicked(item);
+            },
+          },
+          {
+            prepend: () => item.$params.icon ? h(
+              VAvatar,
+              {
+                size: 34,
+                style: {
+                  background: item.$params.iconBackgroundColor || 'rgba(var(--v-theme-surface), 0.92)',
+                },
+              },
+              () => h(
+                VIcon,
+                {
+                  color: item.$params.iconColor || item.$params.color || item.$params.textColor || 'currentColor',
+                },
+                () => item.$params.icon || '',
+              ),
+            ) : undefined,
+            title: () => this.$text(item.$params.text),
+            subtitle: () => this.$text(item.$params.subText),
+            append: () => this.renderSideNavItemAppend(item, attrs),
+          },
+        ),
+        ...(expanded && childMenu ? [
+          h('div', {
+            style: {
+              paddingLeft: '7px',
+              marginLeft: '5px',
+              borderLeft: '1px solid rgba(var(--v-border-color), 0.35)',
+            },
+          }, [
+            h(childMenu.component, {
+              key: `submenu-${index}-${String(childMenu.$id)}`,
+              sideNavForcePresentation: true,
+              sideNavShowCloseButton: false,
+              sideNavHideTitle: true,
+              sideNavSubmenuMode: attrs?.sideNavSubmenuMode,
+              sideNavAccordion: attrs?.sideNavAccordion === true,
+            }),
+          ]),
+        ] : []),
+      ]);
+    });
+  }
+
   private normalizeCssSize(value?: string | number) {
     if (value === undefined || value === null || value === '') {
       return undefined;
@@ -658,6 +814,8 @@ export class Menu extends UIBase {
     })
 
     this.childrenInstances = [];
+    this.sideNavExpandedItems.value = [];
+    this.sideNavChildMenus.clear();
 
     const ch = this.options.children ? await this.options.children(this) : await this.children();
     const filtered: MenuItem[] = [];
