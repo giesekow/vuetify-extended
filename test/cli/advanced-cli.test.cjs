@@ -31,7 +31,32 @@ function assertSuccess(result, context) {
   );
 }
 
+function testBootstrapAppScaffoldsHomeStartup() {
+  const cwd = makeTempDir('ve-cli-bootstrap-');
+  writeFile(path.join(cwd, 'src/main.ts'), `import { createApp } from 'vue';
+
+createApp({}).mount('#app');
+`);
+
+  const result = runCli(cwd, ['bootstrap', 'app', '--non-interactive', '--backend', 'none']);
+  assertSuccess(result, 'bootstrap app');
+
+  const bootstrapSource = fs.readFileSync(path.join(cwd, 'src/bootstrap/index.ts'), 'utf8');
+  const menuSource = fs.readFileSync(path.join(cwd, 'src/menu/index.ts'), 'utf8');
+  const homeSource = fs.readFileSync(path.join(cwd, 'src/pages/home/index.ts'), 'utf8');
+
+  assert.match(bootstrapSource, /import \{ createHomeReport \} from '\.\.\/pages\/home';/);
+  assert.match(bootstrapSource, /home:\s*async\s*\(\)\s*=>\s*\(\{/);
+  assert.match(bootstrapSource, /target:\s*createHomeReport\('display'\)/);
+  assert.match(bootstrapSource, /key:\s*'pages\.home\.report\.display'/);
+  assert.match(bootstrapSource, /menu:\s*async\s*\(\)\s*=>\s*createMainMenu\(\)/);
+  assert.match(menuSource, /createHomeReport/);
+  assert.match(homeSource, /export function createHomeReport/);
+}
+
 function main() {
+  testBootstrapAppScaffoldsHomeStartup();
+
   const cwd = makeTempDir('ve-cli-advanced-');
   writeFile(path.join(cwd, 'src/main.ts'), `import { createApp, defineComponent, h } from 'vue';
 import { createVuetify } from 'vuetify';

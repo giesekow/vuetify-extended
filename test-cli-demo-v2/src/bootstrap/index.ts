@@ -104,6 +104,16 @@ export function createMainApp(): AppMain {
       showFab: false,
     },
     {
+      home: async () => ({
+        type: 'report',
+        target: createHomeReport('display'),
+        params: {
+          navigation: {
+            key: 'pages.home.report.display',
+            persist: true,
+          },
+        },
+      }),
       menu: async () => createRootMenu(),
       leftNav: async () => createMainMenu(),
       rightNav: async () => createShellToolsMenu(),

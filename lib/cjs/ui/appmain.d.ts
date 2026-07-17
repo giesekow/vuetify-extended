@@ -44,6 +44,7 @@ export interface AppParams {
 export type AppShellContent = UIBase | VNode | string | number | boolean | null | undefined;
 export interface AppOptions {
     menu?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
+    home?: (app: AppMain) => Promise<AppHomeTarget | undefined> | AppHomeTarget | undefined;
     leftNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
     rightNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
     leftNavOptions?: AppSideNavOptions;
@@ -62,6 +63,32 @@ export interface AppOptions {
     footerEnd?: (app: AppMain) => AppShellContent | AppShellContent[];
 }
 export type AppFabButtonsFactory = Button[] | ((app: AppMain, item?: UIBase, stackItem?: AppStackItem) => Button[]);
+export type AppMenuTarget = Menu | NavigationScreenFactory<Menu>;
+export type AppReportTarget = Report | NavigationScreenFactory<Report>;
+export type AppCollectionTarget = Collection | NavigationScreenFactory<Collection>;
+export type AppTriggerTarget = Trigger | NavigationScreenFactory<Trigger>;
+export type AppUITarget = UIBase | NavigationScreenFactory<UIBase>;
+export type AppHomeTarget = {
+    type: 'menu';
+    target: AppMenuTarget;
+    params?: AppScreenParams;
+} | {
+    type: 'report';
+    target: AppReportTarget;
+    params?: AppScreenParams;
+} | {
+    type: 'collection';
+    target: AppCollectionTarget;
+    params?: AppScreenParams;
+} | {
+    type: 'trigger';
+    target: AppTriggerTarget;
+    params?: AppScreenParams;
+} | {
+    type: 'ui';
+    target: AppUITarget;
+    params?: AppScreenParams;
+};
 export interface AppSideNavOptions {
     enabled?: boolean;
     side?: 'left' | 'right';
@@ -225,6 +252,8 @@ export declare class AppMain extends UIBase {
     private popCurrentStackItemLocally;
     props(): never[];
     menu(): Promise<Menu | undefined>;
+    home(): Promise<AppHomeTarget | undefined>;
+    private showHomeTarget;
     render(props: any, context: any): VNode | VNode[] | undefined;
     private renderStackContent;
     private wrapStackItemContent;

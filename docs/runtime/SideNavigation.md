@@ -166,12 +166,15 @@ Implemented additions:
 
 ```ts
 export interface AppOptions {
+  home?: (app: AppMain) => Promise<AppHomeTarget | undefined> | AppHomeTarget | undefined;
   leftNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
   rightNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
   leftNavOptions?: AppSideNavOptions;
   rightNavOptions?: AppSideNavOptions;
 }
 ```
+
+When an application uses side navigation, `home` is the preferred way to define the default main-area screen. This keeps shell navigation (`leftNav` / `rightNav`) separate from the actual startup content screen.
 
 ## `AppSideNavOptions`
 

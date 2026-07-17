@@ -68,6 +68,7 @@ export interface AppParams {
 ```ts
 export interface AppOptions {
   menu?: (app: AppMain) => Promise<Menu|undefined>|Menu|undefined;
+  home?: (app: AppMain) => Promise<AppHomeTarget | undefined> | AppHomeTarget | undefined;
   leftNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
   rightNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
   leftNavOptions?: AppSideNavOptions;
@@ -86,6 +87,78 @@ export interface AppOptions {
   footerEnd?: (app: AppMain) => AppShellContent | AppShellContent[];
 }
 ```
+
+`home` is the preferred way to define the default main-area screen for a shell that uses left/right side navigation.
+
+- `menu`
+  Defines the classic full-screen root menu. It is still supported and is used as the fallback initial screen when `home` is not configured.
+- `home`
+  Defines the initial main-area screen shown on a fresh app load when navigation restore does not take over. This can be a `menu`, `report`, `collection`, `trigger`, or generic `ui` target.
+
+```ts
+export type AppHomeTarget =
+  | { type: 'menu'; target: Menu | NavigationScreenFactory<Menu>; params?: AppScreenParams; }
+  | { type: 'report'; target: Report | NavigationScreenFactory<Report>; params?: AppScreenParams; }
+  | { type: 'collection'; target: Collection | NavigationScreenFactory<Collection>; params?: AppScreenParams; }
+  | { type: 'trigger'; target: Trigger | NavigationScreenFactory<Trigger>; params?: AppScreenParams; }
+  | { type: 'ui'; target: UIBase | NavigationScreenFactory<UIBase>; params?: AppScreenParams; };
+```
+
+Startup precedence:
+
+1. restore persisted navigation when restore succeeds
+2. otherwise show `home` when configured
+3. otherwise show `menu` when configured
+4. otherwise render an empty shell
+
+Example:
+
+```ts
+new AppMain(
+  { title: 'Workspace', showHeader: true, showFooter: true },
+  {
+    home: async () => ({
+      type: 'report',
+      target: createHomeReport('display'),
+      params: {
+        navigation: {
+          key: 'pages.home.report.display',
+          persist: true,
+        },
+      },
+    }),
+    menu: async () => createRootMenu(),
+    leftNav: async () => createMainMenu(),
+    rightNav: async () => createShellToolsMenu(),
+  },
+)
+```
+
+Example with a dashboard or other generic `UIBase` screen:
+
+```ts
+new AppMain(
+  { title: 'Workspace', showHeader: true, showFooter: true },
+  {
+    home: async () => ({
+      type: 'ui',
+      target: createOperationsDashboard(),
+      params: {
+        navigation: {
+          key: 'pages.ops.ui',
+          persist: true,
+        },
+        hideSideNavs: false,
+      },
+    }),
+    menu: async () => createRootMenu(),
+    leftNav: async () => createMainMenu(),
+    rightNav: async () => createShellToolsMenu(),
+  },
+)
+```
+
+Use `type: 'ui'` when the home screen is a dashboard, landing page, custom shell view, or any other `UIBase` that is not one of the dedicated workflow types.
 
 ### `AppSideNavOptions`
 
@@ -297,6 +370,12 @@ Each `$show...(...)` method accepts either:
 - a factory function `(entry) => instance` for navigation-aware and restoreable flows
 
 For screens that should survive browser back/forward or refresh/resume restore, prefer the factory form.
+
+Notes:
+
+- `home` is a bootstrap/startup option, not a separate runtime stack API
+- if you need to navigate later from user code, continue to use `AppManager.showReport(...)`, `showCollection(...)`, `showTrigger(...)`, `showMenu(...)`, or `showUI(...)`
+- use `type: 'ui'` for dashboards and other `UIBase` screens that are not one of the dedicated workflow types
 
 ## Side-Nav Tree Behavior
 

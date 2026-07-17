@@ -128,6 +128,7 @@ src/
 The important conventions are:
 
 - `src/pages/<page-name>/index.*` is the page entrypoint
+- `src/pages/home/index.*` is the generated default home screen factory used by bootstrap
 - extra page files such as `form.*`, `report.*`, `trigger.*`, and `collection.*` live beside that index
 - `src/menu/index.*` is the main menu definition
 - `src/routes/index.*` is the route descriptor registry when you use `create route`
@@ -187,9 +188,10 @@ Bootstraps the current Vue app to use:
 - `AppMain`
 - the shared dialogs root
 - the shared notifications root
+- a generated `home` startup screen from `src/pages/home/index.*`
 - the recommended `src/api`, `src/bootstrap`, `src/menu`, and `src/pages` structure
 
-The generated bootstrap structure is navigation-ready, but browser/history persistence is still an explicit host-app decision through `createVuetifyExtendedApp({ navigation: ... })`.
+The generated bootstrap structure is navigation-ready and now starts with a default `home` report target while still providing a root menu factory. Browser/history persistence is still an explicit host-app decision through `createVuetifyExtendedApp({ navigation: ... })`.
 
 ### Supported Entry Files
 
@@ -227,6 +229,21 @@ When run interactively, the command can ask for:
 
 It also rewrites the detected `src/main.*`.
 
+### Generated Startup Behavior
+
+The generated `src/bootstrap/index.*` now configures both:
+
+- `home: async () => ({ type: 'report', target: createHomeReport('display'), params: { navigation: { key: 'pages.home.report.display', persist: true } } })`
+- `menu: async () => createMainMenu()`
+
+This means:
+
+- the app opens into the starter home report by default
+- the root menu still exists and can be shown by your app shell, side navigation, or explicit menu actions
+- the starter home screen is already navigation-aware and uses grouped `navigation: { ... }` params
+
+This scaffold shape matches the newer recommended runtime pattern when the app has a shell, side navigation, or a dedicated dashboard/report home screen.
+
 ### What It Preserves
 
 The bootstrap flow preserves common parts of the old `main.*` file where possible:
@@ -235,6 +252,15 @@ The bootstrap flow preserves common parts of the old `main.*` file where possibl
 - common `app.use(...)` registrations
 - the existing mount selector
 - simple top-level prelude code before the old mount path
+
+### What To Customize First
+
+After bootstrapping, the highest-value files to review are:
+
+- `src/bootstrap/index.*` to decide whether `home`, `menu`, `leftNav`, or `rightNav` should drive your shell
+- `src/pages/home/index.*` to replace the starter home report with your real landing page, dashboard, or workspace report
+- `src/menu/index.*` to define the primary menu tree used by root menus or side navigation
+- `src/api/index.*` to confirm backend, auth, and realtime wiring
 
 ### Automation Flags
 

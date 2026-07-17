@@ -54,6 +54,7 @@ export type AppShellContent = UIBase | VNode | string | number | boolean | null 
 
 export interface AppOptions {
   menu?: (app: AppMain) => Promise<Menu|undefined>|Menu|undefined;
+  home?: (app: AppMain) => Promise<AppHomeTarget | undefined> | AppHomeTarget | undefined;
   leftNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
   rightNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
   leftNavOptions?: AppSideNavOptions;
@@ -73,6 +74,18 @@ export interface AppOptions {
 }
 
 export type AppFabButtonsFactory = Button[] | ((app: AppMain, item?: UIBase, stackItem?: AppStackItem) => Button[]);
+export type AppMenuTarget = Menu | NavigationScreenFactory<Menu>;
+export type AppReportTarget = Report | NavigationScreenFactory<Report>;
+export type AppCollectionTarget = Collection | NavigationScreenFactory<Collection>;
+export type AppTriggerTarget = Trigger | NavigationScreenFactory<Trigger>;
+export type AppUITarget = UIBase | NavigationScreenFactory<UIBase>;
+
+export type AppHomeTarget =
+  | { type: 'menu'; target: AppMenuTarget; params?: AppScreenParams; }
+  | { type: 'report'; target: AppReportTarget; params?: AppScreenParams; }
+  | { type: 'collection'; target: AppCollectionTarget; params?: AppScreenParams; }
+  | { type: 'trigger'; target: AppTriggerTarget; params?: AppScreenParams; }
+  | { type: 'ui'; target: AppUITarget; params?: AppScreenParams; };
 
 export interface AppSideNavOptions {
   enabled?: boolean;
@@ -1105,6 +1118,48 @@ export class AppMain extends UIBase {
   async menu(): Promise<Menu|undefined> {
     if (this.options.menu) {
       return await this.options.menu(this);
+    }
+  }
+
+  async home(): Promise<AppHomeTarget | undefined> {
+    if (this.options.home) {
+      return await this.options.home(this);
+    }
+  }
+
+  private async showHomeTarget(target: AppHomeTarget, replaceHistory: boolean = true) {
+    if (target.type === 'menu') {
+      await this.$showMenu(target.target, target.params, replaceHistory);
+      return;
+    }
+
+    if (target.type === 'report') {
+      await this.$showReport(target.target, target.params, false);
+      if (replaceHistory) {
+        await this.syncCurrentNavigationState({ replaceHistory: true });
+      }
+      return;
+    }
+
+    if (target.type === 'collection') {
+      await this.$showCollection(target.target, target.params, false);
+      if (replaceHistory) {
+        await this.syncCurrentNavigationState({ replaceHistory: true });
+      }
+      return;
+    }
+
+    if (target.type === 'trigger') {
+      await this.$showTrigger(target.target, target.params, false);
+      if (replaceHistory) {
+        await this.syncCurrentNavigationState({ replaceHistory: true });
+      }
+      return;
+    }
+
+    await this.$showUI(target.target, target.params, false);
+    if (replaceHistory) {
+      await this.syncCurrentNavigationState({ replaceHistory: true });
     }
   }
 
@@ -2175,6 +2230,7 @@ export class AppMain extends UIBase {
     this.rightSideMenuSuppressedToken = undefined;
     Dialogs.$showProgress({})
     const menu = await this.menu();
+    const home = await this.home();
 
     this.stack.forEach((entry) => {
       entry.item.removeEventListeners();
@@ -2192,7 +2248,9 @@ export class AppMain extends UIBase {
       restored = await this.restorePersistedNavigation();
     }
 
-    if (!restored && menu) {
+    if (!restored && home) {
+      await this.showHomeTarget(home, true);
+    } else if (!restored && menu) {
       await this.$showMenu(menu, undefined, true);
     } else if (restored) {
       this.syncBrowserHistory(true);

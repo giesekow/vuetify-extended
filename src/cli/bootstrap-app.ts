@@ -126,8 +126,8 @@ export async function runBootstrapAppCommand(options: BootstrapAppCommandOptions
   options.stdout.write(
     '\nNext steps:\n' +
       '1. Review src/api/index.* and confirm the generated backend configuration.\n' +
-      '2. Review src/bootstrap/index.* plus header/footer sections for shell structure.\n' +
-      '3. Review src/menu/index.* and src/pages/home/index.* as the starter menu/page structure.\n' +
+      '2. Review src/bootstrap/index.* plus header/footer sections for shell structure and startup flow.\n' +
+      '3. Review src/pages/home/index.* as the default home screen and src/menu/index.* as the starter navigation menu.\n' +
       '4. Run your app and confirm the new Vuetify Extended shell boots correctly.\n',
   );
 
@@ -754,6 +754,7 @@ function buildBootstrapIndexFileSource(ext: '.ts' | '.js'): string {
 import { AppMain, createVuetifyExtendedApp${typeOnlyImport} } from 'vuetify-extended';
 import { createApiConfig } from '../api';
 import { createMainMenu } from '../menu';
+import { createHomeReport } from '../pages/home';
 import { buildHeaderCenter, buildHeaderEnd, buildHeaderStart } from './header';
 import { buildFooterCenter, buildFooterEnd, buildFooterStart } from './footer';
 
@@ -767,6 +768,16 @@ ${optionsBlock}export function createMainApp()${appReturnType} {
       showFab: false,
     },
     {
+      home: async () => ({
+        type: 'report',
+        target: createHomeReport('display'),
+        params: {
+          navigation: {
+            key: 'pages.home.report.display',
+            persist: true,
+          },
+        },
+      }),
       menu: async () => createMainMenu(),
       headerStart: buildHeaderStart,
       headerCenter: buildHeaderCenter,
