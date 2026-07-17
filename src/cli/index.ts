@@ -32,21 +32,18 @@ import {
   runCreateTriggerFieldCommand,
 } from './productivity-ui';
 
-async function main() {
-  const args = process.argv.slice(2);
+export async function main(args = process.argv.slice(2)) {
   const command = args[0];
   const subcommand = args[1];
 
   if (!command || isHelpToken(command)) {
     printHelp();
-    process.exitCode = 0;
-    return;
+    return 0;
   }
 
   if (args.some((arg) => isHelpToken(arg))) {
     printScopedHelp(command, subcommand);
-    process.exitCode = 0;
-    return;
+    return 0;
   }
 
   if (command === 'bootstrap' && subcommand === 'app') {
@@ -61,13 +58,12 @@ async function main() {
       stdout: process.stdout,
       stderr: process.stderr,
     });
-    process.exitCode = exitCode;
-    return;
+    return exitCode;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'report') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateReportCommand({
+    return await runCreateReportCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -78,12 +74,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'route') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateRouteCommand({
+    return await runCreateRouteCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -94,12 +89,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'dialog-form') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateDialogFormCommand({
+    return await runCreateDialogFormCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -110,12 +104,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'page') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreatePageCommandAdvanced({
+    return await runCreatePageCommandAdvanced({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -126,12 +119,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'form') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateFormCommand({
+    return await runCreateFormCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -142,12 +134,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'field') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateFieldCommandAdvanced({
+    return await runCreateFieldCommandAdvanced({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -158,12 +149,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'trigger-field') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateTriggerFieldCommand({
+    return await runCreateTriggerFieldCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -174,12 +164,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'trigger-action') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateTriggerActionCommand({
+    return await runCreateTriggerActionCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -190,12 +179,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'report-action') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateReportActionCommand({
+    return await runCreateReportActionCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -206,12 +194,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'part') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreatePartCommandAdvanced({
+    return await runCreatePartCommandAdvanced({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -222,12 +209,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'trigger') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateTriggerCommand({
+    return await runCreateTriggerCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -238,12 +224,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'dashboard') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateDashboardCommandAdvanced({
+    return await runCreateDashboardCommandAdvanced({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -254,12 +239,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'dashboard-widget') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateDashboardWidgetCommandAdvanced({
+    return await runCreateDashboardWidgetCommandAdvanced({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -270,12 +254,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'dashboard-data-source') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateDashboardDataSourceCommand({
+    return await runCreateDashboardDataSourceCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -286,12 +269,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'collection') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateCollectionCommand({
+    return await runCreateCollectionCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -302,12 +284,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'service') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateServiceCommandAdvanced({
+    return await runCreateServiceCommandAdvanced({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -318,12 +299,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'asset-service') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateAssetServiceCommand({
+    return await runCreateAssetServiceCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -334,12 +314,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'autocomplete-source') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateAutocompleteSourceCommand({
+    return await runCreateAutocompleteSourceCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -350,12 +329,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'validator') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateValidatorCommandAdvanced({
+    return await runCreateValidatorCommandAdvanced({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -366,12 +344,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'menu-item') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateMenuItemCommand({
+    return await runCreateMenuItemCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -382,12 +359,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && subcommand === 'header-item') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateHeaderItemCommand({
+    return await runCreateHeaderItemCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -398,12 +374,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if ((command === 'create' || command === 'make') && (subcommand === 'sub-menu' || subcommand === 'submenu')) {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateSubMenuCommand({
+    return await runCreateSubMenuCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -414,12 +389,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if (command === 'add' && subcommand === 'menu-item') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runCreateMenuItemCommand({
+    return await runCreateMenuItemCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -430,12 +404,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if (command === 'doctor') {
     const parsed = parseNamedArgs(args.slice(1));
-    process.exitCode = await runDoctorCommandAdvanced({
+    return await runDoctorCommandAdvanced({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -446,12 +419,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if (command === 'bootstrap' && subcommand === 'theme') {
     const parsed = parseNamedArgs(args.slice(2));
-    process.exitCode = await runBootstrapThemeCommand({
+    return await runBootstrapThemeCommand({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -462,12 +434,11 @@ async function main() {
       values: parsed.values,
       positionals: parsed.positionals,
     });
-    return;
   }
 
   if (command === 'migrate') {
     const parsed = parseNamedArgs(args.slice(1));
-    process.exitCode = await runMigrateCommandAdvanced({
+    return await runMigrateCommandAdvanced({
       cwd: process.cwd(),
       dryRun: hasFlag(parsed, 'dry-run'),
       force: hasFlag(parsed, 'force'),
@@ -481,12 +452,11 @@ async function main() {
       },
       positionals: parsed.positionals,
     });
-    return;
   }
 
   process.stderr.write(`[vuetify-ext] Unknown command: ${args.join(' ')}\n\n`);
   printHelp();
-  process.exitCode = 1;
+  return 1;
 }
 
 function printHelp() {
@@ -1276,4 +1246,8 @@ function parseOptionalBoolean(value: string | undefined): boolean | undefined {
   return undefined;
 }
 
-void main();
+if (typeof require !== 'undefined' && typeof module !== 'undefined' && require.main === module) {
+  void main().then((exitCode) => {
+    process.exitCode = exitCode;
+  });
+}

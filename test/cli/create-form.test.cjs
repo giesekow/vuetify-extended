@@ -2,10 +2,9 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const assert = require('node:assert/strict');
-const { spawnSync } = require('node:child_process');
 
 const repoRoot = path.resolve(__dirname, '..', '..');
-const cliEntry = path.join(repoRoot, 'lib', 'cjs', 'cli', 'index.js');
+const { main: runCliMain } = require(path.join(repoRoot, 'lib', 'cjs', 'cli', 'index.js'));
 const { __testing } = require(path.join(repoRoot, 'lib', 'cjs', 'cli', 'create-ui.js'));
 
 function makeTempDir(prefix) {
@@ -17,15 +16,46 @@ function writeFile(file, content) {
   fs.writeFileSync(file, content, 'utf8');
 }
 
-function runCli(cwd, args, input = '') {
-  return spawnSync(process.execPath, [cliEntry, ...args], {
-    cwd,
-    input,
-    encoding: 'utf8',
+async function runCli(cwd, args) {
+  let stdout = '';
+  let stderr = '';
+  const originalCwd = process.cwd();
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+
+  process.stdout.write = ((chunk, encoding, callback) => {
+    stdout += Buffer.isBuffer(chunk) ? chunk.toString(typeof encoding === 'string' ? encoding : 'utf8') : String(chunk);
+    if (typeof encoding === 'function') encoding();
+    if (typeof callback === 'function') callback();
+    return true;
   });
+
+  process.stderr.write = ((chunk, encoding, callback) => {
+    stderr += Buffer.isBuffer(chunk) ? chunk.toString(typeof encoding === 'string' ? encoding : 'utf8') : String(chunk);
+    if (typeof encoding === 'function') encoding();
+    if (typeof callback === 'function') callback();
+    return true;
+  });
+
+  try {
+    process.chdir(cwd);
+    const status = await runCliMain(args);
+    return { status, stdout, stderr, error: null };
+  } catch (error) {
+    return { status: 1, stdout, stderr, error };
+  } finally {
+    process.chdir(originalCwd);
+    process.stdout.write = originalStdoutWrite;
+    process.stderr.write = originalStderrWrite;
+  }
 }
 
 function assertSuccess(result, context) {
+  assert.equal(
+    result.error,
+    null,
+    `${context} failed.\nERROR:\n${result.error ? (result.error.stack || result.error.message || String(result.error)) : ''}\nSTDOUT:\n${result.stdout}\nSTDERR:\n${result.stderr}`,
+  );
   assert.equal(
     result.status,
     0,
@@ -33,7 +63,7 @@ function assertSuccess(result, context) {
   );
 }
 
-function testNonInteractiveLegacyReportPatch() {
+async function testNonInteractiveLegacyReportPatch() {
   const cwd = makeTempDir('ve-cli-form-legacy-');
   writeFile(path.join(cwd, 'src/pages/people/form.ts'), `export function createPeopleForm(mode = "display") {
   return { mode };
@@ -63,7 +93,7 @@ export function createPeopleReport(mode = "display") {
 export { createPeopleReport } from "./report";
 `);
 
-  const result = runCli(cwd, ['create', 'form', 'people', '--non-interactive', '--step', '2', '--title', 'People Contact Details']);
+  const result = await runCli(cwd, ['create', 'form', 'people', '--non-interactive', '--step', '2', '--title', 'People Contact Details']);
   assertSuccess(result, 'non-interactive create form');
 
   const reportSource = fs.readFileSync(path.join(cwd, 'src/pages/people/report.ts'), 'utf8');
@@ -131,10 +161,10 @@ export { createOrdersReport } from "./report";
   assert.equal(context.reportTitle, 'Legacy Orders Workspace');
 }
 
-function main() {
-  testNonInteractiveLegacyReportPatch();
+async function main() {
+  await testNonInteractiveLegacyReportPatch();
   testInteractiveUsesExistingPageExtensionForDefaults();
   process.stdout.write('CLI create form tests passed.\n');
 }
 
-main();
+void main();
