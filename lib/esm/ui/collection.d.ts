@@ -1,5 +1,5 @@
 import { VNode } from "vue";
-import { MenuTarget, UIBase } from "./base";
+import { CollectionMode, MenuTarget, UIBase } from "./base";
 import { Trigger } from "./trigger";
 import { Report } from "./report";
 import { Selector } from "./selector";
@@ -22,10 +22,10 @@ export interface CollectionParams {
     objectType?: string;
     selectionOnly?: boolean;
     multiple?: boolean;
-    mode?: 'create' | 'edit' | 'display';
+    mode?: CollectionMode;
 }
 export interface CollectionOptions {
-    access?: (collection: Collection, mode: any) => Promise<boolean | undefined> | boolean | undefined;
+    access?: (collection: Collection, mode: CollectionMode) => Promise<boolean | undefined> | boolean | undefined;
     report?: (collection: Collection) => Promise<Report | undefined> | Report | undefined;
     trigger?: (collection: Collection) => Promise<Trigger | undefined> | Trigger | undefined;
     selector?: (collection: Collection) => Promise<Selector | undefined> | Selector | undefined;
@@ -49,7 +49,7 @@ export declare class Collection extends UIBase {
     get $currentTrigger(): Trigger | undefined;
     get $currentSelector(): Selector | undefined;
     static setDefault(value: CollectionParams, reset?: boolean): void;
-    access(mode: any): Promise<boolean | undefined>;
+    access(mode: CollectionMode): Promise<boolean | undefined>;
     get $ref(): string | undefined;
     get $readonly(): any;
     setParams(params: CollectionParams): void;

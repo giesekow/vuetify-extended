@@ -1394,10 +1394,6 @@ function toPascalCase(value: string) {
     .join('');
 }
 
-function capitalize(value: string) {
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
 function sanitizeIdentifier(value: string) {
   let identifier = toPascalCase(value);
   if (!identifier) {

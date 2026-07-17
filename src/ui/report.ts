@@ -1,5 +1,5 @@
 import { VNode, Ref } from "vue";
-import { MenuTarget, ReportMode, UIBase } from "./base";
+import { MenuTarget, ReportAccessMode, ReportMode, UIBase } from "./base";
 import { VDivider, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VLayout, VCol, VRow, VContainer, VBtn, VMenu, VProgressLinear } from 'vuetify/components';
 import { Master } from "../master";
 import { Form } from './form';
@@ -36,7 +36,7 @@ export interface ReportParams {
   multiple?: boolean;
   setActionButtons?: boolean;
   forms?: number;
-  mode?: 'create'|'edit'|'display';
+  mode?: ReportMode;
   editAfterSave?: boolean;
   verticalAlign?: "center" | "end" | "start" | "space-around" | "space-between" | "space-evenly" | "stretch" | undefined;
   horizontalAlign?: "left"|"center"|"right";
@@ -58,7 +58,7 @@ export interface ReportOptions {
   hasForm?: (props: any, context: any, index: number) => Promise<boolean|undefined>|boolean|undefined;
   saved?: (report: Report) => Promise<void>|void;
   cancel?: (report: Report) => Promise<void>|void;
-  access?: (report: Report, mode: any) => Promise<boolean>|boolean;
+  access?: (report: Report, mode?: ReportAccessMode) => Promise<boolean>|boolean;
   setup?: (report: Report) => void;
   beforePrint?: (report: Report, mode?: ReportMode) => Promise<any|undefined>|any|undefined;
   printTemplate?: (report: Report, mode?: ReportMode) => Promise<any|undefined>|any|undefined;
@@ -255,7 +255,7 @@ export class Report extends UIBase {
 
   async cancel() {}
 
-  async access(mode: any): Promise<boolean> {
+  async access(mode?: ReportAccessMode): Promise<boolean> {
     return this.options.access ? await this.options.access(this, mode) : true;
   }
 

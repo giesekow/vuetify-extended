@@ -55,6 +55,21 @@ function readDemoDeepLinkIntent(): DemoDeepLinkIntent | undefined {
   };
 }
 
+function clearDemoDeepLinkIntentFromUrl() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('demoScreen');
+    url.searchParams.delete('demoMode');
+    window.history.replaceState(window.history.state, '', url.toString());
+  } catch (_error) {
+    //
+  }
+}
+
 async function executeDemoDeepLink(intent: DemoDeepLinkIntent) {
   if (intent.screen === 'home') {
     await AppManager.showReport(createHomeReport(intent.mode as ReportMode), {
@@ -121,6 +136,7 @@ function registerDemoLifecycleHandlers() {
     if (pendingDeepLinkIntent) {
       const deepLink = pendingDeepLinkIntent;
       pendingDeepLinkIntent = undefined;
+      clearDemoDeepLinkIntentFromUrl();
       await executeDemoDeepLink(deepLink);
       Dialogs.$success({
         key: 'bootstrap.lifecycle.deepLink.executed',

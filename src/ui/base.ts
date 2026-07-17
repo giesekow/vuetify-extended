@@ -103,7 +103,15 @@ export class BaseComponent extends EventEmitter {
   removeEventListeners() {}
 }
 
-export type ReportMode = "display"|"edit"|"create";
+export type ScreenMode = "display"|"edit"|"create";
+export type AccessMode = ScreenMode | "print" | "export";
+export type ReportMode = ScreenMode;
+export type TriggerMode = ScreenMode;
+export type CollectionMode = ScreenMode;
+export type SelectorMode = ScreenMode;
+export type DialogMode = ScreenMode;
+export type ReportAccessMode = AccessMode;
+export type TriggerAccessMode = AccessMode;
 export type MenuTarget = Menu | NavigationScreenFactory<Menu>;
 
 export class UIBase extends BaseComponent {

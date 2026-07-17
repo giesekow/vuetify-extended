@@ -1,5 +1,5 @@
 import { VNode } from "vue";
-import { UIBase } from "./base";
+import { SelectorMode, UIBase } from "./base";
 import { ButtonParams } from "./button";
 import { OnHandler } from "./lib";
 import { UIText } from "./runtime";
@@ -10,7 +10,7 @@ export interface SelectorParams {
     multiple?: boolean;
     title?: UIText;
     subtitle?: UIText;
-    mode?: 'create' | 'edit' | 'display';
+    mode?: SelectorMode;
     cancelButton?: ButtonParams;
     saveButton?: ButtonParams;
     elevation?: number;
@@ -30,11 +30,11 @@ export interface SelectorParams {
 }
 export interface SelectorOptions {
     cancel?: () => Promise<void>;
-    access?: (selector: Selector, mode?: 'create' | 'edit' | 'display') => Promise<boolean> | boolean;
-    load?: (selector: Selector, mode?: 'create' | 'edit' | 'display') => Promise<any[]> | any[];
-    query?: (selector: Selector, mode?: 'create' | 'edit' | 'display') => Promise<any> | any;
-    format?: (item: any, items: any[], selector: Selector, mode?: 'create' | 'edit' | 'display') => Promise<any> | any;
-    selected?: (item: any, selector: Selector, mode?: 'create' | 'edit' | 'display') => Promise<any> | any;
+    access?: (selector: Selector, mode?: SelectorMode) => Promise<boolean> | boolean;
+    load?: (selector: Selector, mode?: SelectorMode) => Promise<any[]> | any[];
+    query?: (selector: Selector, mode?: SelectorMode) => Promise<any> | any;
+    format?: (item: any, items: any[], selector: Selector, mode?: SelectorMode) => Promise<any> | any;
+    selected?: (item: any, selector: Selector, mode?: SelectorMode) => Promise<any> | any;
     setup?: (selector: Selector) => void;
     on?: (selector: Selector) => OnHandler;
 }
@@ -59,12 +59,12 @@ export declare class Selector extends UIBase {
     get $access(): boolean;
     private runAccess;
     validate(): Promise<string | true | undefined | void>;
-    selected(item: any, mode?: 'create' | 'edit' | 'display'): Promise<void>;
+    selected(item: any, mode?: SelectorMode): Promise<void>;
     format(item: any, items: any[]): Promise<any | undefined>;
     cancel(): Promise<void>;
-    access(mode?: 'create' | 'edit' | 'display'): Promise<boolean>;
-    load(mode?: 'create' | 'edit' | 'display'): Promise<any[]>;
-    query(search: string, mode?: 'create' | 'edit' | 'display'): Promise<any>;
+    access(mode?: SelectorMode): Promise<boolean>;
+    load(mode?: SelectorMode): Promise<any[]>;
+    query(search: string, mode?: SelectorMode): Promise<any>;
     props(): never[];
     private loadItems;
     render(props: any, context: any): VNode | undefined;

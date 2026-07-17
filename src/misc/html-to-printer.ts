@@ -1,28 +1,5 @@
 import { sleep } from "./general";
 
-const PRINT_ELEMENT_ID = 'print-area'
-const STYLE_ELEMENT_ID = 'print-area-css'
-const PRINT_CSS = `
-  @media screen {
-    #print-area {
-      display: none;
-    }
-  }
-  @media print {
-    body * {
-      visibility: hidden;
-    }
-    #print-area, #print-area * {
-      visibility: visible;
-    }
-    #print-area {
-      left: 0;
-      top: 0;
-      width: 100%;
-    }
-    .break-page {page-break-after: always;}
-  }
-`
 export async function print(html: string) {
   const width=Math.min(screen.availWidth, 1200);
   const height=screen.availHeight;

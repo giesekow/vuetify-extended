@@ -23,7 +23,6 @@ import { Master } from '../master';
 import { OnHandler } from './lib';
 import { Report } from './report';
 import { Dialogs } from './dialogs';
-import { AppManager } from './appmanager';
 import { MenuItem, executeMenuItemAction } from './menu';
 import { describeShortcut, normalizeShortcut, normalizeShortcutFromEvent } from './shortcut';
 import type { UIText } from './runtime';

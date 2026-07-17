@@ -1,5 +1,5 @@
 import { VNode, Ref, nextTick } from "vue";
-import { UIBase } from "./base";
+import { SelectorMode, UIBase } from "./base";
 import { VDivider, VRow, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VCardSubtitle, VCol, VDialog, VAutocomplete } from 'vuetify/components';
 import { Button, ButtonParams } from "./button";
 import { Master } from "../master";
@@ -13,7 +13,7 @@ export interface SelectorParams {
   multiple?: boolean;
   title?: UIText;
   subtitle?: UIText;
-  mode?: 'create'|'edit'|'display';
+  mode?: SelectorMode;
   cancelButton?: ButtonParams,
   saveButton?: ButtonParams,
   elevation?: number;
@@ -34,11 +34,11 @@ export interface SelectorParams {
 
 export interface SelectorOptions {
   cancel?: () => Promise<void>;
-  access?: (selector: Selector, mode?: 'create'|'edit'|'display') => Promise<boolean>|boolean;
-  load?: (selector: Selector, mode?: 'create'|'edit'|'display') => Promise<any[]>|any[];
-  query?: (selector: Selector, mode?: 'create'|'edit'|'display') => Promise<any>|any;
-  format?: (item: any, items: any[], selector: Selector, mode?: 'create'|'edit'|'display') => Promise<any>|any;
-  selected?: (item: any, selector: Selector, mode?: 'create'|'edit'|'display') => Promise<any>|any;
+  access?: (selector: Selector, mode?: SelectorMode) => Promise<boolean>|boolean;
+  load?: (selector: Selector, mode?: SelectorMode) => Promise<any[]>|any[];
+  query?: (selector: Selector, mode?: SelectorMode) => Promise<any>|any;
+  format?: (item: any, items: any[], selector: Selector, mode?: SelectorMode) => Promise<any>|any;
+  selected?: (item: any, selector: Selector, mode?: SelectorMode) => Promise<any>|any;
   setup?: (selector: Selector) => void;
   on?: (selector: Selector) => OnHandler;
 }
@@ -104,7 +104,7 @@ export class Selector extends UIBase {
   async validate (): Promise<string|true|undefined|void> {
   }
 
-  async selected(item: any, mode?:'create'|'edit'|'display') {}
+  async selected(item: any, mode?: SelectorMode) {}
 
   async format(item: any, items: any[]): Promise<any|undefined> {
     return item;
@@ -112,11 +112,11 @@ export class Selector extends UIBase {
 
   async cancel() {}
 
-  async access(mode?: 'create'|'edit'|'display'): Promise<boolean> {
+  async access(mode?: SelectorMode): Promise<boolean> {
     return this.options.access ? await this.options.access(this, mode) : true;
   }
 
-  async load(mode?: 'create'|'edit'|'display'): Promise<any[]> {
+  async load(mode?: SelectorMode): Promise<any[]> {
     let data: any = null;
 
     if (this.$params.objectType) {
@@ -137,7 +137,7 @@ export class Selector extends UIBase {
     return data;
   }
 
-  async query(search: string, mode?: 'create'|'edit'|'display'): Promise<any> {}
+  async query(search: string, mode?: SelectorMode): Promise<any> {}
 
   props() {
     return []

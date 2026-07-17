@@ -166,8 +166,6 @@ export declare class AppMain extends UIBase {
     private rightSideMenu;
     private leftSideMenuOpen;
     private rightSideMenuOpen;
-    private leftSideMenuSource;
-    private rightSideMenuSource;
     private leftSideMenuState?;
     private rightSideMenuState?;
     private leftSideMenuTouched;
@@ -187,6 +185,9 @@ export declare class AppMain extends UIBase {
     private pendingManagedBackFallback?;
     private pendingManagedBackTimer?;
     private detachCapacitorBackHandler?;
+    private loadPromise?;
+    private currentLoadPreferRestore?;
+    private queuedLoadPreferRestore?;
     private readonly boundPopStateHandler;
     private readonly boundPersistenceFlushHandler;
     private readonly boundVisibilityHandler;
@@ -212,7 +213,6 @@ export declare class AppMain extends UIBase {
     private setSideNavState;
     private suppressedSideNavToken;
     private setSuppressedSideNavToken;
-    private setSideNavSource;
     private setSideNavTouched;
     private isSideNavTouched;
     private isSideNavMobile;
@@ -233,7 +233,6 @@ export declare class AppMain extends UIBase {
     private createSnapshot;
     private createPersistedEntryState;
     private createBrowserState;
-    private serializeSnapshotEntry;
     private shouldRewindBrowserHistoryAfterRestore;
     private rewindBrowserHistorySilently;
     private syncNavigationPersistence;
@@ -297,7 +296,6 @@ export declare class AppMain extends UIBase {
     private resolveMobileShellLocation;
     private mobileShellPriority;
     private shouldHideShellItem;
-    private renderCompactHeaderDrawer;
     private normalizeShellItem;
     private renderSideNavDrawer;
     private activateCurrentItem;
@@ -305,6 +303,7 @@ export declare class AppMain extends UIBase {
     $goBackWithFallback(fallback: () => Promise<void> | void): Promise<void>;
     $backBrowserHistorySilently(): boolean;
     private loadApp;
+    private queueLoad;
     $getUDFs(objectType: string | string[]): Promise<any[]>;
     $makeUDF(options: any, mode?: ReportMode): Field | undefined;
     $showMenu(menu: Menu | NavigationScreenFactory<Menu>, params?: AppScreenParams, replaceHistory?: boolean): Promise<void>;

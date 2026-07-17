@@ -1,5 +1,5 @@
 import { VNode, Ref, nextTick } from "vue";
-import { MenuTarget, ReportMode, UIBase } from "./base";
+import { MenuTarget, ReportMode, TriggerAccessMode, TriggerMode, UIBase } from "./base";
 import { VDivider, VRow, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VCardSubtitle, VTextField, VCol, VContainer, VLayout, VAutocomplete, VBtn, VMenu } from 'vuetify/components';
 import { Button, ButtonParams } from "./button";
 import { VDataTableServer } from 'vuetify/components';
@@ -20,7 +20,7 @@ export interface TriggerParams {
   title?: UIText;
   subtitle?: UIText;
   hideSideNavs?: boolean;
-  mode?: 'create'|'edit'|'display';
+  mode?: TriggerMode;
   cancelButton?: ButtonParams,
   removeButton?: ButtonParams,
   viewButton?: ButtonParams,
@@ -55,21 +55,21 @@ export interface TriggerParams {
 }
 
 export interface TriggerOptions {
-  searchFields?: (tigger: Trigger, mode?: 'create'|'edit'|'display') => any | Promise<any>;
+  searchFields?: (tigger: Trigger, mode?: TriggerMode) => any | Promise<any>;
   cancel?: () => Promise<void>;
-  access?: (tigger: Trigger, mode?: 'create'|'edit'|'display') => Promise<boolean>;
+  access?: (tigger: Trigger, mode?: TriggerAccessMode) => Promise<boolean>;
   removeAccess?: (trigger: Trigger) => Promise<boolean>;
   canRemove?: (item: any, trigger: Trigger) => Promise<boolean>;
   headers?: (trigger: Trigger) => Promise<any[]>;
   load?: (searchText: string, trigger: Trigger, options: any) => Promise<any>;
   remove?: (item: any, trigger: Trigger) => Promise<boolean|string>;
-  query?: (search: string, trigger: Trigger, mode?: 'create'|'edit'|'display', searchFields?: any[]) => Promise<any>;
+  query?: (search: string, trigger: Trigger, mode?: TriggerMode, searchFields?: any[]) => Promise<any>;
   setup?: (trigger: Trigger) => void;
   on?: (trigger: Trigger) => OnHandler;
   format?: (trigger: Trigger, items : any[]) => Promise<any[]| undefined>|any[]|undefined;
   topChildren?: (props: any, context: any) => Array<Part|Field>;
   bottomChildren?: (props: any, context: any) => Array<Part|Field>;
-  processQuery?: (query: any, trigger: Trigger, mode?: 'create'|'edit'|'display', search?: string, searchFields?: any[]) => Promise<any>;
+  processQuery?: (query: any, trigger: Trigger, mode?: TriggerMode, search?: string, searchFields?: any[]) => Promise<any>;
   beforePrint?: (trigger: Trigger, mode?: ReportMode) => Promise<any|undefined>|any|undefined;
   printTemplate?: (trigger: Trigger, mode?: ReportMode) => Promise<any|undefined>|any|undefined;
   beforeExport?: (trigger: Trigger, mode?: ReportMode) => Promise<any|undefined>|any|undefined;
@@ -109,7 +109,6 @@ export class Trigger extends UIBase {
   private loading: Ref<boolean> = this.$makeRef(false);
   private hasPrintAccess: Ref<boolean>;
   private hasExportAccess: Ref<boolean>;
-  private listenersAttached = false;
   private shortcutHandler?: (ev: KeyboardEvent) => void;
   private compactSideActions: Ref<boolean>;
   private sideActionMediaQuery?: MediaQueryList;
@@ -225,7 +224,7 @@ export class Trigger extends UIBase {
 
   async cancel() {}
 
-  async access(mode?: any): Promise<boolean> {
+  async access(mode?: TriggerAccessMode): Promise<boolean> {
     return this.options.access ? await this.options.access(this, mode) : true;
   }
 
@@ -271,7 +270,7 @@ export class Trigger extends UIBase {
     return data;
   }
 
-  async query(search: string, mode?: 'create'|'edit'|'display'): Promise<any> {
+  async query(search: string, mode?: TriggerMode): Promise<any> {
     let query: any = {...(this.params.value.query || {})};
 
     if (this.options.query) {
@@ -1443,7 +1442,6 @@ export class Trigger extends UIBase {
       window.addEventListener('keydown', this.shortcutHandler);
     }
     super.attachEventListeners();
-    this.listenersAttached = true;
   }
 
   removeEventListeners() {
@@ -1453,7 +1451,6 @@ export class Trigger extends UIBase {
       this.shortcutHandler = undefined;
     }
     super.removeEventListeners();
-    this.listenersAttached = false;
   }
 
   private syncSideActionBreakpoint(matches?: boolean) {

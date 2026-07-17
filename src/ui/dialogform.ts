@@ -1,5 +1,5 @@
 import { VNode, Ref, nextTick } from "vue";
-import { UIBase } from "./base";
+import { DialogMode, UIBase } from "./base";
 import { VBtn, VCard, VCardActions, VCardText, VDialog, VSpacer } from 'vuetify/components';
 import { Form } from "./form";
 import { Master } from "../master";
@@ -11,7 +11,7 @@ export interface DialogParams {
   objectId?: any;
   invisible?: boolean;
   persistent?: boolean;
-  mode?: 'create'|'edit'|'display';
+  mode?: DialogMode;
   closeOnSave?: boolean;
   fullscreen?: boolean|undefined;
 }
@@ -21,7 +21,7 @@ export interface DialogFormOptions {
   form?: (props: any, context: any) => Promise<Form|undefined>|Form|undefined;
   saved?: () => Promise<void>|void;
   cancel?: () => Promise<void>|void;
-  access?: (dialog: DialogForm, mode?: any) => Promise<boolean>|boolean;
+  access?: (dialog: DialogForm, mode?: DialogMode) => Promise<boolean>|boolean;
   setup?: (dialog: DialogForm) => void;
   on?: (dialog: DialogForm) => OnHandler;
 }
@@ -92,11 +92,11 @@ export class DialogForm extends UIBase {
 
   async cancel() {}
 
-  async access(mode?: any): Promise<boolean> {
+  async access(mode?: DialogMode): Promise<boolean> {
     return this.options.access ? await this.options.access(this, mode) : true;
   }
 
-  async query(search: string, mode?: 'create'|'edit'|'display'): Promise<any> {}
+  async query(search: string, mode?: DialogMode): Promise<any> {}
 
   props() {
     return []

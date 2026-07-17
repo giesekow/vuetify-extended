@@ -1,4 +1,5 @@
 import type { Ref } from 'vue';
+import type { ScreenMode } from './base';
 export interface UITextDescriptor {
     key: string;
     fallback?: string;
@@ -37,7 +38,7 @@ export interface NavigationEntry {
     type: NavigationScreenType;
     key?: string;
     title?: string;
-    mode?: 'create' | 'edit' | 'display';
+    mode?: ScreenMode;
     params?: any;
     state?: any;
     menuRestorePath?: NavigationMenuRestoreStep[];

@@ -1,5 +1,5 @@
 import { VNode } from "vue";
-import { MenuTarget, ReportMode, UIBase } from "./base";
+import { MenuTarget, ReportMode, TriggerAccessMode, TriggerMode, UIBase } from "./base";
 import { Button, ButtonParams } from "./button";
 import { OnHandler } from "./lib";
 import { Part, PRefs } from "./part";
@@ -12,7 +12,7 @@ export interface TriggerParams {
     title?: UIText;
     subtitle?: UIText;
     hideSideNavs?: boolean;
-    mode?: 'create' | 'edit' | 'display';
+    mode?: TriggerMode;
     cancelButton?: ButtonParams;
     removeButton?: ButtonParams;
     viewButton?: ButtonParams;
@@ -46,21 +46,21 @@ export interface TriggerParams {
     exportFilename?: string;
 }
 export interface TriggerOptions {
-    searchFields?: (tigger: Trigger, mode?: 'create' | 'edit' | 'display') => any | Promise<any>;
+    searchFields?: (tigger: Trigger, mode?: TriggerMode) => any | Promise<any>;
     cancel?: () => Promise<void>;
-    access?: (tigger: Trigger, mode?: 'create' | 'edit' | 'display') => Promise<boolean>;
+    access?: (tigger: Trigger, mode?: TriggerAccessMode) => Promise<boolean>;
     removeAccess?: (trigger: Trigger) => Promise<boolean>;
     canRemove?: (item: any, trigger: Trigger) => Promise<boolean>;
     headers?: (trigger: Trigger) => Promise<any[]>;
     load?: (searchText: string, trigger: Trigger, options: any) => Promise<any>;
     remove?: (item: any, trigger: Trigger) => Promise<boolean | string>;
-    query?: (search: string, trigger: Trigger, mode?: 'create' | 'edit' | 'display', searchFields?: any[]) => Promise<any>;
+    query?: (search: string, trigger: Trigger, mode?: TriggerMode, searchFields?: any[]) => Promise<any>;
     setup?: (trigger: Trigger) => void;
     on?: (trigger: Trigger) => OnHandler;
     format?: (trigger: Trigger, items: any[]) => Promise<any[] | undefined> | any[] | undefined;
     topChildren?: (props: any, context: any) => Array<Part | Field>;
     bottomChildren?: (props: any, context: any) => Array<Part | Field>;
-    processQuery?: (query: any, trigger: Trigger, mode?: 'create' | 'edit' | 'display', search?: string, searchFields?: any[]) => Promise<any>;
+    processQuery?: (query: any, trigger: Trigger, mode?: TriggerMode, search?: string, searchFields?: any[]) => Promise<any>;
     beforePrint?: (trigger: Trigger, mode?: ReportMode) => Promise<any | undefined> | any | undefined;
     printTemplate?: (trigger: Trigger, mode?: ReportMode) => Promise<any | undefined> | any | undefined;
     beforeExport?: (trigger: Trigger, mode?: ReportMode) => Promise<any | undefined> | any | undefined;
@@ -98,7 +98,6 @@ export declare class Trigger extends UIBase {
     private loading;
     private hasPrintAccess;
     private hasExportAccess;
-    private listenersAttached;
     private shortcutHandler?;
     private compactSideActions;
     private sideActionMediaQuery?;
@@ -116,13 +115,13 @@ export declare class Trigger extends UIBase {
     validate(): Promise<string | true | undefined | void>;
     saved(): Promise<void>;
     cancel(): Promise<void>;
-    access(mode?: any): Promise<boolean>;
+    access(mode?: TriggerAccessMode): Promise<boolean>;
     getRightMenuTarget(): Promise<MenuTarget | undefined>;
     removeAccess(): Promise<boolean>;
     canRemove(item: any): Promise<boolean>;
     remove(item: any): Promise<boolean | string>;
     load(searchText: string, options: ServerTableOptions): Promise<any>;
-    query(search: string, mode?: 'create' | 'edit' | 'display'): Promise<any>;
+    query(search: string, mode?: TriggerMode): Promise<any>;
     props(): never[];
     onTableOptionsChanged(options: any): Promise<void>;
     private loadItems;

@@ -1,7 +1,6 @@
 import { Ref, VNode, defineComponent, h as vueH, markRaw, nextTick, onBeforeUnmount, onMounted, shallowRef } from "vue";
 import { VBtn, VCard, VCol, VIcon, VImg, VRow, VSheet } from 'vuetify/components';
 import { VAceEditor } from 'vue3-ace-editor';
-import * as ace from 'ace-builds';
 import 'ace-builds/src-noconflict/mode-text';
 import 'ace-builds/src-noconflict/mode-json';
 import 'ace-builds/src-noconflict/mode-javascript';
@@ -16,7 +15,6 @@ import 'ace-builds/src-noconflict/worker-javascript';
 import 'ace-builds/src-noconflict/worker-html';
 import VueApexCharts from 'vue3-apexcharts';
 import { GoogleMap, Marker, Polygon, Polyline, Circle, Rectangle, MarkerCluster, CustomMarker } from "vue3-google-map";
-import { Dialogs } from "../dialogs";
 import { TiptapHtmlEditor } from "../tiptap-editor";
 
 export interface MediaDisplayItem {
@@ -752,17 +750,6 @@ function isImageAttachment(attachment: any) {
   }
 
   return typeof attachment?.url === 'string' && attachment.url.startsWith('data:image/');
-}
-
-function isPdfAttachment(attachment: any) {
-  if (attachment?.type && typeof attachment.type === 'string') {
-    return attachment.type === 'application/pdf';
-  }
-
-  return typeof attachment?.url === 'string' && (
-    attachment.url.startsWith('data:application/pdf')
-    || /\.pdf(\?.*)?$/i.test(attachment.url)
-  );
 }
 
 function attachmentIcon(attachment: any) {

@@ -183,7 +183,7 @@ export declare class MenuItem extends EventEmitter {
     private handleOn;
 }
 export declare function prepareMenuReplayTarget(parent: Menu, step: NavigationMenuRestoreStep): Promise<{
-    mode: ReportMode | undefined;
+    mode: import("./base").ScreenMode | undefined;
     params: AppScreenParams;
     target: MenuScreenTarget<Menu>;
 } | undefined>;

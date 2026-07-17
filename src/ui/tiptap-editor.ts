@@ -501,25 +501,6 @@ export const TiptapHtmlEditor = defineComponent({
       return 'Paragraph';
     };
 
-    const getAlignmentLabel = () => {
-      const instance = editor.value;
-      if (!instance) {
-        return 'Left';
-      }
-
-      if (instance.isActive({ textAlign: 'justify' })) {
-        return 'Justify';
-      }
-      if (instance.isActive({ textAlign: 'right' })) {
-        return 'Right';
-      }
-      if (instance.isActive({ textAlign: 'center' })) {
-        return 'Center';
-      }
-
-      return 'Left';
-    };
-
     const getRootElement = (): HTMLElement | null => {
       if (rootEl.value instanceof HTMLElement) {
         return rootEl.value;

@@ -1,5 +1,5 @@
 import { VNode } from "vue";
-import { UIBase } from "./base";
+import { DialogMode, UIBase } from "./base";
 import { Form } from "./form";
 import { Master } from "../master";
 import { OnHandler } from "./lib";
@@ -9,7 +9,7 @@ export interface DialogParams {
     objectId?: any;
     invisible?: boolean;
     persistent?: boolean;
-    mode?: 'create' | 'edit' | 'display';
+    mode?: DialogMode;
     closeOnSave?: boolean;
     fullscreen?: boolean | undefined;
 }
@@ -18,7 +18,7 @@ export interface DialogFormOptions {
     form?: (props: any, context: any) => Promise<Form | undefined> | Form | undefined;
     saved?: () => Promise<void> | void;
     cancel?: () => Promise<void> | void;
-    access?: (dialog: DialogForm, mode?: any) => Promise<boolean> | boolean;
+    access?: (dialog: DialogForm, mode?: DialogMode) => Promise<boolean> | boolean;
     setup?: (dialog: DialogForm) => void;
     on?: (dialog: DialogForm) => OnHandler;
 }
@@ -42,8 +42,8 @@ export declare class DialogForm extends UIBase {
     validate(): Promise<string | true | undefined | void>;
     saved(): Promise<void>;
     cancel(): Promise<void>;
-    access(mode?: any): Promise<boolean>;
-    query(search: string, mode?: 'create' | 'edit' | 'display'): Promise<any>;
+    access(mode?: DialogMode): Promise<boolean>;
+    query(search: string, mode?: DialogMode): Promise<any>;
     props(): never[];
     render(props: any, context: any): VNode | undefined;
     private buildBody;

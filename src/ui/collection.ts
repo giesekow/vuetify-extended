@@ -1,5 +1,5 @@
 import { VNode, Ref } from "vue";
-import { MenuTarget, UIBase } from "./base";
+import { CollectionMode, MenuTarget, UIBase } from "./base";
 import { Trigger } from "./trigger";
 import { Report } from "./report";
 import { Selector } from "./selector";
@@ -29,11 +29,11 @@ export interface CollectionParams {
   objectType?: string;
   selectionOnly?: boolean;
   multiple?: boolean;
-  mode?: 'create'|'edit'|'display';
+  mode?: CollectionMode;
 }
 
 export interface CollectionOptions {
-  access?: (collection: Collection, mode: any) => Promise<boolean|undefined>|boolean|undefined;
+  access?: (collection: Collection, mode: CollectionMode) => Promise<boolean|undefined>|boolean|undefined;
   report?: (collection: Collection) => Promise<Report|undefined>|Report|undefined;
   trigger?: (collection: Collection) => Promise<Trigger|undefined>|Trigger|undefined;
   selector?: (collection: Collection) => Promise<Selector|undefined>|Selector|undefined;
@@ -82,7 +82,7 @@ export class Collection extends UIBase {
     }
   }
 
-  async access(mode: any): Promise<boolean|undefined>{
+  async access(mode: CollectionMode): Promise<boolean|undefined>{
     return this.options.access ? await this.options.access(this, mode) : true;
   }
 

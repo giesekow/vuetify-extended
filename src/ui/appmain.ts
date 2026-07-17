@@ -13,9 +13,9 @@ import { AppManager } from "./appmanager";
 import { Api } from "../api";
 import { DialogForm } from "./dialogform";
 import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent } from "./shortcut";
-import { VApp, VAppBar, VAppBarTitle, VBtn, VCard, VCardText, VFooter, VMain, VMenu, VNavigationDrawer, VDivider, VContainer, VInput, VTextField } from 'vuetify/components';
+import { VApp, VAppBar, VAppBarTitle, VBtn, VCard, VCardText, VFooter, VMain, VMenu, VNavigationDrawer } from 'vuetify/components';
 import { Master } from "../master";
-import { attachCapacitorBackButton, createNavigationPersistenceAdapter, createNavigationId, detectCapacitorEnvironment, isValidSnapshot, makeSerializable, navigationStorageKey, resolveDefaultNavigationStorageMode, type AppNavigationOptions, type AppSnapshot, type InlineNavigationOptions, type NavigationEntry, type NavigationMenuRestoreStep, type NavigationPersistenceAdapter, type NavigationScreenFactory, type NavigationScreenType, type NavigationStorageMode, type UIText } from "./runtime";
+import { attachCapacitorBackButton, createNavigationPersistenceAdapter, createNavigationId, detectCapacitorEnvironment, isValidSnapshot, makeSerializable, navigationStorageKey, resolveDefaultNavigationStorageMode, type AppNavigationOptions, type AppSnapshot, type InlineNavigationOptions, type NavigationEntry, type NavigationMenuRestoreStep, type NavigationPersistenceAdapter, type NavigationScreenFactory, type NavigationScreenType, type UIText } from "./runtime";
 
 export interface AppParams {
   ref?: string;
@@ -180,8 +180,6 @@ export class AppMain extends UIBase {
   private rightSideMenu: ShallowRef<Menu | undefined>;
   private leftSideMenuOpen: Ref<boolean>;
   private rightSideMenuOpen: Ref<boolean>;
-  private leftSideMenuSource: AppSideNavSource;
-  private rightSideMenuSource: AppSideNavSource;
   private leftSideMenuState?: AppSideNavTargetState;
   private rightSideMenuState?: AppSideNavTargetState;
   private leftSideMenuTouched = false;
@@ -201,6 +199,9 @@ export class AppMain extends UIBase {
   private pendingManagedBackFallback?: () => Promise<void> | void;
   private pendingManagedBackTimer?: ReturnType<typeof setTimeout>;
   private detachCapacitorBackHandler?: () => void;
+  private loadPromise?: Promise<void>;
+  private currentLoadPreferRestore?: boolean;
+  private queuedLoadPreferRestore?: boolean;
   private readonly boundPopStateHandler = (ev: PopStateEvent) => {
     void this.onPopState(ev);
   };
@@ -251,8 +252,6 @@ export class AppMain extends UIBase {
     this.rightSideMenu = shallowRef();
     this.leftSideMenuOpen = this.$makeRef(false);
     this.rightSideMenuOpen = this.$makeRef(false);
-    this.leftSideMenuSource = undefined;
-    this.rightSideMenuSource = undefined;
     this.navigationOptions = {
       enabled: false,
       history: true,
@@ -386,14 +385,6 @@ export class AppMain extends UIBase {
       this.leftSideMenuSuppressedToken = token;
     } else {
       this.rightSideMenuSuppressedToken = token;
-    }
-  }
-
-  private setSideNavSource(side: AppSideNavSide, source: AppSideNavSource) {
-    if (side === 'left') {
-      this.leftSideMenuSource = source;
-    } else {
-      this.rightSideMenuSource = source;
     }
   }
 
@@ -581,7 +572,6 @@ export class AppMain extends UIBase {
     if (!this.shouldRenderSideNav(side)) {
       this.sideNavMenuRef(side).value = undefined;
       this.sideNavOpenRef(side).value = false;
-      this.setSideNavSource(side, undefined);
       this.setSideNavState(side, undefined);
       this.setSideNavTouched(side, false);
       return;
@@ -592,7 +582,6 @@ export class AppMain extends UIBase {
     if (suppressedToken !== undefined && resolvedState.token !== undefined && suppressedToken === resolvedState.token) {
       this.sideNavMenuRef(side).value = undefined;
       this.sideNavOpenRef(side).value = false;
-      this.setSideNavSource(side, undefined);
       this.setSideNavState(side, undefined);
       this.setSideNavTouched(side, false);
       return;
@@ -605,7 +594,6 @@ export class AppMain extends UIBase {
     if (!resolvedState.target) {
       this.sideNavMenuRef(side).value = undefined;
       this.sideNavOpenRef(side).value = false;
-      this.setSideNavSource(side, undefined);
       this.setSideNavState(side, undefined);
       this.setSideNavTouched(side, false);
       return;
@@ -616,7 +604,6 @@ export class AppMain extends UIBase {
     if (!menu) {
       this.sideNavMenuRef(side).value = undefined;
       this.sideNavOpenRef(side).value = false;
-      this.setSideNavSource(side, undefined);
       this.setSideNavState(side, undefined);
       this.setSideNavTouched(side, false);
       return;
@@ -626,7 +613,6 @@ export class AppMain extends UIBase {
     if (!allowed) {
       this.sideNavMenuRef(side).value = undefined;
       this.sideNavOpenRef(side).value = false;
-      this.setSideNavSource(side, undefined);
       this.setSideNavState(side, undefined);
       this.setSideNavTouched(side, false);
       return;
@@ -637,7 +623,6 @@ export class AppMain extends UIBase {
     const current = this.sideNavMenuRef(side).value;
     const sameMenuInstance = current?.$id === menu.$id;
     this.sideNavMenuRef(side).value = menu;
-    this.setSideNavSource(side, resolvedState.source);
     this.setSideNavState(side, resolvedState);
 
     if (!this.isSideNavTouched(side)) {
@@ -681,7 +666,6 @@ export class AppMain extends UIBase {
 
     this.sideNavMenuRef(side).value = undefined;
     this.sideNavOpenRef(side).value = false;
-    this.setSideNavSource(side, undefined);
     this.setSideNavState(side, undefined);
     this.setSideNavTouched(side, false);
   }
@@ -760,21 +744,6 @@ export class AppMain extends UIBase {
       __veNavigation: true,
       snapshot: this.createSnapshot(true, true),
     };
-  }
-
-  private serializeSnapshotEntry(entry?: NavigationEntry) {
-    if (!entry) {
-      return undefined;
-    }
-
-    return JSON.stringify({
-      type: entry.type,
-      key: entry.key,
-      mode: entry.mode,
-      params: makeSerializable(entry.params),
-      state: makeSerializable(entry.state),
-      menuRestorePath: makeSerializable(entry.menuRestorePath),
-    });
   }
 
   private shouldRewindBrowserHistoryAfterRestore(snapshot: AppSnapshot) {
@@ -1182,7 +1151,7 @@ export class AppMain extends UIBase {
     const h = this.$h;
 
     if (!this.loaded.value) {
-      this.loadApp();
+      void this.loadApp();
       return undefined;
     }
 
@@ -2005,100 +1974,6 @@ export class AppMain extends UIBase {
     return false;
   }
 
-  private renderCompactHeaderDrawer(showHeader: boolean) {
-    if (!showHeader || !this.compactShellLayout.value) {
-      return undefined;
-    }
-
-    const sections = (['Start', 'Center', 'End'] as const)
-      .map((section) => this.getShellBarSectionItems('header', section)
-        .filter((item) => this.resolveMobileShellLocation(item) === 'drawer')
-        .map((item) => this.normalizeShellItem(item))
-        .filter((item): item is VNode => !!item))
-      .filter((items) => items.length > 0);
-
-    if (sections.length === 0) {
-      return undefined;
-    }
-
-    const h = this.$h;
-    const sectionNodes: VNode[] = [];
-    sections.forEach((nodes: VNode[], index: number) => {
-      if (index > 0) {
-        sectionNodes.push(h(VDivider));
-      }
-
-      sectionNodes.push(h('div', {
-        style: {
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-          minWidth: 0,
-        },
-      }, nodes.map((node: VNode) => h('div', {
-        style: {
-          width: '100%',
-          display: 'flex',
-          justifyContent: 'flex-start',
-          minWidth: 0,
-        },
-      }, [node]))));
-    });
-
-    return h(VNavigationDrawer, {
-      modelValue: this.mobileHeaderDrawerOpen.value,
-      'onUpdate:modelValue': (value: boolean) => {
-        this.mobileHeaderDrawerOpen.value = value;
-      },
-      location: 'right',
-      temporary: true,
-      width: 320,
-      scrim: true,
-    }, () => h('div', {
-      style: {
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-      },
-    }, [
-      h('div', {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '16px',
-          gap: '12px',
-        },
-      }, [
-        h('div', {
-          style: {
-            fontSize: '1rem',
-            fontWeight: '700',
-          },
-        }, this.$uiText('ve.app.headerMenu', 'Header Menu')),
-        h(VBtn, {
-          icon: 'mdi-close',
-          variant: 'text',
-          size: 'small',
-          'aria-label': this.$uiText('ve.app.closeHeaderMenu', 'Close header menu'),
-          onClick: () => {
-            this.mobileHeaderDrawerOpen.value = false;
-          },
-        }),
-      ]),
-      h(VDivider),
-      h(VCardText, {
-        style: {
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '12px',
-          padding: '16px',
-        },
-      }, () => sectionNodes),
-    ]));
-  }
-
   private normalizeShellItem(item: AppShellContent): VNode | undefined {
     const h = this.$h;
 
@@ -2225,63 +2100,93 @@ export class AppMain extends UIBase {
   }
 
   private async loadApp(preferRestore: boolean = true) {
-    await this.emitLifecycleEvent('beforeLoad');
-    this.fabOpen.value = false;
-    this.mobileHeaderDrawerOpen.value = false;
-    this.leftSideMenu.value = undefined;
-    this.rightSideMenu.value = undefined;
-    this.leftSideMenuOpen.value = false;
-    this.rightSideMenuOpen.value = false;
-    this.leftSideMenuSource = undefined;
-    this.rightSideMenuSource = undefined;
-    this.leftSideMenuState = undefined;
-    this.rightSideMenuState = undefined;
-    this.leftSideMenuTouched = false;
-    this.rightSideMenuTouched = false;
-    this.leftSideMenuRuntime = undefined;
-    this.rightSideMenuRuntime = undefined;
-    this.leftSideMenuRuntimeRevision = 0;
-    this.rightSideMenuRuntimeRevision = 0;
-    this.leftSideMenuSuppressedToken = undefined;
-    this.rightSideMenuSuppressedToken = undefined;
-    Dialogs.$showProgress({})
-    try {
-      const menu = await this.menu();
-      const home = await this.home();
-
-      this.stack.forEach((entry) => {
-        entry.item.removeEventListeners();
-      });
-
-      this.stack = [];
-      this.selectors = [];
-      this.index.value = -1;
-      this.selectorCount.value = 0;
-      this.dialogs = [];
-      this.dialogCount.value = 0;
-
-      let restored = false;
-      if (preferRestore) {
-        restored = await this.restorePersistedNavigation();
+    if (this.loadPromise) {
+      if (this.currentLoadPreferRestore !== preferRestore) {
+        this.queueLoad(preferRestore);
       }
-
-      if (!restored && home) {
-        await this.showHomeTarget(home, true);
-      } else if (!restored && menu) {
-        await this.$showMenu(menu, undefined, true);
-      } else if (restored) {
-        this.syncBrowserHistory(true);
-      }
-
-      this.loaded.value = true;
-      Dialogs.$hideProgress();
-      await this.emitLifecycleEvent('loaded');
-      await nextTick();
-      await this.emitLifecycleEvent('ready');
-    } catch (error) {
-      Dialogs.$hideProgress();
-      throw error;
+      return this.loadPromise;
     }
+
+    this.currentLoadPreferRestore = preferRestore;
+    this.loadPromise = (async () => {
+      await this.emitLifecycleEvent('beforeLoad');
+      this.fabOpen.value = false;
+      this.mobileHeaderDrawerOpen.value = false;
+      this.leftSideMenu.value = undefined;
+      this.rightSideMenu.value = undefined;
+      this.leftSideMenuOpen.value = false;
+      this.rightSideMenuOpen.value = false;
+      this.leftSideMenuState = undefined;
+      this.rightSideMenuState = undefined;
+      this.leftSideMenuTouched = false;
+      this.rightSideMenuTouched = false;
+      this.leftSideMenuRuntime = undefined;
+      this.rightSideMenuRuntime = undefined;
+      this.leftSideMenuRuntimeRevision = 0;
+      this.rightSideMenuRuntimeRevision = 0;
+      this.leftSideMenuSuppressedToken = undefined;
+      this.rightSideMenuSuppressedToken = undefined;
+      Dialogs.$showProgress({})
+      try {
+        const menu = await this.menu();
+        const home = await this.home();
+
+        this.stack.forEach((entry) => {
+          entry.item.removeEventListeners();
+        });
+
+        this.stack = [];
+        this.selectors = [];
+        this.index.value = -1;
+        this.selectorCount.value = 0;
+        this.dialogs = [];
+        this.dialogCount.value = 0;
+
+        let restored = false;
+        if (preferRestore) {
+          restored = await this.restorePersistedNavigation();
+        }
+
+        if (!restored && home) {
+          await this.showHomeTarget(home, true);
+        } else if (!restored && menu) {
+          await this.$showMenu(menu, undefined, true);
+        } else if (restored) {
+          this.syncBrowserHistory(true);
+        }
+
+        this.loaded.value = true;
+        Dialogs.$hideProgress();
+        await this.emitLifecycleEvent('loaded');
+        await nextTick();
+        await this.emitLifecycleEvent('ready');
+      } catch (error) {
+        Dialogs.$hideProgress();
+        throw error;
+      }
+    })();
+
+    try {
+      await this.loadPromise;
+    } finally {
+      this.loadPromise = undefined;
+      this.currentLoadPreferRestore = undefined;
+      const queuedLoad = this.queuedLoadPreferRestore;
+      this.queuedLoadPreferRestore = undefined;
+      if (queuedLoad !== undefined) {
+        await this.loadApp(queuedLoad);
+      }
+    }
+  }
+
+  private queueLoad(preferRestore: boolean) {
+    if (this.queuedLoadPreferRestore === undefined) {
+      this.queuedLoadPreferRestore = preferRestore;
+      return;
+    }
+
+    // A non-restore reload is stricter, so it wins if requests overlap.
+    this.queuedLoadPreferRestore = this.queuedLoadPreferRestore && preferRestore;
   }
 
   async $getUDFs(objectType: string|string[]): Promise<any[]> {

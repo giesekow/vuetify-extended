@@ -9,7 +9,7 @@ import { Report } from "./report";
 import { AppManager } from "./appmanager";
 import { Field, Refs } from "./field";
 import { OnHandler } from "./lib";
-import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent, shouldIgnoreShortcutTarget } from "./shortcut";
+import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent } from "./shortcut";
 import { UIText } from "./runtime";
 
 export interface FormParams {
