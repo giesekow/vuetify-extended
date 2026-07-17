@@ -31,6 +31,14 @@ function assertSuccess(result, context) {
   );
 }
 
+function assertOutputContains(result, pattern, context) {
+  assert.match(
+    result.stdout,
+    pattern,
+    `${context} missing expected output.\nSTDOUT:\n${result.stdout}\nSTDERR:\n${result.stderr}`,
+  );
+}
+
 function testBootstrapAppScaffoldsHomeStartup() {
   const cwd = makeTempDir('ve-cli-bootstrap-');
   writeFile(path.join(cwd, 'src/main.ts'), `import { createApp } from 'vue';
@@ -58,6 +66,16 @@ function main() {
   testBootstrapAppScaffoldsHomeStartup();
 
   const cwd = makeTempDir('ve-cli-advanced-');
+
+  let result = runCli(cwd, ['create', '--help']);
+  assertSuccess(result, 'create --help');
+  assertOutputContains(result, /vuetify-ext create/ , 'create --help');
+  assertOutputContains(result, /create autocomplete-source --help/ , 'create --help');
+
+  result = runCli(cwd, ['create', 'autocomplete-source', '--help']);
+  assertSuccess(result, 'create autocomplete-source --help');
+  assertOutputContains(result, /returns \{ data, skip, limit, total \}/, 'create autocomplete-source --help');
+
   writeFile(path.join(cwd, 'src/main.ts'), `import { createApp, defineComponent, h } from 'vue';
 import { createVuetify } from 'vuetify';
 import * as components from 'vuetify/components';
@@ -138,7 +156,7 @@ export function createMainMenu() {
 }
 `);
 
-  let result = runCli(cwd, ['create', 'page', 'report', 'people', '-y', '--title', 'People Workspace', '--object-type', 'people']);
+  result = runCli(cwd, ['create', 'page', 'report', 'people', '-y', '--title', 'People Workspace', '--object-type', 'people']);
   assertSuccess(result, 'create page report');
 
   const reportSource = fs.readFileSync(path.join(cwd, 'src/pages/people/report.ts'), 'utf8');
@@ -221,6 +239,11 @@ export function createMainMenu() {
   const autocompleteSource = fs.readFileSync(path.join(cwd, 'src/api/people-autocomplete.ts'), 'utf8');
   assert.match(autocompleteSource, /searchPeopleAutocomplete/);
   assert.match(autocompleteSource, /resolvePeopleAutocompleteValue/);
+  assert.match(autocompleteSource, /data:\s*[A-Za-z]+AutocompleteItem\[\]/);
+  assert.match(autocompleteSource, /skip:\s*number/);
+  assert.match(autocompleteSource, /limit:\s*number/);
+  assert.match(autocompleteSource, /const normalizedSkip =/);
+  assert.match(autocompleteSource, /return \{\s*data,/);
 
   writeFile(path.join(cwd, 'src/bootstrap/header.ts'), `import type { AppMain } from './index';
 

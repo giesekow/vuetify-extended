@@ -170,9 +170,15 @@ export interface FieldOptions {
     field: Field,
     search: string,
     options?: { page?: number; limit?: number; signal?: AbortSignal }
-  ) => Promise<any[] | { items: any[]; total?: number; page?: number; hasMore?: boolean } | undefined>
+  ) => Promise<
     | any[]
     | { items: any[]; total?: number; page?: number; hasMore?: boolean }
+    | { data: any[]; total?: number; skip?: number; limit?: number; page?: number; hasMore?: boolean }
+    | undefined
+  >
+    | any[]
+    | { items: any[]; total?: number; page?: number; hasMore?: boolean }
+    | { data: any[]; total?: number; skip?: number; limit?: number; page?: number; hasMore?: boolean }
     | undefined;
   autocompleteResolveValue?: (
     field: Field,
@@ -533,6 +539,8 @@ Each section below describes the stored datatype, relevant params, relevant opti
   Search result contract:
   - `autocompleteSearch(...)` may return a plain item array
   - or `{ items, total?, page?, hasMore? }`
+  - or `{ data, total?, skip?, limit?, page?, hasMore? }`
+  - the generated `vuetify-ext create autocomplete-source` helper returns the normalized `{ data, skip, limit, total }` form
   Example server-search setup:
 
 ```ts

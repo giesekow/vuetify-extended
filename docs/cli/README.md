@@ -265,7 +265,7 @@ After bootstrapping, the highest-value files to review are:
 ### Automation Flags
 
 ```bash
-vuetify-ext bootstrap app --non-interactive --backend axios --api-url http://127.0.0.1:3000/v1 --keycloak-url http://127.0.0.1:8081 --keycloak-realm workspace --keycloak-client-id workspace-admin
+vuetify-ext bootstrap app --non-interactive --backend axios --api-url https://api.example.com/v1 --keycloak-url https://identity.example.com --keycloak-realm workspace --keycloak-client-id workspace-admin
 ```
 
 Supported backend flags:
@@ -770,7 +770,20 @@ The generated source includes:
 
 - `search<Name>Autocomplete(...)`
 - `resolve<Name>AutocompleteValue(...)`
-- a normalized result shape with `items`, `page`, `pageSize`, `total`, and `hasMore`
+- a normalized result shape with `data`, `skip`, `limit`, and `total`
+
+The generated search helper accepts a page number for convenience, but always normalizes the returned value to offset-style pagination metadata.
+
+If the backend returns a direct array because pagination is disabled, the helper still returns a dictionary in the standard shape:
+
+- `data`
+  The returned array.
+- `skip`
+  The requested offset derived from the page and limit arguments.
+- `limit`
+  The requested limit.
+- `total`
+  Falls back to `data.length` when the backend does not provide a total.
 
 Supported flags:
 

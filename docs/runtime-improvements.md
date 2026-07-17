@@ -1,12 +1,15 @@
 # Runtime Improvements Design Notes
 
-This document records the current design decisions for three related runtime improvements:
+Status:
+Most of the runtime features discussed here are now implemented in the library. This document is kept as historical design rationale plus a reference for the architectural decisions behind the current runtime behavior.
+
+This document records the design decisions for three related runtime improvements:
 
 1. multi-language UI support
 2. browser/device history integration
 3. persisted `AppMain` / `AppManager` navigation state across refresh and app resume
 
-The goal of this document is to give implementation-ready direction without changing runtime code yet.
+The goal of this document is to explain why the runtime works the way it does today and to clarify the small set of follow-up extension points that may still evolve.
 
 ## Why These Three Features Belong Together
 
@@ -49,11 +52,11 @@ This works for single-language applications but makes it hard to:
 
 ### Decision
 
-The library will add a global i18n adapter instead of coupling the runtime to one specific translation package.
+The library uses a global i18n adapter instead of coupling the runtime to one specific translation package.
 
-The adapter will be configured once during bootstrap and reused throughout the UI layer.
+The adapter is configured once during bootstrap and reused throughout the UI layer.
 
-### Planned Adapter Shape
+### Current Adapter Shape
 
 ```ts
 interface VuetifyExtendedI18nAdapter {
@@ -66,7 +69,7 @@ interface VuetifyExtendedI18nAdapter {
 }
 ```
 
-This will most likely be exposed through a setup-level helper such as:
+This is exposed through a setup-level helper such as:
 
 ```ts
 setVuetifyExtendedI18n(...)
@@ -78,7 +81,7 @@ or as part of:
 configureVuetifyExtendedDefaults(...)
 ```
 
-### Planned UI Text Contract
+### Current UI Text Contract
 
 User-visible text params should gradually support three forms:
 
@@ -191,9 +194,9 @@ This leads to two usability problems:
 
 ### Decision
 
-History integration will be built on serialized navigation entries rather than persisted live UI instances.
+History integration is built on serialized navigation entries rather than persisted live UI instances.
 
-### Planned Navigation Entry Shape
+### Current Navigation Entry Shape
 
 ```ts
 interface NavigationEntry {
@@ -245,7 +248,7 @@ History and persistence cannot reliably restore arbitrary UI instances.
 
 A registry is therefore required.
 
-### Planned Registry Shape
+### Current Registry Shape
 
 ```ts
 interface NavigationRegistryEntry {
@@ -255,7 +258,7 @@ interface NavigationRegistryEntry {
 }
 ```
 
-Planned runtime helpers will likely look like:
+The runtime helpers for this model are:
 
 ```ts
 AppManager.registerScreen(...)
@@ -337,11 +340,11 @@ Without persistence, users lose workflow context.
 
 ### Decision
 
-Persistence will reuse the same serialized navigation model used by history integration.
+Persistence reuses the same serialized navigation model used by history integration.
 
-Live UI instances will not be persisted.
+Live UI instances are not persisted.
 
-### Planned Snapshot Shape
+### Current Snapshot Shape
 
 ```ts
 interface AppSnapshot {
@@ -359,9 +362,9 @@ This snapshot will represent:
 
 ### Storage Adapter Strategy
 
-Persistence will use a pluggable storage adapter rather than hardcoding one browser-only solution.
+Persistence uses a pluggable storage adapter rather than hardcoding one browser-only solution.
 
-### Planned Adapter Shape
+### Current Adapter Shape
 
 ```ts
 interface NavigationPersistenceAdapter {
@@ -373,9 +376,9 @@ interface NavigationPersistenceAdapter {
 
 ### Recommended `storageMode`
 
-The library should support a declarative storage mode option with runtime auto-detection.
+The library supports a declarative storage mode option with runtime auto-detection.
 
-### Planned Modes
+### Current Modes
 
 ```ts
 type NavigationStorageMode =
@@ -433,9 +436,9 @@ Some screens will need only:
 
 Others may want selected filters or partial form drafts.
 
-The planned model therefore includes optional per-screen serialization hooks.
+The model therefore includes optional per-screen serialization hooks.
 
-### Planned Hook Direction
+### Current Hook Direction
 
 ```ts
 serializeState?: () => any;
