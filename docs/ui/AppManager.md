@@ -14,6 +14,7 @@ Static coordinator used by host apps and library internals to initialize, regist
 - Exposes app/setup state used by bootstrap validation.
 - Provides the registry and serialization bridge used by `AppMain` history/persistence restore.
 - Normalizes grouped `navigation: { ... }` metadata and auto-registration behavior for factory-based screens.
+- Emits app lifecycle events such as `beforeLoad`, `loaded`, and `ready` for global startup observers.
 
 Practical guides:
 
@@ -35,6 +36,9 @@ export class AppManager {
 
 - `static init()`
 - `static setApp(app: AppMain)`
+- `static on(name, listener, reference?)`
+- `static once(name, listener, reference?)`
+- `static emit(name, data?)`
 - `static showMenu(menuOrFactory, params?: any)`
 - `static showLeftMenu(menuOrFactory, params?: any)`
 - `static showRightMenu(menuOrFactory, params?: any)`
@@ -59,6 +63,94 @@ export class AppManager {
 - `static resolveNavigationEntry(entry)`
 - `static cacheNavigationItem(entryId, item)`
 - `static clearNavigationCache(entryId?)`
+
+## App Lifecycle Events
+
+`AppManager` exposes three global startup lifecycle events emitted by the active `AppMain`:
+
+- `beforeLoad`
+  Fired when `AppMain` begins its startup/reload sequence.
+- `loaded`
+  Fired after the startup target has been resolved and the app has entered the loaded state.
+- `ready`
+  Fired after `loaded` and one Vue `nextTick()`, making it the best hook for “the shell is mounted and stable”.
+
+Example:
+
+```ts
+AppManager.on('beforeLoad', (app) => {
+  console.log('App is starting', app)
+})
+
+AppManager.on('loaded', (app) => {
+  console.log('Startup target resolved', app)
+})
+
+AppManager.on('ready', (app) => {
+  console.log('App is ready for post-mount work', app)
+})
+```
+
+Ordering guarantee:
+
+1. matching `AppOptions` callback on `AppMain`
+2. matching `AppManager.on(...)` / `AppManager.once(...)` listeners
+
+## Deep-Link Use Case
+
+One of the best uses for these global app lifecycle events is deep-link handling.
+
+Recommended approach:
+
+1. use `beforeLoad` to inspect the incoming URL, route, query, or host-app intent
+2. normalize that into a small pending instruction
+3. use `ready` to execute the final `AppManager.showReport(...)`, `showTrigger(...)`, `showCollection(...)`, or `showUI(...)`
+
+This is usually better than navigating immediately during bootstrap because it avoids races with:
+
+- `home` startup behavior
+- persisted navigation restore
+- shell rendering
+- side navigation and header/footer setup
+- translation adapter initialization
+
+Example:
+
+```ts
+let pendingDeepLink: undefined | { type: 'trigger'; workspaceId: string }
+
+AppManager.on('beforeLoad', () => {
+  const params = new URLSearchParams(window.location.search)
+  const workspaceId = params.get('workspace')
+  if (workspaceId) {
+    pendingDeepLink = { type: 'trigger', workspaceId }
+  }
+})
+
+AppManager.on('ready', () => {
+  if (!pendingDeepLink) {
+    return
+  }
+
+  const deepLink = pendingDeepLink
+  pendingDeepLink = undefined
+
+  if (deepLink.type === 'trigger') {
+    AppManager.showTrigger(
+      (entry) => createAuditTrigger(entry?.mode || 'edit')(entry),
+      {
+        navigation: {
+          key: 'pages.audit.trigger.edit',
+          params: { workspaceId: deepLink.workspaceId },
+          persist: true,
+        },
+      },
+    )
+  }
+})
+```
+
+If the host app already has its own router or native deep-link bridge, you can still use the same lifecycle pattern: capture intent early, execute library screen navigation in `ready`.
 
 ## Navigation Registry
 

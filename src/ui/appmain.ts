@@ -1,4 +1,4 @@
-import { VNode, Ref, ShallowRef, isVNode, shallowRef } from "vue";
+import { VNode, Ref, ShallowRef, isVNode, nextTick, shallowRef } from "vue";
 import { MenuTarget, ReportMode, UIBase } from "./base";
 import { Menu, prepareMenuReplayTarget } from "./menu";
 import { Report } from "./report";
@@ -55,6 +55,9 @@ export type AppShellContent = UIBase | VNode | string | number | boolean | null 
 export interface AppOptions {
   menu?: (app: AppMain) => Promise<Menu|undefined>|Menu|undefined;
   home?: (app: AppMain) => Promise<AppHomeTarget | undefined> | AppHomeTarget | undefined;
+  beforeLoad?: (app: AppMain) => Promise<void> | void;
+  loaded?: (app: AppMain) => Promise<void> | void;
+  ready?: (app: AppMain) => Promise<void> | void;
   leftNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
   rightNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
   leftNavOptions?: AppSideNavOptions;
@@ -144,6 +147,8 @@ interface AppSideNavTargetState {
   source?: AppSideNavSource;
   token?: unknown;
 }
+
+type AppLifecycleEventName = 'beforeLoad' | 'loaded' | 'ready';
 
 export class AppMain extends UIBase {
   private params: Ref<AppParams>;
@@ -1125,6 +1130,16 @@ export class AppMain extends UIBase {
     if (this.options.home) {
       return await this.options.home(this);
     }
+  }
+
+  private async emitLifecycleEvent(name: AppLifecycleEventName) {
+    const callback = this.options[name];
+    if (typeof callback === 'function') {
+      await callback(this);
+    }
+
+    this.emit(name, this);
+    AppManager.emit(name, this);
   }
 
   private async showHomeTarget(target: AppHomeTarget, replaceHistory: boolean = true) {
@@ -2210,6 +2225,7 @@ export class AppMain extends UIBase {
   }
 
   private async loadApp(preferRestore: boolean = true) {
+    await this.emitLifecycleEvent('beforeLoad');
     this.fabOpen.value = false;
     this.mobileHeaderDrawerOpen.value = false;
     this.leftSideMenu.value = undefined;
@@ -2229,34 +2245,43 @@ export class AppMain extends UIBase {
     this.leftSideMenuSuppressedToken = undefined;
     this.rightSideMenuSuppressedToken = undefined;
     Dialogs.$showProgress({})
-    const menu = await this.menu();
-    const home = await this.home();
+    try {
+      const menu = await this.menu();
+      const home = await this.home();
 
-    this.stack.forEach((entry) => {
-      entry.item.removeEventListeners();
-    });
+      this.stack.forEach((entry) => {
+        entry.item.removeEventListeners();
+      });
 
-    this.stack = [];
-    this.selectors = [];
-    this.index.value = -1;
-    this.selectorCount.value = 0;
-    this.dialogs = [];
-    this.dialogCount.value = 0;
+      this.stack = [];
+      this.selectors = [];
+      this.index.value = -1;
+      this.selectorCount.value = 0;
+      this.dialogs = [];
+      this.dialogCount.value = 0;
 
-    let restored = false;
-    if (preferRestore) {
-      restored = await this.restorePersistedNavigation();
+      let restored = false;
+      if (preferRestore) {
+        restored = await this.restorePersistedNavigation();
+      }
+
+      if (!restored && home) {
+        await this.showHomeTarget(home, true);
+      } else if (!restored && menu) {
+        await this.$showMenu(menu, undefined, true);
+      } else if (restored) {
+        this.syncBrowserHistory(true);
+      }
+
+      this.loaded.value = true;
+      Dialogs.$hideProgress();
+      await this.emitLifecycleEvent('loaded');
+      await nextTick();
+      await this.emitLifecycleEvent('ready');
+    } catch (error) {
+      Dialogs.$hideProgress();
+      throw error;
     }
-
-    if (!restored && home) {
-      await this.showHomeTarget(home, true);
-    } else if (!restored && menu) {
-      await this.$showMenu(menu, undefined, true);
-    } else if (restored) {
-      this.syncBrowserHistory(true);
-    }
-    this.loaded.value = true;
-    Dialogs.$hideProgress();
   }
 
   async $getUDFs(objectType: string|string[]): Promise<any[]> {

@@ -69,6 +69,9 @@ export interface AppParams {
 export interface AppOptions {
   menu?: (app: AppMain) => Promise<Menu|undefined>|Menu|undefined;
   home?: (app: AppMain) => Promise<AppHomeTarget | undefined> | AppHomeTarget | undefined;
+  beforeLoad?: (app: AppMain) => Promise<void> | void;
+  loaded?: (app: AppMain) => Promise<void> | void;
+  ready?: (app: AppMain) => Promise<void> | void;
   leftNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
   rightNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
   leftNavOptions?: AppSideNavOptions;
@@ -87,6 +90,132 @@ export interface AppOptions {
   footerEnd?: (app: AppMain) => AppShellContent | AppShellContent[];
 }
 ```
+
+Lifecycle hooks:
+
+- `beforeLoad`
+  Runs at the start of `AppMain` startup/reload before the startup screen is resolved.
+- `loaded`
+  Runs after startup navigation/home/menu resolution has completed and `AppMain` has marked itself loaded.
+- `ready`
+  Runs after `loaded` and one Vue `nextTick()`, so it is the closest app-level equivalent to “mounted and visually stable”.
+
+Order:
+
+1. `beforeLoad(...)` option callback
+2. `app.on('beforeLoad', ...)` listeners on the same `AppMain` instance
+3. `AppManager.on('beforeLoad', ...)` listeners
+4. startup screen resolution / restore
+5. `loaded(...)` option callback
+6. `app.on('loaded', ...)` listeners on the same `AppMain` instance
+7. `AppManager.on('loaded', ...)` listeners
+8. Vue `nextTick()`
+9. `ready(...)` option callback
+10. `app.on('ready', ...)` listeners on the same `AppMain` instance
+11. `AppManager.on('ready', ...)` listeners
+
+The option callbacks always run before the event listeners. Instance-level `app.on(...)` listeners run before the global `AppManager.on(...)` listeners.
+
+Example:
+
+```ts
+const app = new AppMain(
+  { title: 'Workspace' },
+  {
+    beforeLoad: async (app) => {
+      console.log('beforeLoad option', app)
+    },
+    loaded: async (app) => {
+      console.log('loaded option', app)
+    },
+    ready: async (app) => {
+      console.log('ready option', app)
+    },
+  },
+)
+
+app.on('beforeLoad', () => {
+  console.log('beforeLoad instance event')
+})
+
+app.on('loaded', () => {
+  console.log('loaded instance event')
+})
+
+app.on('ready', () => {
+  console.log('ready instance event')
+})
+```
+
+## Lifecycle Hook Use Cases
+
+These app-level hooks are useful when work must happen around startup rather than inside an individual report, trigger, or collection.
+
+Typical uses:
+
+- prepare global shell state before startup
+- run telemetry or diagnostics once the shell is ready
+- trigger startup notifications
+- restore host-app integration state
+- execute deep-link navigation after the shell is stable
+
+### Deep-Link Example
+
+Deep links are one of the strongest use cases for `beforeLoad` and `ready`.
+
+Recommended pattern:
+
+1. inspect and normalize the incoming URL or external intent in `beforeLoad`
+2. store a lightweight pending deep-link instruction
+3. execute the actual `AppManager.show...(...)` navigation in `ready`
+
+This avoids races where:
+
+- the deep link fires before `AppMain` is fully initialized
+- startup `home` or restore logic overrides your intended screen
+- shell features such as side navigation, dialogs, or translation are not ready yet
+
+Example:
+
+```ts
+let pendingDeepLink: undefined | { type: 'report'; id: string }
+
+const app = new AppMain(
+  { title: 'Workspace', showHeader: true, showFooter: true },
+  {
+    beforeLoad: async () => {
+      const path = window.location.pathname
+      const match = path.match(/^\\/orders\\/([^/]+)$/)
+      if (match) {
+        pendingDeepLink = { type: 'report', id: match[1] }
+      }
+    },
+    ready: async () => {
+      if (!pendingDeepLink) {
+        return
+      }
+
+      const deepLink = pendingDeepLink
+      pendingDeepLink = undefined
+
+      if (deepLink.type === 'report') {
+        AppManager.showReport(
+          (entry) => createOrdersReport(entry?.mode || 'display')(entry),
+          {
+            navigation: {
+              key: 'pages.orders.report.display',
+              params: { orderId: deepLink.id },
+              persist: true,
+            },
+          },
+        )
+      }
+    },
+  },
+)
+```
+
+If your app already uses a router, capacitor `appUrlOpen`, or another host navigation system, the same pattern still applies: capture intent early, then execute screen navigation from `ready`.
 
 `home` is the preferred way to define the default main-area screen for a shell that uses left/right side navigation.
 

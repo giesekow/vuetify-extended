@@ -45,6 +45,9 @@ export type AppShellContent = UIBase | VNode | string | number | boolean | null 
 export interface AppOptions {
     menu?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
     home?: (app: AppMain) => Promise<AppHomeTarget | undefined> | AppHomeTarget | undefined;
+    beforeLoad?: (app: AppMain) => Promise<void> | void;
+    loaded?: (app: AppMain) => Promise<void> | void;
+    ready?: (app: AppMain) => Promise<void> | void;
     leftNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
     rightNav?: (app: AppMain) => Promise<Menu | undefined> | Menu | undefined;
     leftNavOptions?: AppSideNavOptions;
@@ -253,6 +256,7 @@ export declare class AppMain extends UIBase {
     props(): never[];
     menu(): Promise<Menu | undefined>;
     home(): Promise<AppHomeTarget | undefined>;
+    private emitLifecycleEvent;
     private showHomeTarget;
     render(props: any, context: any): VNode | VNode[] | undefined;
     private renderStackContent;
