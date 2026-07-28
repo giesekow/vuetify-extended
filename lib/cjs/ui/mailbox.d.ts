@@ -4,11 +4,11 @@ import { Report } from "./report";
 import { type UIText } from "./runtime";
 export interface MailboxItem {
     id: string | number;
-    title: string;
-    text?: string;
+    title: UIText;
+    text?: UIText;
     timestamp?: string | Date;
     read?: boolean;
-    category?: string;
+    category?: UIText;
     icon?: string;
     meta?: any;
 }

@@ -600,7 +600,7 @@ export class Field extends UIBase {
   }
 
   private buildAssetRecordMetadata(record: AssetRecord) {
-    const name = nestedProperty.get(record, this.assetNameField()) || 'Asset';
+    const name = nestedProperty.get(record, this.assetNameField()) || this.$uiText('ve.field.assetLabel', 'Asset');
     const mimeType = nestedProperty.get(record, this.assetMimeTypeField()) || '';
     const size = nestedProperty.get(record, this.assetSizeField());
     const previewUrl = nestedProperty.get(record, this.assetPreviewField());
@@ -691,7 +691,7 @@ export class Field extends UIBase {
       const isImage = str.includes('image');
       return {
         key: `${index}-${str.slice(0, 24)}`,
-        label: values.length > 1 ? `File ${index + 1}` : (this.resolvedLabel() || 'File'),
+        label: values.length > 1 ? this.$uiText('ve.field.fileIndexedLabel', `File ${index + 1}`, { index: index + 1 }) : (this.resolvedLabel() || this.$uiText('ve.field.fileLabel', 'File')),
         mimeType: isImage ? 'image/*' : '',
         size: undefined,
         previewUrl: str,
@@ -893,7 +893,7 @@ export class Field extends UIBase {
       await this.emitAssetUploaded(safeRecords);
       return safeRecords;
     } catch (error: any) {
-      Dialogs.$error(error?.message || 'Failed to upload asset files.');
+      Dialogs.$error(error?.message || this.$uiText('ve.field.assetUploadFailed', 'Failed to upload asset files.'));
       throw error;
     } finally {
       this.assetUploading.value = false;
@@ -932,7 +932,7 @@ export class Field extends UIBase {
       this.modelValue.value = this.mergeDirectMediaValues(nextValue);
       await this.emitFileSelected(normalized);
     } catch (error: any) {
-      Dialogs.$error(error?.message || 'Failed to process selected files.');
+      Dialogs.$error(error?.message || this.$uiText('ve.field.fileProcessFailed', 'Failed to process selected files.'));
     }
   }
 
@@ -975,7 +975,7 @@ export class Field extends UIBase {
       if (requestId === this.assetResolveRequestId.value) {
         this.resolvedAssets.value = [];
       }
-      Dialogs.$error(error?.message || 'Failed to resolve asset references.');
+      Dialogs.$error(error?.message || this.$uiText('ve.field.assetResolveFailed', 'Failed to resolve asset references.'));
     }
   }
 
@@ -2497,7 +2497,7 @@ export class Field extends UIBase {
           await this.handleSelectedFiles(files);
         } catch (error: any) {
           if (error?.message !== 'No File Selected!') {
-            Dialogs.$error(error?.message || 'Failed to select files.');
+            Dialogs.$error(error?.message || this.$uiText('ve.field.fileSelectFailed', 'Failed to select files.'));
           }
         }
       },
@@ -2718,7 +2718,10 @@ export class Field extends UIBase {
   buildButton(props: any, context: any) {
     const h = this.$h;
     const btn = this.button()
-    if (btn) return h(btn.component);
+    if (btn) {
+      btn.setParent(this);
+      return h(btn.component);
+    }
     return undefined;
   }
 

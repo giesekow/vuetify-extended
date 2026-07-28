@@ -250,7 +250,7 @@ export class Trigger extends UIBase {
         return (error as any).message;
       }
     }
-    return 'Undefined Item Id';
+    return this.$uiText('ve.trigger.undefinedItemId', 'Undefined Item Id');
   }
 
   async load(searchText: string, options: ServerTableOptions): Promise<any> {
@@ -665,7 +665,7 @@ export class Trigger extends UIBase {
 
   async headers(): Promise<any[]> {
     return [
-      {title: 'Name', key: 'name'}
+      { title: this.$uiText('ve.common.name', 'Name'), key: 'name' }
     ];
   }
 
@@ -706,6 +706,7 @@ export class Trigger extends UIBase {
 
     this.topButtonInstances = [];
     this.topButtonInstances = this.buildDefaultButtons();
+    this.assignButtonParent(this.topButtonInstances);
 
     return h(
       VCardActions,
@@ -726,6 +727,7 @@ export class Trigger extends UIBase {
 
     this.bottomButtonInstances = [];
     this.bottomButtonInstances = this.buildDefaultButtons();
+    this.assignButtonParent(this.bottomButtonInstances);
 
     return h(
       VCardActions,
@@ -1011,7 +1013,15 @@ export class Trigger extends UIBase {
       )
     }
 
+    this.assignButtonParent(btns);
+
     return btns
+  }
+
+  private assignButtonParent(buttons: Button[]) {
+    buttons.forEach((button) => {
+      button.setParent(this);
+    });
   }
 
   topChildren (props: any, context: any): Array<Part|Field> {

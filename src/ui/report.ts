@@ -609,6 +609,7 @@ export class Report extends UIBase {
     });
 
     this.topButtonInstances = this.buildDefaultButtons();
+    this.assignButtonParent(this.topButtonInstances);
 
     return h(
       VCardActions,
@@ -628,6 +629,7 @@ export class Report extends UIBase {
     });
 
     this.bottomButtonInstances = this.buildDefaultButtons();
+    this.assignButtonParent(this.bottomButtonInstances);
 
     return h(
       VCardActions,
@@ -945,7 +947,15 @@ export class Report extends UIBase {
       )
     }
 
+    this.assignButtonParent(btns);
+
     return btns
+  }
+
+  private assignButtonParent(buttons: Button[]) {
+    buttons.forEach((button) => {
+      button.setParent(this);
+    });
   }
 
   private async save() {

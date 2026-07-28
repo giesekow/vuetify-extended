@@ -1,13 +1,14 @@
 import { VNode } from "vue";
 import { UIBase } from "./base";
+import type { UIText } from "./runtime";
 interface FullScreenBaseParams {
-    title?: string;
-    subtitle?: string;
-    message?: string;
+    title?: UIText;
+    subtitle?: UIText;
+    message?: UIText;
     icon?: string;
     iconColor?: string;
     logo?: string;
-    logoAlt?: string;
+    logoAlt?: UIText;
     backgroundColor?: string;
     backgroundGradient?: string;
     backgroundImage?: string;
@@ -19,7 +20,7 @@ interface FullScreenBaseParams {
     minHeight?: string | number;
 }
 export interface AccessDeniedScreenParams extends FullScreenBaseParams {
-    actionText?: string;
+    actionText?: UIText;
 }
 export interface AccessDeniedScreenOptions {
     action?: (screen: AccessDeniedScreen) => Promise<void> | void;
@@ -35,7 +36,7 @@ export declare class AccessDeniedScreen extends UIBase {
     render(): VNode | undefined;
 }
 export interface SplashScreenParams extends FullScreenBaseParams {
-    loadingText?: string;
+    loadingText?: UIText;
     progress?: number;
     indeterminate?: boolean;
     progressColor?: string;

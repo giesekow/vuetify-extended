@@ -138,6 +138,7 @@ export declare class Report extends UIBase {
     private buildProgressHeader;
     private buildDefaultButtons;
     getAdditionalButtons(): Button[];
+    private assignButtonParent;
     private save;
     private oncancel;
     private onprev;

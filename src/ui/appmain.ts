@@ -1986,6 +1986,7 @@ export class AppMain extends UIBase {
     }
 
     if (item instanceof UIBase) {
+      item.setParent(this);
       return h(item.component);
     }
 

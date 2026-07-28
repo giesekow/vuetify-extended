@@ -261,10 +261,12 @@ function formatShortcutPart(part: string, mac: boolean) {
   }
 
   const labels: Record<string, string> = {
-    ctrl: 'Ctrl',
-    alt: 'Alt',
-    shift: 'Shift',
-    meta: mac ? 'Cmd' : 'Ctrl',
+    ctrl: resolveUIText({ key: 've.shortcut.ctrl', fallback: 'Ctrl' }),
+    alt: resolveUIText({ key: 've.shortcut.alt', fallback: 'Alt' }),
+    shift: resolveUIText({ key: 've.shortcut.shift', fallback: 'Shift' }),
+    meta: mac
+      ? resolveUIText({ key: 've.shortcut.cmd', fallback: 'Cmd' })
+      : resolveUIText({ key: 've.shortcut.ctrl', fallback: 'Ctrl' }),
   };
 
   return labels[part] || formatShortcutKeyLabel(part);
@@ -273,3 +275,4 @@ function formatShortcutPart(part: string, mac: boolean) {
 function formatShortcutKeyLabel(part: string) {
   return part.length === 1 ? part.toUpperCase() : (part.charAt(0).toUpperCase() + part.slice(1));
 }
+import { resolveUIText } from "./runtime";

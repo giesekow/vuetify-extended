@@ -241,12 +241,22 @@ export function buildHTMLWidget(field: RichWidgetContext): VNode {
       'margin-top': '-64px'
     },
     onClick: () => {
+      const previewTitle = field.$text(
+        field.params.value.label,
+        field.$text({ key: 've.field.preview', fallback: 'Preview' }),
+      );
+      const previewTitleHtml = previewTitle
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
       const html = `
         <!DOCTYPE html>
         <html>
         <head>
           <meta charset="utf-8">
-          <title>Preview</title>
+          <title>${previewTitleHtml}</title>
         </head>
         <body>${field.renderMathInHtml(field.modelValue.value ?? "", 'mathml')}</body>
         </html>
@@ -2105,7 +2115,14 @@ export function buildMapWidget(field: RichWidgetContext): VNode[] {
             position: item,
             draggable: true,
           },
-          title: `${field.$text(field.params.value.label, 'Location')} ${index + 1}`,
+          title: field.$text({
+            key: 've.field.locationIndexed',
+            fallback: '{label} {index}',
+            values: {
+              label: field.$text(field.params.value.label, 'Location'),
+              index: index + 1,
+            },
+          }),
           draggable: true,
           onDragend: (event: any) => {
             if (!event?.latLng) {

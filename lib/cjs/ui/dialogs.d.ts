@@ -37,14 +37,14 @@ export interface DialogOptions {
     infoWindowHeight?: number | undefined;
 }
 export interface ImagePreviewOptions {
-    title?: string;
+    title?: UIText;
     fullscreen?: boolean;
 }
 export type IframeSkin = 'inherit' | 'light' | 'dark';
 export interface IframeParams {
     src?: string;
     srcdoc?: string;
-    title?: string;
+    title?: UIText;
     fullscreen?: boolean;
     openUrl?: string;
     downloadUrl?: string;

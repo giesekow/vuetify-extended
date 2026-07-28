@@ -147,6 +147,7 @@ export declare class Trigger extends UIBase {
     private wrapWithSideButtons;
     private buildDefaultButtons;
     getAdditionalButtons(): Button[];
+    private assignButtonParent;
     topChildren(props: any, context: any): Array<Part | Field>;
     bottomChildren(props: any, context: any): Array<Part | Field>;
     private onProcessMultiple;

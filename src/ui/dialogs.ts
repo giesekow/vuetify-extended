@@ -43,7 +43,7 @@ export interface DialogOptions {
 }
 
 export interface ImagePreviewOptions {
-  title?: string;
+  title?: UIText;
   fullscreen?: boolean;
 }
 
@@ -52,7 +52,7 @@ export type IframeSkin = 'inherit'|'light'|'dark';
 export interface IframeParams {
   src?: string;
   srcdoc?: string;
-  title?: string;
+  title?: UIText;
   fullscreen?: boolean;
   openUrl?: string;
   downloadUrl?: string;
@@ -104,7 +104,7 @@ export class Dialogs {
   private static progressText: Ref<string> = ref('');
   private static progressIndeterminate: Ref<boolean> = ref(true);
   private static imagePreviewSrc: Ref<string> = ref('');
-  private static imagePreviewTitle: Ref<string> = ref('');
+  private static imagePreviewTitle: Ref<UIText | undefined> = ref(undefined);
   private static imagePreviewFullscreen: Ref<boolean> = ref(true);
   private static documentPreviewSrc: Ref<string> = ref('');
   private static documentPreviewSrcdoc: Ref<string> = ref('');
@@ -125,7 +125,7 @@ export class Dialogs {
   private static documentPreviewToolbarStyle: Ref<any> = ref(undefined);
   private static documentPreviewFrameStyle: Ref<any> = ref(undefined);
   private static documentPreviewActions: Ref<Button[]> = ref([]);
-  private static documentPreviewTitle: Ref<string> = ref('');
+  private static documentPreviewTitle: Ref<UIText | undefined> = ref(undefined);
   private static documentPreviewFullscreen: Ref<boolean> = ref(true);
   private static documentPreviewObjectUrl?: string;
 
@@ -502,7 +502,7 @@ export class Dialogs {
                       icon: true,
                       variant: 'text',
                       color: 'white',
-                      title: 'Zoom out',
+                      title: resolveUIText({ key: 've.dialog.preview.zoomOut', fallback: 'Zoom out' }),
                       onClick: () => zoomBy(-0.2),
                     },
                     () => h(VIcon, {}, () => 'mdi-magnify-minus-outline'),
@@ -513,7 +513,7 @@ export class Dialogs {
                       icon: true,
                       variant: 'text',
                       color: 'white',
-                      title: 'Reset zoom',
+                      title: resolveUIText({ key: 've.dialog.preview.resetZoom', fallback: 'Reset zoom' }),
                       onClick: () => resetView(),
                     },
                     () => h(VIcon, {}, () => 'mdi-fit-to-screen-outline'),
@@ -524,7 +524,7 @@ export class Dialogs {
                       icon: true,
                       variant: 'text',
                       color: 'white',
-                      title: 'Zoom in',
+                      title: resolveUIText({ key: 've.dialog.preview.zoomIn', fallback: 'Zoom in' }),
                       onClick: () => zoomBy(0.2),
                     },
                     () => h(VIcon, {}, () => 'mdi-magnify-plus-outline'),
@@ -535,7 +535,7 @@ export class Dialogs {
                       icon: true,
                       variant: 'text',
                       color: 'white',
-                      title: 'Close preview',
+                      title: resolveUIText({ key: 've.dialog.preview.closePreview', fallback: 'Close preview' }),
                       onClick: () => close(),
                     },
                     () => h(VIcon, {}, () => 'mdi-close'),
@@ -631,7 +631,7 @@ export class Dialogs {
 
           const link = document.createElement('a');
           link.href = downloadUrl;
-          link.download = resolveUIText(Dialogs.documentPreviewTitle.value, 'document');
+          link.download = resolveUIText(Dialogs.documentPreviewTitle.value, resolveUIText({ key: 've.dialog.preview.documentFallback', fallback: 'document' }));
           link.target = '_blank';
           link.rel = 'noopener';
           document.body.appendChild(link);
@@ -787,7 +787,7 @@ export class Dialogs {
                             icon: true,
                             variant: 'text',
                             ...(textColor ? { color: textColor } : {}),
-                            title: 'More actions',
+                            title: resolveUIText({ key: 've.dialog.preview.moreActions', fallback: 'More actions' }),
                           },
                           () => h(VIcon, {}, () => 'mdi-dots-vertical'),
                         ),
@@ -852,7 +852,7 @@ export class Dialogs {
                       icon: true,
                       variant: 'text',
                       ...(textColor ? { color: textColor } : {}),
-                      title: 'Close preview',
+                      title: resolveUIText({ key: 've.dialog.preview.closePreview', fallback: 'Close preview' }),
                       onClick: close,
                     },
                     () => h(VIcon, {}, () => 'mdi-close'),
@@ -1089,7 +1089,7 @@ export class Dialogs {
       }
       Dialogs.installConfirmKeydownHandler();
       Dialogs.infoText.value = text;
-      Dialogs.infoTitle.value = title || 'Info';
+      Dialogs.infoTitle.value = title || { key: 've.dialog.infoTitle', fallback: 'Info' };
       Dialogs.infoWidth.value = options?.width || Dialogs.options.value.infoWindowWidth || 400
       Dialogs.infoHeight.value = options?.height || Dialogs.options.value.infoWindowHeight || 300
       Dialogs.infoDialog.value = true;

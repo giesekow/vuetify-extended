@@ -122,6 +122,7 @@ export declare class Form extends UIBase {
     private buildTopActions;
     private buildBottomActions;
     private buildDefaultButtons;
+    private assignButtonParent;
     $save(): Promise<void>;
     $cancel(): Promise<void>;
     $prev(): Promise<void>;

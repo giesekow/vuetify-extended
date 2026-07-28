@@ -400,6 +400,7 @@ export class Selector extends UIBase {
 
     this.topButtonInstances = [];
     this.topButtonInstances = this.buildDefaultButtons();
+    this.assignButtonParent(this.topButtonInstances);
 
     return h(
       VCardActions,
@@ -420,6 +421,7 @@ export class Selector extends UIBase {
 
     this.bottomButtonInstances = [];
     this.bottomButtonInstances = this.buildDefaultButtons();
+    this.assignButtonParent(this.bottomButtonInstances);
 
     return h(
       VCardActions,
@@ -446,6 +448,12 @@ export class Selector extends UIBase {
         }
       )
     ]
+  }
+
+  private assignButtonParent(buttons: Button[]) {
+    buttons.forEach((button) => {
+      button.setParent(this);
+    });
   }
 
   private onSelectItem() {

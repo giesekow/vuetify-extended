@@ -91,7 +91,7 @@ export interface UserAreaParams extends ShellResponsiveVisibilityParams {
     initials?: string;
     icon?: string;
     avatarSrc?: string;
-    avatarAlt?: string;
+    avatarAlt?: UIText;
     avatarColor?: string;
     align?: 'left' | 'right';
     menuWidth?: string | number;
@@ -101,7 +101,7 @@ export interface UserAreaParams extends ShellResponsiveVisibilityParams {
 }
 export interface UserAreaSeparatorEntry {
     type: 'separator';
-    label?: string;
+    label?: UIText;
     divider?: boolean;
 }
 export type UserAreaMenuEntry = Button | UserAreaSeparatorEntry;

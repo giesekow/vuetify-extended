@@ -1,15 +1,16 @@
 import { Ref, VNode } from "vue";
 import { UIBase } from "./base";
 import { VBtn, VCard, VCardText, VIcon, VProgressCircular } from 'vuetify/components';
+import type { UIText } from "./runtime";
 
 interface FullScreenBaseParams {
-  title?: string;
-  subtitle?: string;
-  message?: string;
+  title?: UIText;
+  subtitle?: UIText;
+  message?: UIText;
   icon?: string;
   iconColor?: string;
   logo?: string;
-  logoAlt?: string;
+  logoAlt?: UIText;
   backgroundColor?: string;
   backgroundGradient?: string;
   backgroundImage?: string;
@@ -57,7 +58,7 @@ function buildHeroBlock(ui: UIBase, params: FullScreenBaseParams, trailing?: VNo
   if (params.logo) {
     content.push(h('img', {
       src: params.logo,
-      alt: params.logoAlt || params.title || 'logo',
+      alt: ui.$text(params.logoAlt, ui.$text(params.title, ui.$uiText('ve.fullscreen.logoAlt', 'Logo'))),
       style: {
         width: '96px',
         height: '96px',
@@ -96,7 +97,7 @@ function buildHeroBlock(ui: UIBase, params: FullScreenBaseParams, trailing?: VNo
         marginBottom: '8px',
         color: params.textColor || 'inherit',
       },
-    }, params.subtitle));
+    }, ui.$text(params.subtitle)));
   }
 
   if (params.title) {
@@ -108,7 +109,7 @@ function buildHeroBlock(ui: UIBase, params: FullScreenBaseParams, trailing?: VNo
         color: params.titleColor || params.textColor || 'inherit',
         marginBottom: params.message ? '10px' : '0',
       },
-    }, params.title));
+    }, ui.$text(params.title)));
   }
 
   if (params.message) {
@@ -120,7 +121,7 @@ function buildHeroBlock(ui: UIBase, params: FullScreenBaseParams, trailing?: VNo
         maxWidth: '42ch',
         color: params.textColor || 'inherit',
       },
-    }, params.message));
+    }, ui.$text(params.message)));
   }
 
   if (trailing && trailing.length) {
@@ -152,7 +153,7 @@ function buildHeroBlock(ui: UIBase, params: FullScreenBaseParams, trailing?: VNo
 }
 
 export interface AccessDeniedScreenParams extends FullScreenBaseParams {
-  actionText?: string;
+  actionText?: UIText;
 }
 
 export interface AccessDeniedScreenOptions {
@@ -163,9 +164,9 @@ export class AccessDeniedScreen extends UIBase {
   private params: Ref<AccessDeniedScreenParams>;
   private options: AccessDeniedScreenOptions;
   private static defaultParams: AccessDeniedScreenParams = {
-    title: 'Access Denied',
-    subtitle: 'Restricted Workspace',
-    message: 'You do not currently have permission to access this application. Please contact your administrator if you believe this is unexpected.',
+    title: { key: 've.fullscreen.accessDenied.title', fallback: 'Access Denied' },
+    subtitle: { key: 've.fullscreen.accessDenied.subtitle', fallback: 'Restricted Workspace' },
+    message: { key: 've.fullscreen.accessDenied.message', fallback: 'You do not currently have permission to access this application. Please contact your administrator if you believe this is unexpected.' },
     icon: 'mdi-shield-lock-outline',
     iconColor: 'error',
     backgroundColor: '#0f172a',
@@ -207,7 +208,7 @@ export class AccessDeniedScreen extends UIBase {
           variant: 'elevated',
           size: 'large',
           onClick: () => this.options.action?.(this),
-        }, () => this.$params.actionText || ''),
+        }, () => this.$text(this.$params.actionText)),
       ]));
     }
 
@@ -220,7 +221,7 @@ export class AccessDeniedScreen extends UIBase {
 }
 
 export interface SplashScreenParams extends FullScreenBaseParams {
-  loadingText?: string;
+  loadingText?: UIText;
   progress?: number;
   indeterminate?: boolean;
   progressColor?: string;
@@ -230,9 +231,9 @@ export interface SplashScreenParams extends FullScreenBaseParams {
 export class SplashScreen extends UIBase {
   private params: Ref<SplashScreenParams>;
   private static defaultParams: SplashScreenParams = {
-    title: 'Loading Workspace',
-    subtitle: 'Preparing Application',
-    message: 'Please wait while the application initializes your session and loads the required data.',
+    title: { key: 've.fullscreen.splash.title', fallback: 'Loading Workspace' },
+    subtitle: { key: 've.fullscreen.splash.subtitle', fallback: 'Preparing Application' },
+    message: { key: 've.fullscreen.splash.message', fallback: 'Please wait while the application initializes your session and loads the required data.' },
     icon: 'mdi-rocket-launch-outline',
     iconColor: 'primary',
     backgroundColor: '#f4f7fb',
@@ -242,7 +243,7 @@ export class SplashScreen extends UIBase {
     titleColor: '#0f172a',
     maxWidth: 720,
     minHeight: '100vh',
-    loadingText: 'Loading…',
+    loadingText: { key: 've.fullscreen.splash.loadingText', fallback: 'Loading…' },
     indeterminate: true,
     progressColor: 'primary',
     progressSize: 72,
@@ -291,7 +292,7 @@ export class SplashScreen extends UIBase {
             letterSpacing: '0.01em',
             color: this.$params.textColor || '#0f172a',
           },
-        }, this.$params.loadingText)] : []),
+        }, this.$text(this.$params.loadingText))] : []),
       ]),
     ];
 

@@ -82,6 +82,7 @@ export declare class Selector extends UIBase {
     private buildTopActions;
     private buildBottomActions;
     private buildDefaultButtons;
+    private assignButtonParent;
     private onSelectItem;
     private onSelectorKeyup;
     private setDialogRoot;

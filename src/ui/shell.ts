@@ -55,7 +55,7 @@ export class AppTitleBlock extends UIBase {
         size: 40,
       }, () => h('img', {
         src: this.$params.image,
-        alt: this.$text(this.$params.title, 'App title image'),
+        alt: this.$text(this.$params.title, this.$uiText('ve.shell.appTitleImageAlt', 'App title image')),
         style: {
           width: '100%',
           height: '100%',
@@ -250,7 +250,7 @@ export class ShellIconAction extends UIBase {
       size: this.$params.size,
       disabled: this.$params.disabled,
       title: this.$text(this.$params.title),
-      'aria-label': this.$text(this.$params.title, 'Shell action'),
+      'aria-label': this.$text(this.$params.title, this.$uiText('ve.shell.actionAriaLabel', 'Shell action')),
       style: {
         height: 'auto',
         minWidth: '0',
@@ -300,7 +300,7 @@ export interface UserAreaParams extends ShellResponsiveVisibilityParams {
   initials?: string;
   icon?: string;
   avatarSrc?: string;
-  avatarAlt?: string;
+  avatarAlt?: UIText;
   avatarColor?: string;
   align?: 'left'|'right';
   menuWidth?: string | number;
@@ -311,7 +311,7 @@ export interface UserAreaParams extends ShellResponsiveVisibilityParams {
 
 export interface UserAreaSeparatorEntry {
   type: 'separator';
-  label?: string;
+  label?: UIText;
   divider?: boolean;
 }
 
@@ -393,7 +393,7 @@ export class UserArea extends UIBase {
           alignItems: 'center',
           justifyContent: 'center',
         },
-        'aria-label': this.$text(this.$params.name, 'Open user menu'),
+        'aria-label': this.$text(this.$params.name, this.$uiText('ve.user.openMenu', 'Open user menu')),
       }, () => this.buildActivator()),
       default: () => h(VCard, {
         elevation: 10,
@@ -421,12 +421,12 @@ export class UserArea extends UIBase {
       color: this.$params.avatarColor,
       variant: 'tonal',
       size: 38,
-      'aria-label': this.$params.avatarAlt || this.$text(this.$params.name, 'User avatar'),
+      'aria-label': this.$params.avatarAlt || this.$text(this.$params.name, this.$uiText('ve.user.avatarAlt', 'User avatar')),
     };
 
     if (this.$params.avatarSrc) {
       avatarProps.image = this.$params.avatarSrc;
-      avatarProps.alt = this.$params.avatarAlt || this.$text(this.$params.name, 'User avatar');
+      avatarProps.alt = this.$params.avatarAlt || this.$text(this.$params.name, this.$uiText('ve.user.avatarAlt', 'User avatar'));
       return h(VAvatar, avatarProps);
     }
 
@@ -509,7 +509,7 @@ export class UserArea extends UIBase {
         color: contentColor,
       },
       title: this.$text(params.tooltip),
-      'aria-label': this.$text(params.tooltip) || this.$text(params.text) || 'User menu action',
+      'aria-label': this.$text(params.tooltip) || this.$text(params.text) || this.$uiText('ve.user.menuActionAriaLabel', 'User menu action'),
     }, {
       prepend: () => params.icon ? h(VIcon, {
         size: 22,

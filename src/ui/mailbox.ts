@@ -8,11 +8,11 @@ import { resolveUIText, type UIText } from "./runtime";
 
 export interface MailboxItem {
   id: string | number;
-  title: string;
-  text?: string;
+  title: UIText;
+  text?: UIText;
   timestamp?: string | Date;
   read?: boolean;
-  category?: string;
+  category?: UIText;
   icon?: string;
   meta?: any;
 }
@@ -489,11 +489,11 @@ export class MailboxView extends UIBase {
                             }),
                             h(VIcon, { icon: item.icon || (item.read ? 'mdi-email-open-outline' : 'mdi-email-outline'), color: item.read ? undefined : 'primary' }),
                           ]),
-                          title: () => h(VListItemTitle, { style: { fontWeight: item.read ? '500' : '700' } }, () => item.title),
+                          title: () => h(VListItemTitle, { style: { fontWeight: item.read ? '500' : '700' } }, () => resolveUIText(item.title)),
                           subtitle: () => h('div', {}, [
-                            h(VListItemSubtitle, {}, () => item.text || ''),
+                            h(VListItemSubtitle, {}, () => resolveUIText(item.text)),
                             h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' } }, [
-                              ...(item.category ? [h(VChip, { size: 'x-small', variant: 'outlined', color: item.read ? undefined : 'primary' }, () => item.category)] : []),
+                              ...(item.category ? [h(VChip, { size: 'x-small', variant: 'outlined', color: item.read ? undefined : 'primary' }, () => resolveUIText(item.category))] : []),
                               ...(item.timestamp ? [h('span', { style: { fontSize: '0.72rem', opacity: '0.72' } }, MailboxView.formatTimestamp(item.timestamp))] : []),
                             ]),
                           ]),

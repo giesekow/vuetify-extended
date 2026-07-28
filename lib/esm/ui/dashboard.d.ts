@@ -92,7 +92,7 @@ export interface DashboardWidgetOptions {
 }
 export interface DashboardMetricWidgetParams extends DashboardWidgetParams {
     value?: string | number;
-    caption?: string;
+    caption?: UIText;
     valueColor?: string;
     captionColor?: string;
 }
@@ -138,15 +138,15 @@ export interface DashboardTableWidgetOptions extends DashboardWidgetOptions {
 }
 export interface DashboardListItem {
     key?: string | number;
-    avatarText?: string;
+    avatarText?: UIText;
     avatarColor?: string;
     icon?: string;
     iconColor?: string;
-    title: string;
-    subtitle?: string;
-    value?: string;
+    title: UIText;
+    subtitle?: UIText;
+    value?: UIText;
     valueColor?: string;
-    chipText?: string;
+    chipText?: UIText;
     chipColor?: string;
     chipVariant?: 'elevated' | 'flat' | 'tonal' | 'text' | 'outlined' | 'plain';
 }
@@ -161,12 +161,12 @@ export interface DashboardListWidgetOptions extends DashboardWidgetOptions {
 }
 export interface DashboardProgressItem {
     key?: string | number;
-    avatarText?: string;
+    avatarText?: UIText;
     avatarColor?: string;
     icon?: string;
     iconColor?: string;
-    label: string;
-    value?: string;
+    label: UIText;
+    value?: UIText;
     amount: number;
     color?: string;
     bgColor?: string;
@@ -181,10 +181,10 @@ export interface DashboardProgressWidgetOptions extends DashboardWidgetOptions {
 }
 export interface DashboardChartItem {
     key?: string | number;
-    label: string;
+    label: UIText;
     value: number;
     color?: string;
-    valueLabel?: string;
+    valueLabel?: UIText;
 }
 export interface DashboardChartWidgetParams extends DashboardWidgetParams {
     chartType?: 'bar' | 'line' | 'donut';
@@ -199,8 +199,8 @@ export interface DashboardChartWidgetOptions extends DashboardWidgetOptions {
 }
 export interface DashboardTrendWidgetParams extends DashboardWidgetParams {
     value?: string | number;
-    caption?: string;
-    delta?: string;
+    caption?: UIText;
+    delta?: UIText;
     trend?: 'up' | 'down' | 'flat';
     sparklineValues?: number[];
     valueColor?: string;
@@ -209,21 +209,21 @@ export interface DashboardTrendWidgetParams extends DashboardWidgetParams {
 }
 export interface DashboardTrendWidgetOptions extends DashboardWidgetOptions {
     value?: (widget: DashboardTrendWidget) => string | number | Promise<string | number | undefined> | undefined;
-    delta?: (widget: DashboardTrendWidget) => string | Promise<string | undefined> | undefined;
+    delta?: (widget: DashboardTrendWidget) => UIText | Promise<UIText | undefined> | undefined;
     sparklineValues?: (widget: DashboardTrendWidget) => number[] | Promise<number[] | undefined> | undefined;
     formatValue?: (widget: DashboardTrendWidget, value: string | number | undefined) => string;
     onClicked?: (widget: DashboardTrendWidget) => void | Promise<void>;
 }
 export interface DashboardTimelineItem {
     key?: string | number;
-    title: string;
-    subtitle?: string;
-    time?: string;
-    description?: string;
+    title: UIText;
+    subtitle?: UIText;
+    time?: UIText;
+    description?: UIText;
     color?: string;
     icon?: string;
     iconColor?: string;
-    avatarText?: string;
+    avatarText?: UIText;
     avatarColor?: string;
 }
 export interface DashboardTimelineWidgetParams extends DashboardWidgetParams {
@@ -236,15 +236,15 @@ export interface DashboardTimelineWidgetOptions extends DashboardWidgetOptions {
 }
 export interface DashboardActionItem {
     key?: string | number;
-    title: string;
-    subtitle?: string;
+    title: UIText;
+    subtitle?: UIText;
     icon?: string;
     iconColor?: string;
-    avatarText?: string;
+    avatarText?: UIText;
     avatarColor?: string;
-    chipText?: string;
+    chipText?: UIText;
     chipColor?: string;
-    actionText?: string;
+    actionText?: UIText;
     actionColor?: string;
     actionVariant?: 'elevated' | 'flat' | 'tonal' | 'text' | 'outlined' | 'plain';
     disabled?: boolean;
@@ -260,10 +260,10 @@ export interface DashboardActionListWidgetOptions extends DashboardWidgetOptions
 export interface DashboardAlertItem {
     key?: string | number;
     severity?: 'info' | 'success' | 'warning' | 'error';
-    title: string;
-    message?: string;
-    time?: string;
-    chipText?: string;
+    title: UIText;
+    message?: UIText;
+    time?: UIText;
+    chipText?: UIText;
 }
 export interface DashboardAlertWidgetParams extends DashboardWidgetParams {
     items?: DashboardAlertItem[];
@@ -287,9 +287,9 @@ export interface DashboardEmptyStateWidgetOptions extends DashboardWidgetOptions
 }
 export interface DashboardStatGridItem {
     key?: string | number;
-    label: string;
+    label: UIText;
     value: string | number;
-    caption?: string;
+    caption?: UIText;
     icon?: string;
     iconColor?: string;
     color?: string;
@@ -311,7 +311,7 @@ export interface DashboardMapPoint {
 }
 export interface DashboardMapMarker extends DashboardMapPoint {
     key?: string | number;
-    label?: string;
+    label?: UIText;
     color?: string;
 }
 export interface DashboardMapData {
@@ -333,7 +333,7 @@ export interface DashboardMapWidgetOptions extends DashboardWidgetOptions {
 export interface DashboardCalendarItem {
     key?: string | number;
     date: string | Date;
-    title: string;
+    title: UIText;
     color?: string;
 }
 export interface DashboardCalendarWidgetParams extends DashboardWidgetParams {
@@ -348,7 +348,7 @@ export interface DashboardCalendarWidgetOptions extends DashboardWidgetOptions {
 }
 export interface DashboardTabItem {
     key?: string | number;
-    label: string;
+    label: UIText;
     badge?: string | number;
     children?: (widget: DashboardTabsWidget, props: any, context: any) => Array<UIBase | VNode>;
 }

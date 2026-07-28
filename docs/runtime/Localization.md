@@ -125,6 +125,16 @@ Examples:
 - `ve.mode.edit`
 - `ve.mode.display`
 
+The built-in catalog now also includes feature and infrastructure namespaces such as:
+
+- `ve.app.*` for app shell and side-navigation chrome
+- `ve.dialog.*` for prompt and preview dialog wording
+- `ve.field.*` for autocomplete, upload, preview, and asset helper text
+- `ve.fullscreen.*` for splash and access-denied screens
+- `ve.shell.*` and `ve.user.*` for shell accessibility and user-menu helper text
+- `ve.shortcut.*` for modifier names
+- `ve.editor.*` for the rich HTML editor toolbar, prompts, table actions, and video actions
+
 Recommended rule:
 
 - Override `ve.common.*` and `ve.mode.*` once at the app level.

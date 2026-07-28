@@ -585,8 +585,12 @@ export class Form extends UIBase {
     const leftButtons: Button[] = !this.hasAccess.value ? [] : (this.options.leftButtons ? this.options.leftButtons(props, context) : this.leftButtons(props, context));
     let rightButtons: Button[] = !this.hasAccess.value ? [] : (this.options.buttons ? this.options.buttons(props, context) : this.buttons(props, context));
 
+    this.assignButtonParent(leftButtons);
+    this.assignButtonParent(rightButtons);
+
     if (!this.params.value.defaultButtonPosition || ["top", "both"].includes(this.params.value.defaultButtonPosition)) {
       const btns = this.buildDefaultButtons();
+      this.assignButtonParent(btns);
       rightButtons = rightButtons.concat(btns);
     }
 
@@ -616,8 +620,12 @@ export class Form extends UIBase {
     const leftButtons: Button[] = !this.hasAccess.value ? [] : (this.options.bottomLeftButtons ? this.options.bottomLeftButtons(props, context) : this.bottomLeftButtons(props, context));
     let rightButtons: Button[] = !this.hasAccess.value ? [] : (this.options.bottomButtons ? this.options.bottomButtons(props, context) : this.bottomButtons(props, context));
 
+    this.assignButtonParent(leftButtons);
+    this.assignButtonParent(rightButtons);
+
     if (!this.params.value.defaultButtonPosition || ["bottom", "both"].includes(this.params.value.defaultButtonPosition)) {
       const btns = this.buildDefaultButtons();
+      this.assignButtonParent(btns);
       rightButtons = rightButtons.concat(btns);
     }
 
@@ -684,6 +692,12 @@ export class Form extends UIBase {
         }
       )
     ]
+  }
+
+  private assignButtonParent(buttons: Button[]) {
+    buttons.forEach((button) => {
+      button.setParent(this);
+    });
   }
 
   async $save() {

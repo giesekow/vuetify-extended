@@ -121,7 +121,7 @@ export interface DashboardWidgetOptions {
 
 export interface DashboardMetricWidgetParams extends DashboardWidgetParams {
   value?: string | number;
-  caption?: string;
+  caption?: UIText;
   valueColor?: string;
   captionColor?: string;
 }
@@ -174,15 +174,15 @@ export interface DashboardTableWidgetOptions extends DashboardWidgetOptions {
 
 export interface DashboardListItem {
   key?: string | number;
-  avatarText?: string;
+  avatarText?: UIText;
   avatarColor?: string;
   icon?: string;
   iconColor?: string;
-  title: string;
-  subtitle?: string;
-  value?: string;
+  title: UIText;
+  subtitle?: UIText;
+  value?: UIText;
   valueColor?: string;
-  chipText?: string;
+  chipText?: UIText;
   chipColor?: string;
   chipVariant?: 'elevated' | 'flat' | 'tonal' | 'text' | 'outlined' | 'plain';
 }
@@ -200,12 +200,12 @@ export interface DashboardListWidgetOptions extends DashboardWidgetOptions {
 
 export interface DashboardProgressItem {
   key?: string | number;
-  avatarText?: string;
+  avatarText?: UIText;
   avatarColor?: string;
   icon?: string;
   iconColor?: string;
-  label: string;
-  value?: string;
+  label: UIText;
+  value?: UIText;
   amount: number;
   color?: string;
   bgColor?: string;
@@ -224,10 +224,10 @@ export interface DashboardProgressWidgetOptions extends DashboardWidgetOptions {
 
 export interface DashboardChartItem {
   key?: string | number;
-  label: string;
+  label: UIText;
   value: number;
   color?: string;
-  valueLabel?: string;
+  valueLabel?: UIText;
 }
 
 export interface DashboardChartWidgetParams extends DashboardWidgetParams {
@@ -245,8 +245,8 @@ export interface DashboardChartWidgetOptions extends DashboardWidgetOptions {
 
 export interface DashboardTrendWidgetParams extends DashboardWidgetParams {
   value?: string | number;
-  caption?: string;
-  delta?: string;
+  caption?: UIText;
+  delta?: UIText;
   trend?: 'up' | 'down' | 'flat';
   sparklineValues?: number[];
   valueColor?: string;
@@ -256,7 +256,7 @@ export interface DashboardTrendWidgetParams extends DashboardWidgetParams {
 
 export interface DashboardTrendWidgetOptions extends DashboardWidgetOptions {
   value?: (widget: DashboardTrendWidget) => string | number | Promise<string | number | undefined> | undefined;
-  delta?: (widget: DashboardTrendWidget) => string | Promise<string | undefined> | undefined;
+  delta?: (widget: DashboardTrendWidget) => UIText | Promise<UIText | undefined> | undefined;
   sparklineValues?: (widget: DashboardTrendWidget) => number[] | Promise<number[] | undefined> | undefined;
   formatValue?: (widget: DashboardTrendWidget, value: string | number | undefined) => string;
   onClicked?: (widget: DashboardTrendWidget) => void | Promise<void>;
@@ -264,14 +264,14 @@ export interface DashboardTrendWidgetOptions extends DashboardWidgetOptions {
 
 export interface DashboardTimelineItem {
   key?: string | number;
-  title: string;
-  subtitle?: string;
-  time?: string;
-  description?: string;
+  title: UIText;
+  subtitle?: UIText;
+  time?: UIText;
+  description?: UIText;
   color?: string;
   icon?: string;
   iconColor?: string;
-  avatarText?: string;
+  avatarText?: UIText;
   avatarColor?: string;
 }
 
@@ -287,15 +287,15 @@ export interface DashboardTimelineWidgetOptions extends DashboardWidgetOptions {
 
 export interface DashboardActionItem {
   key?: string | number;
-  title: string;
-  subtitle?: string;
+  title: UIText;
+  subtitle?: UIText;
   icon?: string;
   iconColor?: string;
-  avatarText?: string;
+  avatarText?: UIText;
   avatarColor?: string;
-  chipText?: string;
+  chipText?: UIText;
   chipColor?: string;
-  actionText?: string;
+  actionText?: UIText;
   actionColor?: string;
   actionVariant?: 'elevated' | 'flat' | 'tonal' | 'text' | 'outlined' | 'plain';
   disabled?: boolean;
@@ -315,10 +315,10 @@ export interface DashboardActionListWidgetOptions extends DashboardWidgetOptions
 export interface DashboardAlertItem {
   key?: string | number;
   severity?: 'info' | 'success' | 'warning' | 'error';
-  title: string;
-  message?: string;
-  time?: string;
-  chipText?: string;
+  title: UIText;
+  message?: UIText;
+  time?: UIText;
+  chipText?: UIText;
 }
 
 export interface DashboardAlertWidgetParams extends DashboardWidgetParams {
@@ -347,9 +347,9 @@ export interface DashboardEmptyStateWidgetOptions extends DashboardWidgetOptions
 
 export interface DashboardStatGridItem {
   key?: string | number;
-  label: string;
+  label: UIText;
   value: string | number;
-  caption?: string;
+  caption?: UIText;
   icon?: string;
   iconColor?: string;
   color?: string;
@@ -375,7 +375,7 @@ export interface DashboardMapPoint {
 
 export interface DashboardMapMarker extends DashboardMapPoint {
   key?: string | number;
-  label?: string;
+  label?: UIText;
   color?: string;
 }
 
@@ -401,7 +401,7 @@ export interface DashboardMapWidgetOptions extends DashboardWidgetOptions {
 export interface DashboardCalendarItem {
   key?: string | number;
   date: string | Date;
-  title: string;
+  title: UIText;
   color?: string;
 }
 
@@ -419,7 +419,7 @@ export interface DashboardCalendarWidgetOptions extends DashboardWidgetOptions {
 
 export interface DashboardTabItem {
   key?: string | number;
-  label: string;
+  label: UIText;
   badge?: string | number;
   children?: (widget: DashboardTabsWidget, props: any, context: any) => Array<UIBase | VNode>;
 }
@@ -1034,7 +1034,7 @@ export class DashboardMetricWidget extends DashboardWidget {
         h('div', {
           class: ['text-body-2'],
           style: { opacity: 0.74, color: this.$metricParams.captionColor },
-        }, this.$metricParams.caption)
+        }, this.$text(this.$metricParams.caption))
       ] : []),
     ]);
 
@@ -1431,11 +1431,13 @@ export class DashboardListWidget extends DashboardWidget {
 
   private renderLeading(item: DashboardListItem) {
     const h = this.$h;
+    const title = this.$text(item.title);
+    const avatarText = this.$text(item.avatarText);
     if (item.icon) {
       return h(VAvatar, { color: item.avatarColor || 'primary', rounded: 'lg', size: 36, variant: 'tonal' }, () => h(VIcon, { icon: item.icon, color: item.iconColor }));
     }
 
-    return h(VAvatar, { color: item.avatarColor || 'primary', rounded: 'lg', size: 36 }, () => item.avatarText || item.title.charAt(0));
+    return h(VAvatar, { color: item.avatarColor || 'primary', rounded: 'lg', size: 36 }, () => avatarText || title.charAt(0));
   }
 
   private dividerColor() {
@@ -1480,13 +1482,13 @@ export class DashboardListWidget extends DashboardWidget {
         h('div', { class: ['ve-dashboard-list-main'] }, [
           this.renderLeading(item),
           h('div', { class: ['ve-dashboard-list-text'] }, [
-            h('div', { class: ['ve-dashboard-list-title'] }, item.title),
-            ...(item.subtitle ? [h('div', { class: ['ve-dashboard-list-subtitle'] }, item.subtitle)] : []),
+            h('div', { class: ['ve-dashboard-list-title'] }, this.$text(item.title)),
+            ...(item.subtitle ? [h('div', { class: ['ve-dashboard-list-subtitle'] }, this.$text(item.subtitle))] : []),
           ]),
         ]),
         h('div', { class: ['ve-dashboard-list-meta'] }, [
-          ...(item.chipText ? [h(VChip, { size: 'small', color: item.chipColor, variant: item.chipVariant || 'outlined' }, () => item.chipText)] : []),
-          ...(item.value ? [h('div', { class: ['ve-dashboard-list-value'], style: { color: item.valueColor } }, item.value)] : []),
+          ...(item.chipText ? [h(VChip, { size: 'small', color: item.chipColor, variant: item.chipVariant || 'outlined' }, () => this.$text(item.chipText))] : []),
+          ...(item.value ? [h('div', { class: ['ve-dashboard-list-value'], style: { color: item.valueColor } }, this.$text(item.value))] : []),
         ]),
       ])));
     }
@@ -1617,11 +1619,13 @@ export class DashboardProgressWidget extends DashboardWidget {
 
   private renderLeading(item: DashboardProgressItem) {
     const h = this.$h;
+    const label = this.$text(item.label);
+    const avatarText = this.$text(item.avatarText);
     if (item.icon) {
       return h(VAvatar, { color: item.avatarColor || 'primary', variant: 'tonal', size: 40 }, () => h(VIcon, { icon: item.icon, color: item.iconColor }));
     }
 
-    return h(VAvatar, { color: item.avatarColor || 'primary', variant: 'tonal', size: 40 }, () => item.avatarText || item.label.charAt(0));
+    return h(VAvatar, { color: item.avatarColor || 'primary', variant: 'tonal', size: 40 }, () => avatarText || label.charAt(0));
   }
 
   private async onItemClicked(item: DashboardProgressItem, index: number) {
@@ -1661,8 +1665,8 @@ export class DashboardProgressWidget extends DashboardWidget {
         this.renderLeading(item),
         h('div', { style: { flex: 1 } }, [
           h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '8px' } }, [
-            h('span', { style: { fontSize: '1.05rem' } }, item.label),
-            ...(item.value ? [h('span', { style: { opacity: 0.78 } }, item.value)] : []),
+            h('span', { style: { fontSize: '1.05rem' } }, this.$text(item.label)),
+            ...(item.value ? [h('span', { style: { opacity: 0.78 } }, this.$text(item.value))] : []),
           ]),
           h(VProgressLinear, {
             modelValue: this.animatedAmounts.value[index] ?? this.normalizedAmount(item.amount),
@@ -1782,7 +1786,7 @@ export class DashboardChartWidget extends DashboardWidget {
     const h = this.$h;
     const clickable = typeof this.chartOptions.onItemClicked === 'function';
     return items.map((item, index) => h('div', {
-      key: item.key || item.label || index,
+      key: item.key || this.$text(item.label) || index,
       style: {
         display: 'flex',
         alignItems: 'center',
@@ -1806,9 +1810,9 @@ export class DashboardChartWidget extends DashboardWidget {
             flexShrink: 0,
           },
         }),
-        h('span', { style: { minWidth: 0 } }, item.label),
+        h('span', { style: { minWidth: 0 } }, this.$text(item.label)),
       ]),
-      h('span', { style: { opacity: 0.78, flexShrink: 0 } }, item.valueLabel || item.value.toLocaleString()),
+      h('span', { style: { opacity: 0.78, flexShrink: 0 } }, item.valueLabel ? this.$text(item.valueLabel) : item.value.toLocaleString()),
     ]));
   }
 
@@ -1836,7 +1840,7 @@ export class DashboardChartWidget extends DashboardWidget {
         const y = baseY - barHeight;
         nodes.push(
           h('rect', {
-            key: `${item.key || item.label || index}-bar`,
+            key: `${item.key || this.$text(item.label) || index}-bar`,
             x,
             y,
             rx: 8,
@@ -1855,14 +1859,14 @@ export class DashboardChartWidget extends DashboardWidget {
             'text-anchor': 'middle',
             fill: this.$textColor,
             style: { fontSize: '11px', opacity: 0.8 },
-          }, item.label),
+          }, this.$text(item.label)),
           h('text', {
             x: x + (barWidth / 2),
             y: y - 8,
             'text-anchor': 'middle',
             fill: this.$textColor,
             style: { fontSize: '11px', opacity: 0.72 },
-          }, item.valueLabel || String(item.value)),
+          }, item.valueLabel ? this.$text(item.valueLabel) : String(item.value)),
         );
         return nodes;
       }, []),
@@ -1903,7 +1907,7 @@ export class DashboardChartWidget extends DashboardWidget {
       ...points.reduce<VNode[]>((nodes, point: { x: number; y: number; item: DashboardChartItem; index: number }) => {
         nodes.push(
           h('circle', {
-            key: `${point.item.key || point.item.label || point.index}-dot`,
+            key: `${point.item.key || this.$text(point.item.label) || point.index}-dot`,
             cx: point.x,
             cy: point.y,
             r: 5,
@@ -1921,7 +1925,7 @@ export class DashboardChartWidget extends DashboardWidget {
             'text-anchor': 'middle',
             fill: this.$textColor,
             style: { fontSize: '11px', opacity: 0.8 },
-          }, point.item.label),
+          }, this.$text(point.item.label)),
         );
         return nodes;
       }, []),
@@ -2018,7 +2022,7 @@ export class DashboardChartWidget extends DashboardWidget {
 export class DashboardTrendWidget extends DashboardWidget {
   private trendOptions: DashboardTrendWidgetOptions;
   private resolvedValue: Ref<string | number | undefined>;
-  private resolvedDelta: Ref<string | undefined>;
+  private resolvedDelta: Ref<UIText | undefined>;
   private resolvedSparkline: Ref<number[]>;
   private animatedValue: Ref<number | undefined>;
   private loading: Ref<boolean>;
@@ -2242,9 +2246,9 @@ export class DashboardTrendWidget extends DashboardWidget {
           variant: 'tonal',
           prependIcon: this.trendIcon(),
           size: 'small',
-        }, () => this.resolvedDelta.value)] : []),
+        }, () => this.$text(this.resolvedDelta.value))] : []),
       ]),
-      ...(this.$trendParams.caption ? [h('div', { class: ['text-body-2'], style: { opacity: 0.74 } }, this.$trendParams.caption)] : []),
+      ...(this.$trendParams.caption ? [h('div', { class: ['text-body-2'], style: { opacity: 0.74 } }, this.$text(this.$trendParams.caption))] : []),
       ...(sparkline ? [sparkline] : []),
     ]);
 
@@ -2332,11 +2336,13 @@ export class DashboardTimelineWidget extends DashboardWidget {
 
   private renderLeading(item: DashboardTimelineItem) {
     const h = this.$h;
+    const title = this.$text(item.title);
+    const avatarText = this.$text(item.avatarText);
     if (item.icon) {
       return h(VAvatar, { color: item.avatarColor || item.color || 'primary', variant: 'tonal', size: 34 }, () => h(VIcon, { icon: item.icon, color: item.iconColor }));
     }
 
-    return h(VAvatar, { color: item.avatarColor || item.color || 'primary', variant: 'tonal', size: 34 }, () => item.avatarText || item.title.charAt(0));
+    return h(VAvatar, { color: item.avatarColor || item.color || 'primary', variant: 'tonal', size: 34 }, () => avatarText || title.charAt(0));
   }
 
   render(): VNode | undefined {
@@ -2381,11 +2387,11 @@ export class DashboardTimelineWidget extends DashboardWidget {
         ]),
         h('div', { style: { paddingTop: '4px' } }, [
           h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' } }, [
-            h('div', { style: { fontSize: '1.02rem', fontWeight: 600 } }, item.title),
-            ...(item.time ? [h('span', { style: { opacity: 0.66, fontSize: '0.9rem' } }, item.time)] : []),
+            h('div', { style: { fontSize: '1.02rem', fontWeight: 600 } }, this.$text(item.title)),
+            ...(item.time ? [h('span', { style: { opacity: 0.66, fontSize: '0.9rem' } }, this.$text(item.time))] : []),
           ]),
-          ...(item.subtitle ? [h('div', { style: { opacity: 0.78, marginTop: '4px' } }, item.subtitle)] : []),
-          ...(item.description ? [h('div', { class: ['text-body-2'], style: { opacity: 0.68, marginTop: '6px' } }, item.description)] : []),
+          ...(item.subtitle ? [h('div', { style: { opacity: 0.78, marginTop: '4px' } }, this.$text(item.subtitle))] : []),
+          ...(item.description ? [h('div', { class: ['text-body-2'], style: { opacity: 0.68, marginTop: '6px' } }, this.$text(item.description))] : []),
         ]),
       ]))));
     }
@@ -2453,11 +2459,13 @@ export class DashboardActionListWidget extends DashboardWidget {
 
   private renderLeading(item: DashboardActionItem) {
     const h = this.$h;
+    const title = this.$text(item.title);
+    const avatarText = this.$text(item.avatarText);
     if (item.icon) {
       return h(VAvatar, { color: item.avatarColor || 'primary', variant: 'tonal', rounded: 'lg', size: 38 }, () => h(VIcon, { icon: item.icon, color: item.iconColor }));
     }
 
-    return h(VAvatar, { color: item.avatarColor || 'primary', variant: 'tonal', rounded: 'lg', size: 38 }, () => item.avatarText || item.title.charAt(0));
+    return h(VAvatar, { color: item.avatarColor || 'primary', variant: 'tonal', rounded: 'lg', size: 38 }, () => avatarText || title.charAt(0));
   }
 
   private async onItemClicked(item: DashboardActionItem, index: number) {
@@ -2509,9 +2517,9 @@ export class DashboardActionListWidget extends DashboardWidget {
         h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 } }, [
           this.renderLeading(item),
           h('div', { style: { minWidth: 0 } }, [
-            h('div', { style: { fontSize: '1.02rem', fontWeight: 600 } }, item.title),
-            ...(item.subtitle ? [h('div', { style: { opacity: 0.72, marginTop: '4px' } }, item.subtitle)] : []),
-            ...(item.chipText ? [h(VChip, { size: 'x-small', color: item.chipColor, variant: 'outlined', style: { marginTop: '8px' } }, () => item.chipText)] : []),
+            h('div', { style: { fontSize: '1.02rem', fontWeight: 600 } }, this.$text(item.title)),
+            ...(item.subtitle ? [h('div', { style: { opacity: 0.72, marginTop: '4px' } }, this.$text(item.subtitle))] : []),
+            ...(item.chipText ? [h(VChip, { size: 'x-small', color: item.chipColor, variant: 'outlined', style: { marginTop: '8px' } }, () => this.$text(item.chipText))] : []),
           ]),
         ]),
         ...(item.actionText ? [h(VBtn, {
@@ -2523,7 +2531,7 @@ export class DashboardActionListWidget extends DashboardWidget {
             ev?.stopPropagation?.();
             void this.onItemClicked(item, index);
           },
-        }, () => item.actionText)] : []),
+        }, () => this.$text(item.actionText))] : []),
       ])));
     }
 
@@ -2649,11 +2657,11 @@ export class DashboardAlertWidget extends DashboardWidget {
           h(VAvatar, { size: 34, color, variant: 'tonal' }, () => h(VIcon, { icon: this.severityIcon(item), color })),
           h('div', { style: { flex: 1, minWidth: 0 } }, [
             h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' } }, [
-              h('div', { style: { fontSize: '1.02rem', fontWeight: 600 } }, item.title),
-              ...(item.time ? [h('span', { style: { opacity: 0.66, fontSize: '0.9rem' } }, item.time)] : []),
+              h('div', { style: { fontSize: '1.02rem', fontWeight: 600 } }, this.$text(item.title)),
+              ...(item.time ? [h('span', { style: { opacity: 0.66, fontSize: '0.9rem' } }, this.$text(item.time))] : []),
             ]),
-            ...(item.message ? [h('div', { class: ['text-body-2'], style: { opacity: 0.74, marginTop: '4px' } }, item.message)] : []),
-            ...(item.chipText ? [h(VChip, { size: 'x-small', color, variant: 'outlined', style: { marginTop: '8px' } }, () => item.chipText)] : []),
+            ...(item.message ? [h('div', { class: ['text-body-2'], style: { opacity: 0.74, marginTop: '4px' } }, this.$text(item.message))] : []),
+            ...(item.chipText ? [h(VChip, { size: 'x-small', color, variant: 'outlined', style: { marginTop: '8px' } }, () => this.$text(item.chipText))] : []),
           ]),
         ]);
       }));
@@ -2874,11 +2882,11 @@ export class DashboardStatGridWidget extends DashboardWidget {
         },
       }, [
         h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '10px' } }, [
-          h('div', { style: { opacity: 0.72 } }, item.label),
+          h('div', { style: { opacity: 0.72 } }, this.$text(item.label)),
           ...(item.icon ? [h(VIcon, { icon: item.icon, color: item.iconColor || item.color || paletteColor(index), size: 18 })] : []),
         ]),
         h('div', { style: { fontSize: '1.35rem', fontWeight: 700, color: item.valueColor || item.color } }, this.formatValue(item, index)),
-        ...(item.caption ? [h('div', { class: ['text-body-2'], style: { opacity: 0.68, marginTop: '6px' } }, item.caption)] : []),
+        ...(item.caption ? [h('div', { class: ['text-body-2'], style: { opacity: 0.68, marginTop: '6px' } }, this.$text(item.caption))] : []),
       ]))));
     }
 
@@ -3076,7 +3084,7 @@ export class DashboardMapWidget extends DashboardWidget {
                 y: projected.y - 10,
                 fill: this.$textColor,
                 style: { fontSize: '11px', fontWeight: 600 },
-              }, marker.label)] : []),
+              }, this.$text(marker.label))] : []),
             );
             return nodes;
           }, []),
@@ -3243,7 +3251,7 @@ export class DashboardCalendarWidget extends DashboardWidget {
             color: item.color || paletteColor(index),
             variant: 'tonal',
             style: { marginBottom: '4px', maxWidth: '100%' },
-          }, () => item.title)),
+          }, () => this.$text(item.title))),
           ...(items.length > 2 ? [h('div', { class: ['text-body-2'], style: { opacity: 0.68, marginTop: '2px' } }, this.$uiText('ve.dashboard.calendar.more', '+{count} more', { count: items.length - 2 }))] : []),
         ]));
       }
@@ -3367,7 +3375,7 @@ export class DashboardTabsWidget extends DashboardWidget {
           void this.selectTab(index);
         },
       }, () => [
-        h('span', tab.label),
+        h('span', this.$text(tab.label)),
         ...(tab.badge !== undefined ? [h(VChip, { size: 'x-small', variant: 'flat', style: { marginLeft: '8px' } }, () => String(tab.badge))] : []),
       ]))));
       body.push(h('div', {
