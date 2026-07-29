@@ -2341,6 +2341,76 @@ export class Field extends UIBase {
   buildAutocomplete(props: any, context: any) {
     const h = this.$h;
     const loadMoreMode = this.autocompleteLoadMoreMode();
+    const autocompleteSlots: Record<string, any> = {
+      selection: ({ item, index }: any) => h(
+        'span',
+        {
+          class: 'v-autocomplete__selection-text',
+        },
+        [
+          this.autocompleteDisplayTitle(item),
+          this.params.value.multiple && index < ((this.modelValue.value || []).length - 1)
+            ? h(
+                'span',
+                {
+                  class: 'v-autocomplete__selection-comma',
+                },
+                ',',
+              )
+            : undefined,
+        ],
+      ),
+    };
+
+    if (this.isServerAutocomplete()) {
+      autocompleteSlots['append-item'] = () => {
+        if (loadMoreMode === 'button' && (this.autocompleteHasMore.value || this.autocompleteLoadingMore.value)) {
+          return h(
+            'div',
+            {
+              style: {
+                padding: '8px 12px 12px 12px',
+                borderTop: '1px solid rgba(128,128,128,0.18)',
+                display: 'flex',
+                justifyContent: 'center',
+              },
+            },
+            [
+              h(
+                VBtn,
+                {
+                  variant: 'text',
+                  color: this.params.value.color || 'primary',
+                  disabled: this.autocompleteLoadingMore.value,
+                  prependIcon: this.autocompleteLoadingMore.value ? 'mdi-loading mdi-spin' : 'mdi-chevron-down',
+                  onClick: () => this.loadMoreAutocompleteResults(),
+                },
+                () => this.autocompleteLoadingMore.value ? this.autocompleteLoadingMoreText() : this.autocompleteLoadMoreText(),
+              ),
+            ],
+          );
+        }
+
+        if (loadMoreMode === 'scroll' && this.autocompleteLoadingMore.value) {
+          return h(
+            'div',
+            {
+              style: {
+                padding: '8px 12px 12px 12px',
+                borderTop: '1px solid rgba(128,128,128,0.18)',
+                textAlign: 'center',
+                fontSize: '0.9rem',
+                opacity: 0.82,
+              },
+            },
+            this.autocompleteLoadingMoreText(),
+          );
+        }
+
+        return undefined;
+      };
+    }
+
     return h(
       VAutocomplete as any,
       {
@@ -2383,72 +2453,7 @@ export class Field extends UIBase {
           ? (value: string) => this.scheduleServerAutocompleteSearch(value || '')
           : undefined,
       },
-      this.isServerAutocomplete() ? {
-        selection: ({ item, index }: any) => h(
-          'span',
-          {
-            class: 'v-autocomplete__selection-text',
-          },
-          [
-            this.autocompleteDisplayTitle(item),
-            this.params.value.multiple && index < ((this.modelValue.value || []).length - 1)
-              ? h(
-                  'span',
-                  {
-                    class: 'v-autocomplete__selection-comma',
-                  },
-                  ',',
-                )
-              : undefined,
-          ],
-        ),
-        'append-item': () => {
-          if (loadMoreMode === 'button' && (this.autocompleteHasMore.value || this.autocompleteLoadingMore.value)) {
-            return h(
-              'div',
-              {
-                style: {
-                  padding: '8px 12px 12px 12px',
-                  borderTop: '1px solid rgba(128,128,128,0.18)',
-                  display: 'flex',
-                  justifyContent: 'center',
-                },
-              },
-              [
-                h(
-                  VBtn,
-                  {
-                    variant: 'text',
-                    color: this.params.value.color || 'primary',
-                    disabled: this.autocompleteLoadingMore.value,
-                    prependIcon: this.autocompleteLoadingMore.value ? 'mdi-loading mdi-spin' : 'mdi-chevron-down',
-                    onClick: () => this.loadMoreAutocompleteResults(),
-                  },
-                  () => this.autocompleteLoadingMore.value ? this.autocompleteLoadingMoreText() : this.autocompleteLoadMoreText(),
-                ),
-              ],
-            );
-          }
-
-          if (loadMoreMode === 'scroll' && this.autocompleteLoadingMore.value) {
-            return h(
-              'div',
-              {
-                style: {
-                  padding: '8px 12px 12px 12px',
-                  borderTop: '1px solid rgba(128,128,128,0.18)',
-                  textAlign: 'center',
-                  fontSize: '0.9rem',
-                  opacity: 0.82,
-                },
-              },
-              this.autocompleteLoadingMoreText(),
-            );
-          }
-
-          return undefined;
-        },
-      } : undefined,
+      autocompleteSlots,
     );
   }
 

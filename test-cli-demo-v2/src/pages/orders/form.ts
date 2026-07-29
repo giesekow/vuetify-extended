@@ -19,8 +19,11 @@ export function createOrdersForm(mode: ReportMode = 'display') {
               $FD({
                 label: { key: "pages.orders.form.fields.name.label", fallback: "Name" },
                 storage: 'name',
+                type: 'autocomplete',
                 cols: 6,
                 required: true,
+              }, {
+                selectOptions: () => [{id: '1', name: 'Giles Tetteh'}, {id: '2', name: 'Gee'}]
               }),
               $FD({
                 label: { key: "pages.orders.form.fields.code.label", fallback: "Code" },
