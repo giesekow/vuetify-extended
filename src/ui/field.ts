@@ -1604,6 +1604,43 @@ export class Field extends UIBase {
     return candidates.find((item: any) => this.autocompleteItemMatchesValue(item, value));
   }
 
+  private normalizeAutocompleteComparisonValue(value: any) {
+    if (value && typeof value === 'object') {
+      if ('raw' in value && value.raw !== undefined) {
+        return value.raw;
+      }
+
+      if ('value' in value && value.value !== undefined) {
+        return value.value;
+      }
+    }
+
+    return value;
+  }
+
+  private autocompleteValuesEqual(left: any, right: any) {
+    const normalizedLeft = this.normalizeAutocompleteComparisonValue(left);
+    const normalizedRight = this.normalizeAutocompleteComparisonValue(right);
+
+    if (normalizedLeft === normalizedRight) {
+      return true;
+    }
+
+    const itemField = this.params.value.itemValue || this.params.value.idField;
+    const leftId = normalizedLeft && typeof normalizedLeft === 'object'
+      ? Master.getItemId(normalizedLeft, itemField)
+      : normalizedLeft;
+    const rightId = normalizedRight && typeof normalizedRight === 'object'
+      ? Master.getItemId(normalizedRight, itemField)
+      : normalizedRight;
+
+    if ((leftId || leftId === 0) && (rightId || rightId === 0)) {
+      return String(leftId) === String(rightId);
+    }
+
+    return false;
+  }
+
   private autocompleteDisplayTitle(item: any) {
     const fallback = item?.title ?? item?.value ?? item?.raw ?? '';
     const resolvedItem = this.autocompleteDisplayItemForValue(item?.raw ?? item?.value ?? item);
@@ -2341,7 +2378,24 @@ export class Field extends UIBase {
   buildAutocomplete(props: any, context: any) {
     const h = this.$h;
     const loadMoreMode = this.autocompleteLoadMoreMode();
-    const autocompleteSlots: Record<string, any> = {
+    const serverAutocompleteProps = this.isServerAutocomplete()
+      ? {
+          search: this.autocompleteSearchText.value,
+          noFilter: true,
+          noDataText: this.autocompleteNoDataText(),
+          menuProps: {
+            contentClass: this.autocompleteMenuClass,
+          },
+          listProps: loadMoreMode === 'scroll'
+            ? {
+                onScrollPassive: (ev: Event) => this.onAutocompleteListScroll(ev),
+              }
+            : undefined,
+          "onUpdate:search": (value: string) => this.scheduleServerAutocompleteSearch(value || ''),
+        }
+      : {};
+
+    const autocompleteSlots: Record<string, any> | undefined = this.isServerAutocomplete() ? {
       selection: ({ item, index }: any) => h(
         'span',
         {
@@ -2360,9 +2414,9 @@ export class Field extends UIBase {
             : undefined,
         ],
       ),
-    };
+    } : undefined;
 
-    if (this.isServerAutocomplete()) {
+    if (this.isServerAutocomplete() && autocompleteSlots) {
       autocompleteSlots['append-item'] = () => {
         if (loadMoreMode === 'button' && (this.autocompleteHasMore.value || this.autocompleteLoadingMore.value)) {
           return h(
@@ -2431,27 +2485,13 @@ export class Field extends UIBase {
         loading: this.autocompleteLoading.value,
         autoSelectFirst: true,
         returnObject: this.params.value.returnObject,
+        valueComparator: (left: any, right: any) => this.autocompleteValuesEqual(left, right),
         multiple: this.params.value.multiple,
-        search: this.isServerAutocomplete() ? this.autocompleteSearchText.value : undefined,
-        noFilter: this.isServerAutocomplete(),
-        noDataText: this.autocompleteNoDataText(),
-        menuProps: this.isServerAutocomplete()
-          ? {
-              contentClass: this.autocompleteMenuClass,
-            }
-          : undefined,
-        listProps: this.isServerAutocomplete() && loadMoreMode === 'scroll'
-          ? {
-              onScrollPassive: (ev: Event) => this.onAutocompleteListScroll(ev),
-            }
-          : undefined,
+        ...serverAutocompleteProps,
         class: this.params.value.class || [],
         style: this.params.value.style || {},
         rules: this.rules(),
         "onUpdate:focused": (ev: any) => this.onFocusChanged(ev),
-        "onUpdate:search": this.isServerAutocomplete()
-          ? (value: string) => this.scheduleServerAutocompleteSearch(value || '')
-          : undefined,
       },
       autocompleteSlots,
     );

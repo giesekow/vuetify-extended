@@ -438,6 +438,8 @@ export declare class Field extends UIBase {
     private refreshAutocompleteDisplayItems;
     private updateResolvedAutocompleteItems;
     private autocompleteDisplayItemForValue;
+    private normalizeAutocompleteComparisonValue;
+    private autocompleteValuesEqual;
     private autocompleteDisplayTitle;
     private autocompleteCacheKey;
     private fetchAutocompleteSearchPage;
