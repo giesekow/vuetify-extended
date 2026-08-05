@@ -10,6 +10,8 @@ import 'katex/dist/katex.min.css';
 import { UIText } from "./runtime";
 export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagingbox' | 'chart' | 'viewtable' | 'map' | 'map-line' | 'map-circle' | 'map-rectangle' | 'map-polygon' | 'map-heatmap' | 'map-cluster' | 'map-geojson' | 'code' | 'color' | 'html' | 'htmlview' | 'listselect' | 'otp' | 'file-upload' | 'time' | 'date' | 'datetime' | 'button' | 'image' | 'document' | 'password' | 'float' | 'integer' | 'decimal' | 'collection' | 'textarea' | 'boolean' | 'table' | 'reporttable' | 'servertable';
 export type FieldUploadType = 'base64' | 'file' | 'metadata';
+export type FieldDateFormat = 'YYYY-MM-DD' | 'YYYYMMDD' | 'timestamp';
+export type FieldTimeFormat = 'HH:mm' | 'HHMM' | 'timestamp';
 export interface AssetRecord {
     id: string;
     name: string;
@@ -113,6 +115,8 @@ export interface FieldParams {
     hideMapText?: boolean;
     mapTextPageSize?: number;
     uploadType?: FieldUploadType;
+    dateFormat?: FieldDateFormat;
+    timeFormat?: FieldTimeFormat;
     fileAccepts?: any;
     fileMaxSize?: number;
     assetMode?: boolean;
@@ -405,6 +409,13 @@ export declare class Field extends UIBase {
     private isEqual;
     private preprocess;
     private postprocess;
+    private resolvedDateFormat;
+    private resolvedTimeFormat;
+    private parseCompactDateValue;
+    private preprocessDateValue;
+    private preprocessTimeValue;
+    private postprocessDateValue;
+    private postprocessTimeValue;
     selectOptions(): Promise<any[] | undefined>;
     button(): Button | undefined;
     form(): Promise<Form | undefined>;

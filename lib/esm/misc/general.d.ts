@@ -19,6 +19,7 @@ export declare class SimpleDate {
     toDateString(): string;
     toShortString(): string;
     toLongString(): string;
+    toCompactNumber(): number;
     toNumber(): number;
     toSeconds(): number;
     toMilliseconds(): number;
@@ -30,6 +31,7 @@ export declare class SimpleTime {
     static now(): SimpleTime;
     constructor(params?: number | string | SimpleTime);
     toString(): string;
+    toCompactNumber(): number;
     toNumber(): number;
     onDate(date: number | SimpleDate, timezone?: string): moment.Moment;
 }

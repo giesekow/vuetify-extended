@@ -66,6 +66,22 @@ export class SimpleDate {
 }
 ```
 
+Common return shapes:
+
+- `toString()` / `toShortString()`
+  Returns an ISO-like date string: `"YYYY-MM-DD"`
+- `toCompactNumber()`
+  Returns a calendar-encoded number: `YYYYMMDD`
+  Example: August 5, 2026 -> `20260805`
+- `toNumber()`
+  Returns the library's day-count integer representation
+  This is not `YYYYMMDD`, and it is not Unix milliseconds
+  It represents the number of days since the Unix epoch used internally by `SimpleDate`
+- `toSeconds()`
+  Returns Unix seconds at the start of the represented day
+- `toMilliseconds()`
+  Returns Unix milliseconds at the start of the represented day
+
 ### `SimpleTime`
 
 ```ts
@@ -73,6 +89,17 @@ export class SimpleTime {
   // see source for full implementation
 }
 ```
+
+Common return shapes:
+
+- `toString()`
+  Returns a time string in `HH:mm` format
+- `toCompactNumber()`
+  Returns a compact numeric time in `HHMM` form
+  Example: `09:15` -> `915`, `14:30` -> `1430`
+- `toNumber()`
+  Returns the library's internal minutes-since-midnight integer
+  Example: `14:30` -> `870`
 
 ## Exported Helpers
 

@@ -320,8 +320,8 @@ This is the most important quick reference when binding a field to `Master`.
 | `select` | selected value, or selected values array when `multiple: true`; object(s) when `returnObject: true` |
 | `autocomplete` | same as `select` |
 | `listselect` | selected value, or selected values array when `multiple: true` |
-| `date` | numeric `SimpleDate` representation, or `number[]` when `multiple: true` |
-| `time` | numeric `SimpleTime` representation, or `number[]` when `multiple: true` |
+| `date` | depends on `dateFormat`: numeric `SimpleDate` day-count by default, `"YYYY-MM-DD"` when configured, or compact `YYYYMMDD`; arrays when `multiple: true` |
+| `time` | depends on `timeFormat`: numeric `SimpleTime` minutes-by-default, `"HH:mm"` when configured, or compact `HHMM`; arrays when `multiple: true` |
 | `datetime` | whatever the datepicker emits; default usage is usually `Date` |
 | `float` | `number` |
 | `integer` | `number` |
@@ -587,32 +587,57 @@ new Field(
 ### `date`
 
 - Stored datatype:
-  numeric `SimpleDate` representation, or `number[]` when `multiple: true`
+  depends on `dateFormat`
 - UI datatype:
   string date value(s)
 - Widget:
   single-value browser-style date input for non-multiple mode, `VCombobox` for multiple mode
 - Relevant params:
-  `multiple`, `clearable`, `autofocus`, `validation`
+  `multiple`, `clearable`, `autofocus`, `validation`, `dateFormat`
 - Relevant options:
   `default`, `validate`
 - Notes:
-  `Field` preprocesses date values into string form for the UI, then postprocesses them back into numeric `SimpleDate` values before writing into `Master`.
+  `Field` always normalizes the UI value as `YYYY-MM-DD` for the browser input, then stores the result in `Master` according to `dateFormat`.
+
+Supported `dateFormat` values:
+
+- `"timestamp"` (default)
+  Stored datatype: `number` or `number[]`
+  Uses `SimpleDate.toNumber()`, which is the library's internal day-count integer, not Unix milliseconds
+- `"YYYYMMDD"`
+  Stored datatype: `number` or `number[]`
+  Example: `20260805`
+- `"YYYY-MM-DD"`
+  Stored datatype: `string` or `string[]`
+  Example: `"2026-08-05"`
 
 ### `time`
 
 - Stored datatype:
-  numeric `SimpleTime` representation, or `number[]` when `multiple: true`
+  depends on `timeFormat`
 - UI datatype:
   string time value(s)
 - Widget:
   browser-style time input
 - Relevant params:
-  `multiple`, `clearable`, `autofocus`, `validation`
+  `multiple`, `clearable`, `autofocus`, `validation`, `timeFormat`
 - Relevant options:
   `default`, `validate`
 - Notes:
-  Like `date`, time values are normalized by `Field` before storage.
+  Like `date`, time values are normalized to `HH:mm` for the browser input first, then stored according to `timeFormat`.
+
+Supported `timeFormat` values:
+
+- `"timestamp"` (default)
+  Stored datatype: `number` or `number[]`
+  Uses `SimpleTime.toNumber()`, which is the library's minutes-since-midnight integer
+- `"HHMM"`
+  Stored datatype: `number` or `number[]`
+  Example: `1430`
+  Note: leading zeroes are not preserved in numeric form, so `09:15` becomes `915`
+- `"HH:mm"`
+  Stored datatype: `string` or `string[]`
+  Example: `"14:30"`
 
 ### `datetime`
 
@@ -1121,7 +1146,7 @@ Useful runtime properties:
 
 - `Field` pushes changes back into `Master` through `storage` whenever the bound UI value changes.
 - `options.modifies` receives the same resolved value that is written into `Master`.
-- `date` and `time` are normalized before storage; `datetime` is not normalized beyond what the datepicker emits.
+- `date` is normalized to the browser input format first, then stored according to `dateFormat`; `time` is normalized to `HH:mm` first, then stored according to `timeFormat`; `datetime` is not normalized beyond what the datepicker emits.
 - `decimal` is normalized into `{ $numberDecimal: string }` before storage.
 - Some display widgets such as `label`, `button`, and many `chart` uses do not need meaningful `storage`.
 

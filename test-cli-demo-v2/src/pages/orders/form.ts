@@ -41,6 +41,28 @@ export function createOrdersForm(mode: ReportMode = 'display') {
                 label: { key: "pages.orders.form.hints.replaceSchema", fallback: "Replace these starter fields with the real form schema for this page." },
                 cols: 12,
               }),
+              $FD({
+                type: 'collection',
+                label: { key: "pages.orders.form.hints.replaceSchema", fallback: "Replace these starter fields with the real form schema for this page." },
+                cols: 12,
+              }, {
+                headers: () => [
+                  {title: 'Name', value: 'name'},
+                  {title: 'Code', value: 'code'},
+                  {title: 'Description', value: 'description'},
+                ],
+                form: () => $FM({}, {
+                  children: () => [
+                    $PT(
+                      { cols: 12, dense: true },
+                      {
+                        children: () => [
+                          $FD({label: { key: "pages.orders.form.fields.name.label", fallback: "Name" }, storage: 'name', cols: 4, required: true}),
+                        ]
+                      })
+                    ]
+                }),
+              }),
             ],
           },
         ),

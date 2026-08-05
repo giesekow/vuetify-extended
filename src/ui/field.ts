@@ -30,6 +30,8 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
                         'collection'|'textarea'|'boolean'|'table'|'reporttable'|'servertable';
 
 export type FieldUploadType = 'base64'|'file'|'metadata';
+export type FieldDateFormat = 'YYYY-MM-DD'|'YYYYMMDD'|'timestamp';
+export type FieldTimeFormat = 'HH:mm'|'HHMM'|'timestamp';
 
 export interface AssetRecord {
   id: string;
@@ -167,6 +169,8 @@ export interface FieldParams {
   hideMapText?: boolean;
   mapTextPageSize?: number;
   uploadType?: FieldUploadType;
+  dateFormat?: FieldDateFormat;
+  timeFormat?: FieldTimeFormat;
   fileAccepts?: any;
   fileMaxSize?: number; // In KB
   assetMode?: boolean;
@@ -1272,16 +1276,16 @@ export class Field extends UIBase {
     
     if (this.params.value.type === "date") {
       if (Array.isArray(value)) {
-        return value.map((v) => new SimpleDate(v).toString());
+        return value.map((v) => this.preprocessDateValue(v));
       }
-      return new SimpleDate(value).toString();
+      return this.preprocessDateValue(value);
     }
     
     if (this.params.value.type === "time") {
       if (Array.isArray(value)) {
-        return value.map((v) => new SimpleTime(v).toString());
+        return value.map((v) => this.preprocessTimeValue(v));
       }
-      return new SimpleTime(value).toString();
+      return this.preprocessTimeValue(value);
     }
 
     if (this.params.value.type === 'decimal') {
@@ -1306,16 +1310,16 @@ export class Field extends UIBase {
     
     if (this.params.value.type === "date") {
       if (Array.isArray(value)) {
-        return value.map((v) => new SimpleDate(v).toNumber());
+        return value.map((v) => this.postprocessDateValue(v));
       }
-      return new SimpleDate(value).toNumber();
+      return this.postprocessDateValue(value);
     }
     
     if (this.params.value.type === "time") {
       if (Array.isArray(value)) {
-        return value.map((v) => new SimpleTime(v).toNumber());
+        return value.map((v) => this.postprocessTimeValue(v));
       }
-      return new SimpleTime(value).toNumber();
+      return this.postprocessTimeValue(value);
     }
 
     if (this.params.value.type === 'decimal') {
@@ -1334,6 +1338,93 @@ export class Field extends UIBase {
     }
     
     return value;
+  }
+
+  private resolvedDateFormat(): FieldDateFormat {
+    return this.params.value.dateFormat || 'timestamp';
+  }
+
+  private resolvedTimeFormat(): FieldTimeFormat {
+    return this.params.value.timeFormat || 'timestamp';
+  }
+
+  private parseCompactDateValue(value: any) {
+    const compact = String(value ?? '').trim();
+    if (!/^\d{8}$/.test(compact)) {
+      return new SimpleDate(value);
+    }
+
+    const year = Number(compact.slice(0, 4));
+    const month = Number(compact.slice(4, 6));
+    const day = Number(compact.slice(6, 8));
+
+    return new SimpleDate(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+  }
+
+  private preprocessDateValue(value: any) {
+    if (value === undefined || value === null || value === '') {
+      return value;
+    }
+
+    if (this.resolvedDateFormat() === 'YYYYMMDD') {
+      return this.parseCompactDateValue(value).toString();
+    }
+
+    return new SimpleDate(value).toString();
+  }
+
+  private preprocessTimeValue(value: any) {
+    if (value === undefined || value === null || value === '') {
+      return value;
+    }
+
+    if (this.resolvedTimeFormat() === 'HHMM') {
+      const compact = String(value ?? '').trim();
+      if (/^\d{3,4}$/.test(compact)) {
+        const padded = compact.padStart(4, '0');
+        return new SimpleTime(`${padded.slice(0, 2)}:${padded.slice(2, 4)}`).toString();
+      }
+    }
+
+    return new SimpleTime(value).toString();
+  }
+
+  private postprocessDateValue(value: any) {
+    if (value === undefined || value === null || value === '') {
+      return value;
+    }
+
+    const date = new SimpleDate(value);
+
+    switch (this.resolvedDateFormat()) {
+      case 'YYYY-MM-DD':
+        return date.toString();
+      case 'YYYYMMDD':
+        return date.toCompactNumber();
+      case 'timestamp':
+        return date.toNumber();
+      default:
+        return date.toString();
+    }
+  }
+
+  private postprocessTimeValue(value: any) {
+    if (value === undefined || value === null || value === '') {
+      return value;
+    }
+
+    const time = new SimpleTime(value);
+
+    switch (this.resolvedTimeFormat()) {
+      case 'HH:mm':
+        return time.toString();
+      case 'HHMM':
+        return time.toCompactNumber();
+      case 'timestamp':
+        return time.toNumber();
+      default:
+        return time.toNumber();
+    }
   }
 
   async selectOptions(): Promise<any[]|undefined> {

@@ -132,6 +132,10 @@ export class SimpleDate {
     return this.toMoment().format('dddd, Do MMMM YYYY')
   }
 
+  toCompactNumber() {
+    return Number(this.toMoment().format('YYYYMMDD'));
+  }
+
   toNumber() {
     return this.timestamp;
   }
@@ -172,7 +176,7 @@ export class SimpleTime {
       const pts = params.trim().split(':');
       this.timestamp = Number(pts[0] || 0) * 60 + Number(pts[1] || 0);
     } else {
-      const pts = new Date().toISOString().split('T')[0].split(':');
+      const pts = new Date().toISOString().split('T')[1].split(':');
       this.timestamp = Number(pts[0] || 0) * 60 + Number(pts[1] || 0);
     }
   }
@@ -181,6 +185,10 @@ export class SimpleTime {
     const h = Math.floor(this.timestamp / 60);
     const m = this.timestamp % 60;
     return `${h < 10 ? `0${h}` : h}:${m < 10 ? `0${m}`: m}`;
+  }
+
+  toCompactNumber() {
+    return Number(this.toString().replace(':', ''));
   }
 
   toNumber() {
