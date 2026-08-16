@@ -3,7 +3,6 @@ import { ReportMode, UIBase } from "./base";
 import { VAutocomplete, VBtn, VCard, VCheckboxBtn, VCol, VColorInput, VCombobox, VDialog, VFileUpload, VIcon, VOtpInput, VRadio, VRadioGroup, VRow, VSelect, VSwitch, VTextField, VTextarea } from 'vuetify/components';
 import { Master } from "../master";
 import { Button } from "./button";
-import * as webtex from 'webtex';
 import { fileToBase64, selectFile, SimpleDate, SimpleTime, sleep } from "../misc";
 import { VDataTable, VDataTableFooter } from "vuetify/components";
 import Datepicker from '@vuepic/vue-datepicker';
@@ -1112,7 +1111,7 @@ export class Field extends UIBase {
 
     this.changing = true;
     const value = this.postprocess(newValue !== undefined ? newValue : this.modelValue.value);
-    this.renderLatex(value);
+    void this.renderLatex(value);
     if (this.$master && this.params.value.storage) {
       this.$master.$set(this.params.value.storage, value);
     }
@@ -1220,9 +1219,13 @@ export class Field extends UIBase {
     return html;
   }
 
-  private renderLatex(value: any) {
+  private async renderLatex(value: any) {
     if (this.params.value.type === 'code' && this.params.value.lang === 'latex') {
       try {
+        // webtex embeds a WASM syntax highlighter. Loading it at module startup
+        // breaks every application page under a strict CSP even when no LaTeX
+        // field exists, so keep the optional capability behind its field path.
+        const webtex = await import('webtex');
         let fulltext: string = value || ''
         fulltext = fulltext.trim()
 
@@ -2622,7 +2625,7 @@ export class Field extends UIBase {
           this.focusHtmlEditor();
         }
       },
-      renderLatex: (value: string) => this.renderLatex(value),
+      renderLatex: (value: string) => void this.renderLatex(value),
       loadChart: () => this.loadChart(),
       messageFormat: (data: any) => this.messageFormat(data),
       showMediaFullscreen: (data: string) => this.showFullscreen(data),

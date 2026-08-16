@@ -1,4 +1,3 @@
-import ejs from "ejs/ejs.min.js";
 import nestedProperty from "nested-property";
 import { print } from "./html-to-printer";
 
@@ -53,6 +52,10 @@ export class PrinterBase {
   }
 
   async compileEJS(html: string, data: any): Promise<string> {
+    // The browser EJS build evaluates generated functions. Keep that optional
+    // legacy template capability out of the normal application startup path so
+    // strict-CSP consumers do not fail before printing is requested.
+    const { default: ejs } = await import("ejs/ejs.min.js");
     const resolved: any = await this.handleIncludes(html, {}, []);
     const footer = await this.getFooter(html, data);
     const header = await this.getHeader(html, data);

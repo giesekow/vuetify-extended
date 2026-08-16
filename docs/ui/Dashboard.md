@@ -13,6 +13,7 @@ Composable dashboard page and widget system built on `UIBase`. `Dashboard` is in
 - `DashboardWidget` is the common card/shell primitive used by all dashboard widget variants.
 - Widgets support `refresh()` and the dashboard header refresh button cascades refresh across the whole page.
 - Dashboards support theme-aware rendering, background customization, keyboard shortcuts, and a `MenuItem`-powered header dropdown.
+- When no explicit dashboard or widget `theme` is provided, the dashboard family follows the active Vuetify theme mode automatically.
 - The dashboard header menu reuses existing `MenuItem` definitions, including `function`, `menu`, `collection`, `report`, `trigger`, and `ui` actions.
 
 ## Factories
@@ -96,6 +97,8 @@ export interface DashboardOptions {
 
 ### Notes
 
+- `theme` is optional. When set, it forces the dashboard into that mode.
+- When `theme` is omitted, the dashboard follows the current Vuetify theme mode automatically.
 - `theme` controls default text color: dark dashboards default to white text and light dashboards default to dark text.
 - `textColor` overrides the theme-derived text color.
 - `backgroundGradient` and `backgroundImage` can be combined.
@@ -204,6 +207,7 @@ export interface DashboardWidgetOptions {
 - When content overflows, the body becomes vertically scrollable.
 - Header title/subtitle text can wrap on narrow screens without hiding the optional widget icon.
 - Widget `theme` inherits from the parent dashboard when it is not set locally.
+- If neither the widget nor the parent dashboard sets `theme`, the widget follows the current Vuetify theme mode automatically.
 - Widget `textColor` overrides both the widget theme and inherited dashboard theme.
 - `DashboardWidget.refresh()` is available on all widget types and is used by `Dashboard.refresh()`.
 

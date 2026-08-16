@@ -459,6 +459,46 @@ function defaultTextColorForTheme(theme: DashboardTheme) {
   return theme === 'dark' ? '#ffffff' : '#111827';
 }
 
+function readVuetifyThemeClass(element?: Element | null): DashboardTheme | undefined {
+  if (!element) {
+    return undefined;
+  }
+
+  for (const className of Array.from(element.classList || [])) {
+    if (className === 'v-theme--dark') {
+      return 'dark';
+    }
+    if (className === 'v-theme--light') {
+      return 'light';
+    }
+  }
+
+  return undefined;
+}
+
+function detectVuetifyThemeMode(): DashboardTheme {
+  if (typeof document === 'undefined') {
+    return 'light';
+  }
+
+  const candidates = [
+    document.querySelector('.v-application'),
+    document.querySelector('.v-app'),
+    document.querySelector('[class*="v-theme--"]'),
+    document.documentElement,
+    document.body,
+  ];
+
+  for (const candidate of candidates) {
+    const theme = readVuetifyThemeClass(candidate);
+    if (theme) {
+      return theme;
+    }
+  }
+
+  return 'light';
+}
+
 function describeDashboardMenuShortcut(item: MenuItem): string | undefined {
   return describeShortcut(item.$params.shortcut, { cmdForCtrlOnMac: item.$params.cmdForCtrlOnMac })?.label;
 }
@@ -735,6 +775,8 @@ export class DashboardWidget extends UIBase {
   protected params: Ref<DashboardWidgetParams>;
   private options: DashboardWidgetOptions;
   private childInstances: Array<UIBase> = [];
+  private detectedVuetifyTheme: DashboardTheme;
+  private vuetifyThemeObserver?: MutationObserver;
   private static defaultParams: DashboardWidgetParams = {
     cols: 12,
     variant: 'outlined',
@@ -746,6 +788,7 @@ export class DashboardWidget extends UIBase {
     super();
     this.params = this.$makeRef({ ...DashboardWidget.defaultParams, ...(params || {}) });
     this.options = options || {};
+    this.detectedVuetifyTheme = detectVuetifyThemeMode();
     if (options?.master) this.setMaster(options.master);
   }
 
@@ -768,7 +811,7 @@ export class DashboardWidget extends UIBase {
   get $theme(): DashboardTheme {
     if (this.params.value.theme) return this.params.value.theme;
     if (this.$parent && (this.$parent as any).$theme) return (this.$parent as any).$theme;
-    return 'light';
+    return this.detectedVuetifyTheme || detectVuetifyThemeMode();
   }
 
   get $textColor(): string {
@@ -834,6 +877,43 @@ export class DashboardWidget extends UIBase {
   setup() {
     if (this.options.setup) this.options.setup(this);
     this.handleOn('setup', this);
+  }
+
+  attachEventListeners() {
+    super.attachEventListeners();
+
+    if (typeof document === 'undefined' || this.vuetifyThemeObserver || this.params.value.theme) {
+      return;
+    }
+
+    if (this.$parent && (this.$parent as any).$theme !== undefined) {
+      return;
+    }
+
+    const target = document.body;
+    if (!target) {
+      return;
+    }
+
+    this.detectedVuetifyTheme = detectVuetifyThemeMode();
+    this.vuetifyThemeObserver = new MutationObserver(() => {
+      const nextTheme = detectVuetifyThemeMode();
+      if (nextTheme !== this.detectedVuetifyTheme) {
+        this.detectedVuetifyTheme = nextTheme;
+        this.forceRender();
+      }
+    });
+    this.vuetifyThemeObserver.observe(target, {
+      attributes: true,
+      attributeFilter: ['class'],
+      subtree: true,
+    });
+  }
+
+  removeEventListeners() {
+    this.vuetifyThemeObserver?.disconnect();
+    this.vuetifyThemeObserver = undefined;
+    super.removeEventListeners();
   }
 
   async validate(): Promise<string | undefined> {
@@ -3410,6 +3490,8 @@ export class Dashboard extends UIBase {
   private dashboardMenuLoading: Ref<boolean>;
   private resolvedChildrenCache?: Array<DashboardWidget | UIBase | VNode>;
   private shortcutHandler?: (ev: KeyboardEvent) => void;
+  private detectedVuetifyTheme: DashboardTheme;
+  private vuetifyThemeObserver?: MutationObserver;
   private static defaultParams: DashboardParams = {
     fluid: true,
   };
@@ -3423,6 +3505,7 @@ export class Dashboard extends UIBase {
     this.dashboardMenuActiveIndex = this.$makeRef(-1);
     this.dashboardMenuLoaded = this.$makeRef(false);
     this.dashboardMenuLoading = this.$makeRef(false);
+    this.detectedVuetifyTheme = detectVuetifyThemeMode();
     if (options?.master) this.setMaster(options.master);
   }
 
@@ -3443,7 +3526,7 @@ export class Dashboard extends UIBase {
   }
 
   get $theme(): DashboardTheme {
-    return this.params.value.theme || 'light';
+    return this.params.value.theme || this.detectedVuetifyTheme || detectVuetifyThemeMode();
   }
 
   get $textColor(): string {
@@ -3591,6 +3674,25 @@ export class Dashboard extends UIBase {
   attachEventListeners() {
     super.attachEventListeners();
 
+    if (typeof document !== 'undefined' && !this.vuetifyThemeObserver && !this.params.value.theme) {
+      const target = document.body;
+      if (target) {
+        this.detectedVuetifyTheme = detectVuetifyThemeMode();
+        this.vuetifyThemeObserver = new MutationObserver(() => {
+          const nextTheme = detectVuetifyThemeMode();
+          if (nextTheme !== this.detectedVuetifyTheme) {
+            this.detectedVuetifyTheme = nextTheme;
+            this.forceRender();
+          }
+        });
+        this.vuetifyThemeObserver.observe(target, {
+          attributes: true,
+          attributeFilter: ['class'],
+          subtree: true,
+        });
+      }
+    }
+
     if (typeof window === 'undefined' || this.shortcutHandler) {
       return;
     }
@@ -3600,6 +3702,9 @@ export class Dashboard extends UIBase {
   }
 
   removeEventListeners() {
+    this.vuetifyThemeObserver?.disconnect();
+    this.vuetifyThemeObserver = undefined;
+
     if (typeof window !== 'undefined' && this.shortcutHandler) {
       window.removeEventListener('keydown', this.shortcutHandler);
       this.shortcutHandler = undefined;

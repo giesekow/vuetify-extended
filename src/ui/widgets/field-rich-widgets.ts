@@ -1,21 +1,24 @@
-import { Ref, VNode, defineComponent, h as vueH, markRaw, nextTick, onBeforeUnmount, onMounted, shallowRef } from "vue";
+import { Ref, VNode, defineAsyncComponent, defineComponent, h as vueH, markRaw, nextTick, onBeforeUnmount, onMounted, shallowRef } from "vue";
 import { VBtn, VCard, VCol, VIcon, VImg, VRow, VSheet } from 'vuetify/components';
-import { VAceEditor } from 'vue3-ace-editor';
-import 'ace-builds/src-noconflict/mode-text';
-import 'ace-builds/src-noconflict/mode-json';
-import 'ace-builds/src-noconflict/mode-javascript';
-import 'ace-builds/src-noconflict/mode-html';
-import 'ace-builds/src-noconflict/mode-python';
-import 'ace-builds/src-noconflict/mode-ejs';
-import 'ace-builds/src-noconflict/mode-latex';
-import 'ace-builds/src-noconflict/theme-chrome';
-import 'ace-builds/src-noconflict/theme-xcode';
-import 'ace-builds/src-noconflict/worker-json';
-import 'ace-builds/src-noconflict/worker-javascript';
-import 'ace-builds/src-noconflict/worker-html';
 import VueApexCharts from 'vue3-apexcharts';
 import { GoogleMap, Marker, Polygon, Polyline, Circle, Rectangle, MarkerCluster, CustomMarker } from "vue3-google-map";
 import { TiptapHtmlEditor } from "../tiptap-editor";
+
+const VAceEditor = defineAsyncComponent(async () => {
+  await Promise.all([
+    import('ace-builds/src-noconflict/mode-text'),
+    import('ace-builds/src-noconflict/mode-json'),
+    import('ace-builds/src-noconflict/mode-javascript'),
+    import('ace-builds/src-noconflict/mode-html'),
+    import('ace-builds/src-noconflict/mode-python'),
+    import('ace-builds/src-noconflict/mode-ejs'),
+    import('ace-builds/src-noconflict/mode-latex'),
+    import('ace-builds/src-noconflict/theme-chrome'),
+    import('ace-builds/src-noconflict/theme-xcode'),
+  ]);
+  const module = await import('vue3-ace-editor');
+  return module.VAceEditor;
+});
 
 export interface MediaDisplayItem {
   key: string;

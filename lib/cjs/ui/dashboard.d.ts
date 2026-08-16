@@ -365,6 +365,8 @@ export declare class DashboardWidget extends UIBase {
     protected params: Ref<DashboardWidgetParams>;
     private options;
     private childInstances;
+    private detectedVuetifyTheme;
+    private vuetifyThemeObserver?;
     private static defaultParams;
     constructor(params?: DashboardWidgetParams, options?: DashboardWidgetOptions);
     static setDefault(value: DashboardWidgetParams, reset?: boolean): void;
@@ -381,6 +383,8 @@ export declare class DashboardWidget extends UIBase {
     props(): never[];
     render(props: any, context: any): VNode | undefined;
     setup(): void;
+    attachEventListeners(): void;
+    removeEventListeners(): void;
     validate(): Promise<string | undefined>;
     forceCancel(): Promise<void>;
     refresh(): Promise<void>;
@@ -662,6 +666,8 @@ export declare class Dashboard extends UIBase {
     private dashboardMenuLoading;
     private resolvedChildrenCache?;
     private shortcutHandler?;
+    private detectedVuetifyTheme;
+    private vuetifyThemeObserver?;
     private static defaultParams;
     constructor(params?: DashboardParams, options?: DashboardOptions);
     static setDefault(value: DashboardParams, reset?: boolean): void;
