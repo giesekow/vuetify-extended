@@ -459,6 +459,44 @@ function defaultTextColorForTheme(theme: DashboardTheme) {
   return theme === 'dark' ? '#ffffff' : '#111827';
 }
 
+function truncateButtonText(owner: UIBase, text: UIText) {
+  return owner.$h('span', {
+    style: {
+      display: 'block',
+      width: '100%',
+      minWidth: 0,
+      maxWidth: '100%',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    },
+  }, owner.$text(text));
+}
+
+function truncateButtonInlineContent(owner: UIBase, text: UIText, trailing: VNode[] = []) {
+  return owner.$h('span', {
+    style: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+      overflow: 'hidden',
+      minWidth: 0,
+      maxWidth: '100%',
+    },
+  }, [
+    owner.$h('span', {
+      style: {
+        minWidth: 0,
+        flex: '1 1 auto',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      },
+    }, owner.$text(text)),
+    ...trailing,
+  ]);
+}
+
 function readVuetifyThemeClass(element?: Element | null): DashboardTheme | undefined {
   if (!element) {
     return undefined;
@@ -1428,21 +1466,29 @@ export class DashboardTableWidget extends DashboardWidget {
               variant: 'text',
               size: 'small',
               color: this.$textColor,
+              style: {
+                maxWidth: '100%',
+                minWidth: 0,
+              },
               disabled: this.currentPage.value <= 1 || this.loading.value,
               onClick: () => {
                 void this.goToPage(this.currentPage.value - 1);
               },
-            }, () => this.$uiText('ve.common.prev', 'Prev')),
+            }, () => truncateButtonText(this, this.$uiText('ve.common.prev', 'Prev'))),
             h('div', { class: ['text-body-2'], style: { minWidth: '68px', textAlign: 'center', opacity: 0.78 } }, this.$uiText('ve.dashboard.table.pageOf', 'Page {page} / {total}', { page: Math.min(this.currentPage.value, totalPages), total: totalPages })),
             h(VBtn, {
               variant: 'text',
               size: 'small',
               color: this.$textColor,
+              style: {
+                maxWidth: '100%',
+                minWidth: 0,
+              },
               disabled: this.currentPage.value >= totalPages || this.loading.value,
               onClick: () => {
                 void this.goToPage(this.currentPage.value + 1);
               },
-            }, () => this.$uiText('ve.common.next', 'Next')),
+            }, () => truncateButtonText(this, this.$uiText('ve.common.next', 'Next'))),
           ]),
         ])
       );
@@ -2607,11 +2653,15 @@ export class DashboardActionListWidget extends DashboardWidget {
           variant: item.actionVariant || 'tonal',
           color: item.actionColor || 'primary',
           disabled: item.disabled,
+          style: {
+            maxWidth: '100%',
+            minWidth: 0,
+          },
           onClick: (ev: any) => {
             ev?.stopPropagation?.();
             void this.onItemClicked(item, index);
           },
-        }, () => this.$text(item.actionText))] : []),
+        }, () => truncateButtonText(this, item.actionText!))] : []),
       ])));
     }
 
@@ -2843,10 +2893,14 @@ export class DashboardEmptyStateWidget extends DashboardWidget {
       ...(this.resolvedButtonText.value ? [h(VBtn, {
         color: toneColor,
         variant: 'tonal',
+        style: {
+          maxWidth: '100%',
+          minWidth: 0,
+        },
         onClick: () => {
           void this.onClicked();
         },
-      }, () => this.$text(this.resolvedButtonText.value))] : []),
+      }, () => truncateButtonText(this, this.resolvedButtonText.value!))] : []),
     ]);
 
     return renderDashboardWidgetShell(this, this.$emptyParams, body, true);
@@ -3446,18 +3500,23 @@ export class DashboardTabsWidget extends DashboardWidget {
       const activeTab = this.resolvedTabs.value[activeIndex];
       const tabChildren = activeTab?.children ? activeTab.children(this, {}, {}) : [];
       this.activeChildren = tabChildren.filter((item): item is UIBase => isRenderableUIBase(item));
-      body.push(h('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' } }, this.resolvedTabs.value.map((tab, index) => h(VBtn, {
-        key: tab.key || index,
-        size: 'small',
-        variant: index === activeIndex ? 'tonal' : 'text',
-        color: index === activeIndex ? 'primary' : this.$textColor,
-        onClick: () => {
-          void this.selectTab(index);
-        },
-      }, () => [
-        h('span', this.$text(tab.label)),
-        ...(tab.badge !== undefined ? [h(VChip, { size: 'x-small', variant: 'flat', style: { marginLeft: '8px' } }, () => String(tab.badge))] : []),
-      ]))));
+      body.push(h('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' } }, this.resolvedTabs.value.map((tab, index) => {
+        return h(VBtn, {
+          key: tab.key || index,
+          size: 'small',
+          variant: index === activeIndex ? 'tonal' : 'text',
+          color: index === activeIndex ? 'primary' : this.$textColor,
+          style: {
+            maxWidth: '100%',
+            minWidth: 0,
+          },
+          onClick: () => {
+            void this.selectTab(index);
+          },
+        }, () => truncateButtonInlineContent(this, tab.label, [
+          ...(tab.badge !== undefined ? [h(VChip, { size: 'x-small', variant: 'flat', style: { marginLeft: '8px' } }, () => String(tab.badge))] : []),
+        ]));
+      })));
       body.push(h('div', {
         style: {
           display: 'flex',

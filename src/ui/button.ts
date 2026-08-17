@@ -132,6 +132,11 @@ export class Button extends UIBase {
       block: this.params.value.block,
       loading: this.params.value.loading,
       width: this.params.value.width,
+      style: {
+        maxWidth: '100%',
+        minWidth: 0,
+        overflow: 'hidden',
+      },
       title: resolvedTooltip ? undefined : accessibleLabel,
       'aria-label': accessibleLabel,
       'aria-keyshortcuts': displayShortcut?.label,
@@ -172,7 +177,21 @@ export class Button extends UIBase {
     }
 
     if (!displayShortcut) {
-      return this.$text(this.params.value.text);
+      return h(
+        'span',
+        {
+          style: {
+            display: 'block',
+            width: '100%',
+            minWidth: 0,
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          },
+        },
+        this.$text(this.params.value.text)
+      );
     }
 
     return h(
@@ -182,10 +201,21 @@ export class Button extends UIBase {
           display: 'inline-flex',
           alignItems: 'center',
           gap: '8px',
+          overflow: 'hidden',
+          minWidth: 0,
+          maxWidth: '100%',
         },
       },
       [
-        h('span', {}, this.$text(this.params.value.text)),
+        h('span', {
+          style: {
+            minWidth: 0,
+            flex: '1 1 auto',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          },
+        }, this.$text(this.params.value.text)),
         this.params.value.shortcutDisplay === 'compact'
           ? this.renderCompactShortcut(displayShortcut.key, displayShortcut.ctrl, displayShortcut.alt, displayShortcut.shift, displayShortcut.meta, displayShortcut.label)
           : h(
@@ -193,6 +223,7 @@ export class Button extends UIBase {
               {
                 class: ['text-caption'],
                 style: {
+                  flex: '0 0 auto',
                   opacity: '0.7',
                   fontWeight: '500',
                   fontSize: this.params.value.shortcutFontSize || '0.5rem',
