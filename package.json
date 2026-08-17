@@ -3,8 +3,9 @@
   "version": "1.0.1",
   "description": "A plugin to use vuetify in javascript mode",
   "scripts": {
-    "test": "npm run test:csp && npm run test:cli",
+    "test": "npm run test:csp && npm run test:menu-a11y && npm run test:cli",
     "test:csp": "node test/csp-lazy-code-editor.test.cjs",
+    "test:menu-a11y": "node test/menu-card-a11y.test.cjs",
     "test:cli": "npm run build && node test/cli/create-form.test.cjs && node test/cli/advanced-cli.test.cjs",
     "build": "npm run build-esm && npm run build-cjs",
     "build-esm": "npx tsc -p tsconfig.json && cp -r src/css lib/esm/",

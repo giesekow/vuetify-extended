@@ -307,7 +307,9 @@ export class Menu extends UIBase {
                 class: ['mx-auto'],
                 role: 'button',
                 tabindex: this.params.value.keyboardNavigation ? -1 : undefined,
-                'aria-selected': this.params.value.keyboardNavigation ? index === this.activeIndex.value : undefined,
+                'aria-current': this.params.value.keyboardNavigation && index === this.activeIndex.value
+                  ? 'page'
+                  : undefined,
                 style: { ...this.menuCardSizingStyle(), ...this.menuCardStyle(index) } as any,
                 onMouseenter: () => this.setActiveIndex(index),
                 onClick: () => {
