@@ -117,6 +117,45 @@ The nested `collection` field is the right choice when:
 
 If each row should be searched, filtered, paged, or edited as a first-class record management screen, step up to a top-level `Collection` or `Trigger` + `Report` flow instead.
 
+## Field Value Lifecycle
+
+Use `FieldOptions.initialized(field, context)` to configure dependencies from a default or an existing Master value. Use `FieldOptions.changed(field, context)` for reactions to genuine user or programmatic transitions.
+
+Both callbacks receive:
+
+```ts
+interface FieldValueContext {
+  origin: 'default' | 'master' | 'user' | 'programmatic';
+  value: any;
+  previousValue?: any;
+}
+```
+
+Origins are:
+
+- `default`: a `FieldParams.default` or `FieldOptions.default(field)` value was applied and stored
+- `master`: an existing or reset Master value initialized the field
+- `user`: the rendered field emitted a real value update
+- `programmatic`: a relevant direct `Master.$set(...)` changed the bound value
+
+Applying either form of default triggers `initialized` with `origin: 'default'`; it does not trigger `changed`. Existing Master values trigger `initialized` with `origin: 'master'`. A user edit triggers `changed` with `origin: 'user'`, while a relevant direct Master update triggers it with `origin: 'programmatic'`.
+
+The effective value is already normalized and synchronized to `Master` before either callback runs. `context.previousValue` is the normalized prior field value. Equivalent select/autocomplete reconciliation values, unrelated Master changes, and save bookkeeping do not invoke `changed`.
+
+Do not clear persisted dependent values from `initialized`; edit-mode hydration should load options and enabled state without destroying saved data. Put reset behavior in `changed`. Use `null`, rather than `undefined`, to intentionally clear a dependent field that has a default. Keep initialization idempotent because dynamic definitions may remount a Field. In-place rerenders do not replay either lifecycle callback, while a Master reset starts a new initialization cycle.
+
+Option callbacks execute before event listeners. Their signatures differ intentionally:
+
+```ts
+initialized: (field, context) => { /* ... */ }
+changed: (field, context) => { /* ... */ }
+
+field.on('initialized', (context) => { /* ... */ });
+field.on('changed', (value, context) => { /* ... */ });
+```
+
+Use a shared non-destructive helper from both hooks when dependency loading must happen initially and after edits. Guard `changed` with `context.origin === 'user'` when an effect must only follow a user gesture.
+
 ## Media Fields
 
 Media-capable field types:

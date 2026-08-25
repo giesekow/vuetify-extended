@@ -5,17 +5,19 @@ import { Application } from '../declarations';
 export interface CustomEventHandler {
   isOnce: boolean;
   ref?: string|symbol;
-  callback: EventListener;
+  callback: UIEventListener;
 }
 
+export type UIEventListener = (...args: any[]) => any;
+
 export interface OnHandler {
-  [key: string]: EventListener
+  [key: string]: UIEventListener
 }
 
 export class EventEmitter {
   private _events: { [key: string] : CustomEventHandler[] } = {};
 
-  on (name: string, listener: EventListener, reference?: string|symbol) {
+  on (name: string, listener: UIEventListener, reference?: string|symbol) {
     if (!this._events[name]) {
       this._events[name] = [];
     }
@@ -23,14 +25,14 @@ export class EventEmitter {
     this._events[name].push({isOnce: false, callback: listener, ref: reference});
   }
 
-  once (name: string, listener: EventListener, reference?: string|symbol) {
+  once (name: string, listener: UIEventListener, reference?: string|symbol) {
     if (!this._events[name]) {
       this._events[name] = [];
     }
     this._events[name].push({isOnce: true, callback: listener, ref: reference});
   }
 
-  removeListener (name: string, listenerToRemove?: EventListener) {
+  removeListener (name: string, listenerToRemove?: UIEventListener) {
     if (!listenerToRemove && this._events[name]) {
       this._events[name] = [];
     } else if (this._events[name]) {
@@ -49,12 +51,12 @@ export class EventEmitter {
     }
   }
 
-  emit (name: string, data?: any) {
+  emit (name: string, ...args: any[]) {
     if (this._events[name]) {
       const calledCallbacks: any[] = [];
       for (let i = 0; i < this._events[name].length; i++) {
         const currentCallback: any = this._events[name][i].callback;
-        if (!calledCallbacks.includes(currentCallback)) currentCallback(data);
+        if (!calledCallbacks.includes(currentCallback)) currentCallback(...args);
         calledCallbacks.push(currentCallback);
       }
 

@@ -161,6 +161,14 @@ export interface FieldParams {
 ## `FieldOptions`
 
 ```ts
+type FieldValueOrigin = 'default' | 'master' | 'user' | 'programmatic';
+
+interface FieldValueContext {
+  origin: FieldValueOrigin;
+  value: any;
+  previousValue?: any;
+}
+
 export interface FieldOptions {
   master?: Master;
   modifies?: Ref<any>;
@@ -197,7 +205,8 @@ export interface FieldOptions {
   chartOptions?: (field: Field) => Promise<any|undefined>|any|undefined;
   messageFormat?: (field: Field, data: any) => any[];
   rules?: (field: Field) => any[];
-  changed?: (field: Field) => void;
+  changed?: (field: Field, context: FieldValueContext) => void;
+  initialized?: (field: Field, context: FieldValueContext) => Promise<void>|void;
   fileSelected?: (field: Field, payload: FieldSelectedFilePayload) => Promise<void>|void;
   assetUploaded?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
   assetsResolved?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
@@ -219,7 +228,7 @@ export interface FieldOptions {
 - `storage`
   Nested path inside `Master`, for example `name`, `address.city`, or `items.0.price`.
 - `default`
-  Static default value used when the bound `Master` path is empty. `options.default(...)` is the dynamic equivalent.
+  Static default value used when the bound `Master` path is `undefined`. `options.default(field)` is the dynamic equivalent, and is evaluated only when no stored value exists. `params.default` takes precedence when both are provided. The resolved value is normalized for the field type and written to the configured `Master` storage path. Default application invokes `initialized` with `origin: 'default'`, not the user-originated `changed` callback/event.
 - `readonly`
   Forces display-only behavior regardless of report/form mode.
 - `required`
@@ -270,7 +279,9 @@ export interface FieldOptions {
 - `validate(...)`
   Extra custom validation beyond the built-in `validation` object.
 - `changed(...)`
-  Runs after the field has pushed its new value back into `Master`.
+  Runs after a user or programmatic value transition has synchronized the field and `Master`. Its context origin is `user` or `programmatic`.
+- `initialized(...)`
+  Runs after the field receives its effective default or existing `Master` value. Use it to load dependent options and calculate enabled/disabled state without clearing persisted edit-mode values. Its context origin is `default` or `master`.
 - `fileSelected(...)`
   Runs after file selection has updated the field state. In direct mode this happens after `modelValue` is updated. In asset mode this happens after files are staged locally.
 - `assetUploaded(...)`
@@ -289,6 +300,7 @@ export interface FieldOptions {
 `Field` emits and/or supports these common hook points:
 
 - `setup`
+- `initialized`
 - `changed`
 - `focus-changed`
 - `focus-gained`
@@ -297,6 +309,210 @@ export interface FieldOptions {
 - `assetUploaded`
 - `assetsResolved`
 - `assetRemoved`
+
+### Field Value Lifecycle
+
+Fields have two deliberately separate value lifecycle hooks:
+
+- `initialized` configures the field and its dependencies from the effective initial value.
+- `changed` reacts to a genuine value transition after initialization.
+
+Both hooks receive the same `FieldValueContext` as their second argument:
+
+```ts
+export type FieldValueOrigin =
+  | 'default'
+  | 'master'
+  | 'user'
+  | 'programmatic';
+
+export interface FieldValueContext {
+  origin: FieldValueOrigin;
+  value: any;
+  previousValue?: any;
+}
+```
+
+`context.value` and `context.previousValue` use the field's normalized storage representation. For example, date and time fields use their configured storage formats, and a select field follows its `returnObject`, `itemValue`, and `multiple` configuration.
+
+#### Origin and callback matrix
+
+| Situation | Origin | `initialized` | `changed` |
+| --- | --- | --- | --- |
+| `FieldParams.default` is applied | `default` | yes | no |
+| `FieldOptions.default(field)` is applied | `default` | yes | no |
+| An existing value is loaded from `Master` | `master` | yes | no |
+| A `Master` reset supplies an existing value | `master` | yes | no |
+| A `Master` reset leaves the path missing and a default is reapplied | `default` | yes | no |
+| The user edits or selects a value in the rendered widget | `user` | no | yes |
+| Relevant code calls `master.$set(...)` with a different value | `programmatic` | no | yes |
+| Field/Vuetify reconciliation produces an equivalent value | none | no | no |
+| A broad unrelated `Master` change occurs, including save bookkeeping | none | no | no |
+
+The most important rule is that applying a default invokes `initialized` only. It does **not** invoke `changed`. This prevents startup and edit-mode hydration from behaving like a user edit while still providing a dedicated place to load dependent data.
+
+#### `initialized(field, context)`
+
+Use `initialized` to establish state that depends on the effective starting value:
+
+- load dependent select/autocomplete options
+- enable, disable, show, or hide related fields
+- fetch supporting data required by the initial selection
+- derive non-destructive presentation state
+
+Initialization occurs after the value is preprocessed and after an applied default has been normalized and written to `Master`. It is deferred until the next Vue tick so sibling fields and their Master listeners can mount first. If `initialized` returns a promise, the field waits for it before emitting the `initialized` event.
+
+`initialized` runs once for each mounted `Field` instance. A `Master` reset explicitly starts a new initialization cycle. A dynamic form may replace and remount its field objects, so initialization code should still be safe to run more than once.
+
+Do not clear persisted dependent values from `initialized`. In edit mode, it should load the dependencies needed to display saved values without destroying those values.
+
+#### `changed(field, context)`
+
+Use `changed` for effects that should happen because a value genuinely moved from one value to another:
+
+- clear a dependent selection after its parent selection changes
+- recalculate another stored value
+- perform user-change validation or synchronization
+- react to a relevant programmatic `Master.$set(...)`
+
+The new value is already normalized and written to `Master` before `changed` runs. Therefore, `field.$value`, `context.value`, and `field.$master?.$get(field.$params.storage)` reflect the new state inside the callback.
+
+Select and autocomplete values are compared semantically, including item ids and multiple selections. A new object reference representing the same selection does not invoke `changed`. Save-time validation and unrelated Master events also do not invoke it.
+
+#### Dependent-field example
+
+Use `initialized` to load the starting options and `changed` to load new options and clear the now-invalid dependent value:
+
+```ts
+const configureStateField = async (country: Field, reset: boolean) => {
+  await loadStateOptions(country.$value);
+
+  if (reset) {
+    // Use null so a dependent field default is not applied again.
+    country.$master?.$set('stateId', null);
+  }
+};
+
+$FD(
+  { ref: 'country', type: 'select', storage: 'countryId' },
+  {
+    selectOptions: () => countries,
+    initialized: (field, context) => {
+      // context.origin is "default" or "master".
+      return configureStateField(field, false);
+    },
+    changed: (field, context) => {
+      // context.origin is "user" or "programmatic".
+      void configureStateField(field, true);
+    },
+  },
+);
+```
+
+Use `null` when the dependent field should remain intentionally empty. Setting it to `undefined` means the path is missing, so that field's default may be applied again during its next synchronization.
+
+#### Static and computed defaults
+
+Static defaults belong in `FieldParams.default`:
+
+```ts
+$FD({
+  type: 'select',
+  storage: 'countryId',
+  default: 'DE',
+});
+```
+
+Computed defaults belong in `FieldOptions.default`:
+
+```ts
+$FD(
+  { type: 'text', storage: 'createdBy' },
+  {
+    default: () => Api.instance.user?._id,
+    initialized: (_field, context) => {
+      console.log(context.origin); // "default"
+      console.log(context.value);  // normalized stored user id
+    },
+  },
+);
+```
+
+Defaults follow these rules:
+
+- An existing `Master` value always wins, including `null`, `false`, `0`, and an empty string.
+- A default is considered only when the storage path is `undefined`.
+- `FieldParams.default` takes precedence when both default forms are configured.
+- The default is preprocessed for the UI and postprocessed before storage.
+- Applying the default writes it to the configured `Master` path before `initialized` runs.
+- Applying the default produces `origin: 'default'` and never emits `changed`.
+
+#### Callback and event APIs
+
+The option callbacks receive the `Field` first and context second:
+
+```ts
+$FD(
+  { type: 'text', storage: 'name' },
+  {
+    initialized: (field, context) => {
+      console.log(field.$value, context.origin);
+    },
+    changed: (field, context) => {
+      console.log(context.previousValue, context.value, context.origin);
+    },
+  },
+);
+```
+
+The equivalent `.on(...)` events intentionally preserve the library's established payload order:
+
+```ts
+field.on('changed', (value, context: FieldValueContext) => {
+  console.log(value, context.origin);
+});
+
+field.on('initialized', (context: FieldValueContext) => {
+  console.log(context.value, context.origin);
+});
+```
+
+Execution order is:
+
+1. Synchronize the effective value into the field and `Master`.
+2. Call `FieldOptions.initialized(field, context)` or `FieldOptions.changed(field, context)`.
+3. Emit `initialized(context)` or `changed(value, context)` to `.on(...)` listeners.
+
+Existing one-argument handlers remain valid:
+
+```ts
+$FD(
+  { type: 'text', storage: 'name' },
+  {
+    changed: (field) => {
+      console.log(field.$value);
+    },
+  },
+);
+```
+
+```ts
+field.on('changed', (value) => {
+  console.log(value);
+});
+```
+
+#### Choosing the correct hook
+
+| Requirement | Recommended hook |
+| --- | --- |
+| Load options for a default value | `initialized` |
+| Load options for an existing edit-mode value | `initialized` |
+| Enable or hide fields based on their starting data | `initialized` |
+| Clear a child value when the user changes its parent | `changed` |
+| React to direct application code changing the bound Master path | `changed` with `origin: 'programmatic'` |
+| Run the same non-destructive calculation at startup and after changes | Call a shared helper from both hooks |
+| Run only after a user gesture, not after `Master.$set(...)` | `changed`, guarded by `context.origin === 'user'` |
 
 Collection fields also emit:
 

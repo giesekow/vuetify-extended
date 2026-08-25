@@ -1,13 +1,13 @@
 {
   "name": "vuetify-extended",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A plugin to use vuetify in javascript mode",
   "scripts": {
     "test": "npm run test:csp && npm run test:fields && npm run test:menu-a11y && npm run test:cli",
     "test:csp": "node test/csp-lazy-code-editor.test.cjs",
-    "test:fields": "node test/datetime-master-sync.test.cjs && node test/field-change-origin.test.cjs",
+    "test:fields": "node test/datetime-master-sync.test.cjs && node test/field-change-origin.test.cjs && node test/field-default-master-sync.test.cjs && node test/field-initialization-lifecycle.test.cjs",
     "test:menu-a11y": "node test/menu-card-a11y.test.cjs",
-    "test:cli": "npm run build && node test/cli/create-form.test.cjs && node test/cli/advanced-cli.test.cjs",
+    "test:cli": "npm run build && node test/ui-event-emitter.test.cjs && node test/cli/create-form.test.cjs && node test/cli/advanced-cli.test.cjs",
     "build": "npm run build-esm && npm run build-cjs",
     "build-esm": "npx tsc -p tsconfig.json && cp -r src/css lib/esm/",
     "build-cjs": "npx tsc -p tsconfig-cjs.json && cp -r src/css lib/cjs/",

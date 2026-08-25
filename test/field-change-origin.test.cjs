@@ -11,21 +11,21 @@ const formSource = fs.readFileSync(
   'utf8',
 );
 
-const updateValueStart = fieldSource.indexOf('updateValue()');
+const updateValueStart = fieldSource.indexOf('\n  private synchronizeValue(');
 const renderMathStart = fieldSource.indexOf('private renderMathInHtml', updateValueStart);
-assert.notEqual(updateValueStart, -1, 'Unable to locate Field.updateValue().');
-assert.notEqual(renderMathStart, -1, 'Unable to locate the end of Field.updateValue().');
+assert.notEqual(updateValueStart, -1, 'Unable to locate Field.synchronizeValue().');
+assert.notEqual(renderMathStart, -1, 'Unable to locate the end of Field.synchronizeValue().');
 
 const updateValueSource = fieldSource.slice(updateValueStart, renderMathStart);
 assert.match(
   updateValueSource,
-  /this\.setModelValueFromMaster\(value\)/,
+  /this\.setModelValueFromMaster\(currentValue\)/,
   'Master/default hydration must use the non-user model synchronization path.',
 );
 assert.doesNotMatch(
   updateValueSource,
-  /this\.modelValue\.value\s*=\s*value/,
-  'Field.updateValue() must not assign modelValue directly and accidentally emit a user change.',
+  /this\.modelValue\.value\s*=\s*(value|currentValue)/,
+  'Field synchronization must not assign modelValue directly and accidentally emit a user change.',
 );
 
 const modelBindingStart = fieldSource.indexOf('private modelBinding()');
@@ -46,6 +46,11 @@ assert.match(
 );
 assert.match(
   fieldSource,
+  /modelChanged = !this\.modelValuesEqual\(this\.modelValue\.value, currentValue\)/,
+  'Master synchronization must use semantic select/autocomplete equality before reporting a programmatic change.',
+);
+assert.match(
+  fieldSource,
   /this\.params\.value\.multiple[\s\S]{0,100}\? \[\] : left/,
   'Multiple select and autocomplete fields must treat nullish and empty-array values as the same empty selection.',
 );
@@ -59,7 +64,7 @@ const setupSource = fieldSource.slice(setupStart, handledSyncStart);
 const assetSyncIndex = setupSource.indexOf('this.syncResolvedAssets()');
 const autocompleteSyncIndex = setupSource.indexOf('this.syncServerAutocompleteSelection()');
 const consumeHandledIndex = setupSource.indexOf('this.consumeHandledModelSync()');
-const changedIndex = setupSource.indexOf('this.valueChanged()');
+const changedIndex = setupSource.indexOf("this.valueChanged(value, 'user', previousValue)");
 assert.ok(assetSyncIndex >= 0 && assetSyncIndex < consumeHandledIndex,
   'Master hydration must still refresh resolved asset display data before suppressing the user-change callback.');
 assert.ok(autocompleteSyncIndex >= 0 && autocompleteSyncIndex < consumeHandledIndex,

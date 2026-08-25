@@ -31,6 +31,19 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
 export type FieldUploadType = 'base64'|'file'|'metadata';
 export type FieldDateFormat = 'YYYY-MM-DD'|'YYYYMMDD'|'timestamp';
 export type FieldTimeFormat = 'HH:mm'|'HHMM'|'timestamp';
+export type FieldValueOrigin = 'default'|'master'|'user'|'programmatic';
+
+export interface FieldValueContext {
+  origin: FieldValueOrigin;
+  value: any;
+  previousValue?: any;
+}
+
+interface FieldUpdateOptions {
+  initialize?: boolean;
+  notifyChanged?: boolean;
+  origin?: FieldValueOrigin;
+}
 
 export interface AssetRecord {
   id: string;
@@ -262,7 +275,8 @@ export interface FieldOptions {
   chartOptions?: (field: Field) => Promise<any|undefined>|any|undefined;
   messageFormat?: (field: Field, data: any) => any[];
   rules?: (field: Field) => any[];
-  changed?: (field: Field) => void;
+  changed?: (field: Field, context: FieldValueContext) => void;
+  initialized?: (field: Field, context: FieldValueContext) => Promise<void>|void;
   fileSelected?: (field: Field, payload: FieldSelectedFilePayload) => Promise<void>|void;
   assetUploaded?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
   assetsResolved?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
@@ -289,6 +303,8 @@ export class Field extends UIBase {
   private handledModelSyncPending = false;
   private handledModelSyncValue: any;
   private handledModelSyncVersion = 0;
+  private initialized = false;
+  private initializationVersion = 0;
   private selectItems: Ref<any[]>;
   private optionLoaded: Ref<boolean>;
   private collectionLoaded: Ref<boolean>;
@@ -488,7 +504,7 @@ export class Field extends UIBase {
   }
 
   setup(props: any, context: any) {
-    this.$watch(this.modelValue, () => {
+    this.$watch(this.modelValue, (value, previousValue) => {
       if (this.isAssetMode()) {
         void this.syncResolvedAssets();
       }
@@ -498,7 +514,7 @@ export class Field extends UIBase {
       if (this.consumeHandledModelSync()) {
         return;
       }
-      if (!this.changing) this.valueChanged();
+      if (!this.changing) this.valueChanged(value, 'user', previousValue);
     });
     if (this.options.setup) this.options.setup(this);
     this.handleOn('setup', this);
@@ -533,9 +549,10 @@ export class Field extends UIBase {
   }
 
   private setModelValueAndSync(value: any) {
+    const previousValue = this.modelValue.value;
     this.modelValue.value = value;
     this.markCurrentModelSyncHandled();
-    this.valueChanged(value);
+    this.valueChanged(value, 'user', previousValue);
   }
 
   private selectionValuesEqual(left: any, right: any) {
@@ -555,6 +572,14 @@ export class Field extends UIBase {
     }
 
     return this.autocompleteValuesEqual(normalizedLeft, normalizedRight);
+  }
+
+  private modelValuesEqual(left: any, right: any) {
+    if (this.params.value.type === 'select' || this.params.value.type === 'autocomplete') {
+      return this.selectionValuesEqual(left, right);
+    }
+
+    return this.isEqual(left, right);
   }
 
   private modelBinding() {
@@ -1169,30 +1194,84 @@ export class Field extends UIBase {
     }
   }
 
-  valueChanged(newValue?: any) {
+  private eventValue(value: any) {
+    return value === undefined ? undefined : this.postprocess(value);
+  }
+
+  private notifyChanged(context: FieldValueContext) {
+    if (this.options.changed) this.options.changed(this, context);
+    this.handleOn('changed', context.value, context);
+  }
+
+  private notifyInitialized(context: FieldValueContext, force = false) {
+    if (this.initialized && !force) {
+      return;
+    }
+
+    this.initialized = true;
+    const version = ++this.initializationVersion;
+    const dispatch = async () => {
+      await nextTick();
+      if (version !== this.initializationVersion) {
+        return;
+      }
+      if (this.options.initialized) {
+        await this.options.initialized(this, context);
+      }
+      if (version !== this.initializationVersion) {
+        return;
+      }
+      this.handleOn('initialized', context);
+    };
+
+    void dispatch();
+  }
+
+  valueChanged(newValue?: any, origin: FieldValueOrigin = 'programmatic', previousValue?: any) {
     if (this.changing) {
       return;
     }
 
     this.changing = true;
-    const value = this.postprocess(newValue !== undefined ? newValue : this.modelValue.value);
-    void this.renderLatex(value);
-    if (this.$master && this.params.value.storage) {
-      this.$master.$set(this.params.value.storage, value);
+    try {
+      const value = this.postprocess(newValue !== undefined ? newValue : this.modelValue.value);
+      void this.renderLatex(value);
+      if (this.$master && this.params.value.storage) {
+        this.$master.$set(this.params.value.storage, value);
+      }
+      if (this.options.modifies) {
+        this.options.modifies.value = value;
+      }
+      this.notifyChanged({
+        origin,
+        value,
+        previousValue: this.eventValue(previousValue),
+      });
+    } finally {
+      this.changing = false;
     }
-    if (this.options.modifies) {
-      this.options.modifies.value = value;
+  }
+
+  private masterChangeAffectsValue(event: any) {
+    const storage = this.params.value.storage;
+    const key = event?.key;
+    if (!storage || typeof key !== 'string' || key.length === 0) {
+      return false;
     }
-    if (this.options.changed) this.options.changed(this);
-    this.handleOn('changed', value);
-    this.changing = false;
+
+    return key === storage || key.startsWith(`${storage}.`) || storage.startsWith(`${key}.`);
   }
 
   attachEventListeners() {
     if (this.$master) {
-      this.$master.on('changed', () => this.updateValue(), this.$id);
+      this.$master.on('changed', (event: any) => this.synchronizeValue({
+        notifyChanged: this.masterChangeAffectsValue(event),
+        origin: 'programmatic',
+      }), this.$id);
       this.$master.on('loaded', () => this.updateValue(), this.$id);
-      this.$master.on('reset', () => this.updateValue(), this.$id);
+      this.$master.on('reset', () => {
+        this.synchronizeValue({ initialize: true, origin: 'master' }, true);
+      }, this.$id);
     }
   }
 
@@ -1202,47 +1281,85 @@ export class Field extends UIBase {
     }
   }
 
-  updateValue() {
-    if (!this.changing) {
-      this.changing = true;
-      if (this.$master && this.params.value.storage) {
-        const defval = this.params.value.default !== undefined ? this.params.value.default : (this.options.default ? this.options.default(this) : undefined);
-        let value = this.preprocess(this.$master.$get(this.params.value.storage, defval));
-        
-        if (this.params.value.type === 'collection' && value) {
-          value = this.attachIndex(value || []);
-          this.$master.$set(this.params.value.storage, value);
-        }
+  private hasDefaultValue() {
+    return this.params.value.default !== undefined || !!this.options.default;
+  }
 
-        if (this.isEqual(this.modelValue.value, value)) {
-          this.changing = false;
-          return;
-        }
-        this.setModelValueFromMaster(value);
-        if (this.isMediaField()) {
-          this.clearSelectedFiles();
-        }
-        if (this.options.modifies) {
-          this.options.modifies.value = value; 
-        }
-      } else if (this.params.value.default !== undefined || this.options.default) {
-        if (this.modelValue.value === undefined) {
-          const defval = this.params.value.default !== undefined ? this.params.value.default : (this.options.default ? this.options.default(this) : undefined);
-          const value = this.preprocess(defval);
-          if (this.isEqual(this.modelValue.value, value)) {
-            this.changing = false;
-            return;
+  private resolveDefaultValue() {
+    if (this.params.value.default !== undefined) {
+      return this.params.value.default;
+    }
+
+    return this.options.default ? this.options.default(this) : undefined;
+  }
+
+  updateValue() {
+    this.synchronizeValue();
+  }
+
+  private synchronizeValue(options: FieldUpdateOptions = {}, forceInitialization = false) {
+    if (!this.changing) {
+      const previousValue = this.modelValue.value;
+      let currentValue = previousValue;
+      let applyingDefault = false;
+      let modelChanged = false;
+      this.changing = true;
+      try {
+        if (this.$master && this.params.value.storage) {
+          const storedValue = this.$master.$get(this.params.value.storage);
+          applyingDefault = storedValue === undefined && this.hasDefaultValue();
+          currentValue = this.preprocess(applyingDefault ? this.resolveDefaultValue() : storedValue);
+
+          if (this.params.value.type === 'collection' && currentValue) {
+            currentValue = this.attachIndex(currentValue || []);
+            if (!applyingDefault) {
+              this.$master.$set(this.params.value.storage, currentValue);
+            }
           }
-          this.setModelValueFromMaster(value);
-          if (this.isMediaField()) {
-            this.clearSelectedFiles();
+
+          if (applyingDefault && currentValue !== undefined) {
+            this.$master.$set(this.params.value.storage, this.postprocess(currentValue));
           }
-          if (this.options.modifies) {
-            this.options.modifies.value = value; 
+
+          modelChanged = !this.modelValuesEqual(this.modelValue.value, currentValue);
+          if (modelChanged) {
+            this.setModelValueFromMaster(currentValue);
+            if (this.isMediaField()) {
+              this.clearSelectedFiles();
+            }
+            if (this.options.modifies) {
+              this.options.modifies.value = currentValue;
+            }
+          }
+        } else if (this.hasDefaultValue() && this.modelValue.value === undefined) {
+          applyingDefault = true;
+          currentValue = this.preprocess(this.resolveDefaultValue());
+          modelChanged = !this.modelValuesEqual(this.modelValue.value, currentValue);
+          if (modelChanged) {
+            this.setModelValueFromMaster(currentValue);
+            if (this.isMediaField()) {
+              this.clearSelectedFiles();
+            }
+            if (this.options.modifies) {
+              this.options.modifies.value = currentValue;
+            }
           }
         }
+      } finally {
+        this.changing = false;
       }
-      this.changing = false;
+
+      const context: FieldValueContext = {
+        origin: applyingDefault ? 'default' : (options.origin || 'master'),
+        value: this.eventValue(currentValue),
+        previousValue: this.eventValue(previousValue),
+      };
+
+      if (options.initialize) {
+        this.notifyInitialized(context, forceInitialization);
+      } else if (options.notifyChanged && modelChanged) {
+        this.notifyChanged(context);
+      }
     }
   }
 
@@ -3846,15 +3963,15 @@ export class Field extends UIBase {
     this.tableLoaded.value = true;
   }
 
-  private handleOn(event: string, data?: any) {
+  private handleOn(event: string, data?: any, ...args: any[]) {
     if (this.options.on) {
       const events = this.options.on(this);
       if (events[event]) {
-        events[event](data)
+        events[event](data, ...args)
       }
     }
 
-    this.emit(event, data)
+    this.emit(event, data, ...args)
   }
 
   onFocusChanged(focused: any) {
@@ -3886,7 +4003,7 @@ export class Field extends UIBase {
   }
 
   mounted() {
-    this.updateValue();
+    this.synchronizeValue({ initialize: true, origin: 'master' });
     if (this.isAssetMode()) {
       void this.syncResolvedAssets();
     }
@@ -3896,6 +4013,7 @@ export class Field extends UIBase {
   }
 
   destructor() {
+    this.initializationVersion += 1;
     if (this.autocompleteDebounceTimer) {
       clearTimeout(this.autocompleteDebounceTimer);
       this.autocompleteDebounceTimer = undefined;

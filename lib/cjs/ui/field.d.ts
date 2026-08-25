@@ -12,6 +12,12 @@ export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagin
 export type FieldUploadType = 'base64' | 'file' | 'metadata';
 export type FieldDateFormat = 'YYYY-MM-DD' | 'YYYYMMDD' | 'timestamp';
 export type FieldTimeFormat = 'HH:mm' | 'HHMM' | 'timestamp';
+export type FieldValueOrigin = 'default' | 'master' | 'user' | 'programmatic';
+export interface FieldValueContext {
+    origin: FieldValueOrigin;
+    value: any;
+    previousValue?: any;
+}
 export interface AssetRecord {
     id: string;
     name: string;
@@ -228,7 +234,8 @@ export interface FieldOptions {
     chartOptions?: (field: Field) => Promise<any | undefined> | any | undefined;
     messageFormat?: (field: Field, data: any) => any[];
     rules?: (field: Field) => any[];
-    changed?: (field: Field) => void;
+    changed?: (field: Field, context: FieldValueContext) => void;
+    initialized?: (field: Field, context: FieldValueContext) => Promise<void> | void;
     fileSelected?: (field: Field, payload: FieldSelectedFilePayload) => Promise<void> | void;
     assetUploaded?: (field: Field, assets: AssetRecord[]) => Promise<void> | void;
     assetsResolved?: (field: Field, assets: AssetRecord[]) => Promise<void> | void;
@@ -253,6 +260,8 @@ export declare class Field extends UIBase {
     private handledModelSyncPending;
     private handledModelSyncValue;
     private handledModelSyncVersion;
+    private initialized;
+    private initializationVersion;
     private selectItems;
     private optionLoaded;
     private collectionLoaded;
@@ -324,6 +333,7 @@ export declare class Field extends UIBase {
     private setModelValueFromMaster;
     private setModelValueAndSync;
     private selectionValuesEqual;
+    private modelValuesEqual;
     private modelBinding;
     private componentOptions;
     private inputIconProps;
@@ -407,10 +417,17 @@ export declare class Field extends UIBase {
     private openMediaItem;
     private onOtpFinished;
     private onFileUploadChanged;
-    valueChanged(newValue?: any): void;
+    private eventValue;
+    private notifyChanged;
+    private notifyInitialized;
+    valueChanged(newValue?: any, origin?: FieldValueOrigin, previousValue?: any): void;
+    private masterChangeAffectsValue;
     attachEventListeners(): void;
     removeEventListeners(): void;
+    private hasDefaultValue;
+    private resolveDefaultValue;
     updateValue(): void;
+    private synchronizeValue;
     private renderMathInHtml;
     private renderLatex;
     private showPreviewFullscreen;

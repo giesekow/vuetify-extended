@@ -14,7 +14,7 @@ assert.notEqual(modelBindingStart, -1, 'Unable to locate the end of the immediat
 
 const immediateSyncSource = fieldSource.slice(immediateSyncStart, modelBindingStart);
 const localUpdateIndex = immediateSyncSource.indexOf('this.modelValue.value = value;');
-const masterUpdateIndex = immediateSyncSource.indexOf('this.valueChanged(value);');
+const masterUpdateIndex = immediateSyncSource.indexOf("this.valueChanged(value, 'user', previousValue);");
 assert.ok(localUpdateIndex >= 0, 'Immediate synchronization must update the field model.');
 assert.ok(masterUpdateIndex > localUpdateIndex, 'The field model must update before the value is committed to Master.');
 
