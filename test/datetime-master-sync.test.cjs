@@ -30,7 +30,7 @@ assert.match(
 
 assert.match(
   fieldSource,
-  /if \(this\.consumeImmediateModelSync\(\)\) \{\s*return;\s*\}/,
+  /if \(this\.consumeHandledModelSync\(\)\) \{\s*return;\s*\}/,
   'The normal model watcher must suppress the duplicate callback after an immediate datetime synchronization.',
 );
 

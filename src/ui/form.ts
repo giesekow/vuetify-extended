@@ -954,10 +954,19 @@ export class Form extends UIBase {
   private setValidationSummary(messages: string[] = []) {
     const combined = messages.concat(this.collectRequiredFieldSummary());
     const unique = combined.filter((message, index) => message && combined.indexOf(message) === index);
+    if (
+      this.validationSummary.value.length === unique.length
+      && this.validationSummary.value.every((message, index) => message === unique[index])
+    ) {
+      return;
+    }
     this.validationSummary.value = unique;
   }
 
   private clearValidationSummary() {
+    if (this.validationSummary.value.length === 0) {
+      return;
+    }
     this.validationSummary.value = [];
   }
 

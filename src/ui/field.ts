@@ -286,9 +286,9 @@ export class Field extends UIBase {
   private modelValue = this.$makeRef();
   private options: FieldOptions;
   private changing: boolean;
-  private immediateModelSyncPending = false;
-  private immediateModelSyncValue: any;
-  private immediateModelSyncVersion = 0;
+  private handledModelSyncPending = false;
+  private handledModelSyncValue: any;
+  private handledModelSyncVersion = 0;
   private selectItems: Ref<any[]>;
   private optionLoaded: Ref<boolean>;
   private collectionLoaded: Ref<boolean>;
@@ -489,14 +489,14 @@ export class Field extends UIBase {
 
   setup(props: any, context: any) {
     this.$watch(this.modelValue, () => {
-      if (this.consumeImmediateModelSync()) {
-        return;
-      }
       if (this.isAssetMode()) {
         void this.syncResolvedAssets();
       }
       if (this.isServerAutocomplete()) {
         void this.syncServerAutocompleteSelection();
+      }
+      if (this.consumeHandledModelSync()) {
+        return;
       }
       if (!this.changing) this.valueChanged();
     });
@@ -504,36 +504,69 @@ export class Field extends UIBase {
     this.handleOn('setup', this);
   }
 
-  private consumeImmediateModelSync() {
-    if (!this.immediateModelSyncPending || !Object.is(this.modelValue.value, this.immediateModelSyncValue)) {
+  private consumeHandledModelSync() {
+    if (!this.handledModelSyncPending || !Object.is(this.modelValue.value, this.handledModelSyncValue)) {
       return false;
     }
 
-    this.immediateModelSyncPending = false;
-    this.immediateModelSyncValue = undefined;
+    this.handledModelSyncPending = false;
+    this.handledModelSyncValue = undefined;
     return true;
+  }
+
+  private markCurrentModelSyncHandled() {
+    const syncVersion = ++this.handledModelSyncVersion;
+    this.handledModelSyncValue = this.modelValue.value;
+    this.handledModelSyncPending = true;
+
+    void nextTick(() => {
+      if (this.handledModelSyncVersion === syncVersion) {
+        this.handledModelSyncPending = false;
+        this.handledModelSyncValue = undefined;
+      }
+    });
+  }
+
+  private setModelValueFromMaster(value: any) {
+    this.modelValue.value = value;
+    this.markCurrentModelSyncHandled();
   }
 
   private setModelValueAndSync(value: any) {
     this.modelValue.value = value;
-
-    const syncVersion = ++this.immediateModelSyncVersion;
-    this.immediateModelSyncValue = this.modelValue.value;
-    this.immediateModelSyncPending = true;
+    this.markCurrentModelSyncHandled();
     this.valueChanged(value);
+  }
 
-    void nextTick(() => {
-      if (this.immediateModelSyncVersion === syncVersion) {
-        this.immediateModelSyncPending = false;
-        this.immediateModelSyncValue = undefined;
+  private selectionValuesEqual(left: any, right: any) {
+    if ((left === undefined || left === null) && (right === undefined || right === null)) {
+      return true;
+    }
+
+    const normalizedLeft = this.params.value.multiple && (left === undefined || left === null) ? [] : left;
+    const normalizedRight = this.params.value.multiple && (right === undefined || right === null) ? [] : right;
+
+    if (Array.isArray(normalizedLeft) || Array.isArray(normalizedRight)) {
+      if (!Array.isArray(normalizedLeft) || !Array.isArray(normalizedRight) || normalizedLeft.length !== normalizedRight.length) {
+        return false;
       }
-    });
+
+      return normalizedLeft.every((item, index) => this.autocompleteValuesEqual(item, normalizedRight[index]));
+    }
+
+    return this.autocompleteValuesEqual(normalizedLeft, normalizedRight);
   }
 
   private modelBinding() {
     return {
       modelValue: this.modelValue.value,
       "onUpdate:modelValue": (value: any) => {
+        if (
+          (this.params.value.type === 'select' || this.params.value.type === 'autocomplete')
+          && this.selectionValuesEqual(this.modelValue.value, value)
+        ) {
+          return;
+        }
         this.modelValue.value = value;
       }
     }
@@ -1185,7 +1218,7 @@ export class Field extends UIBase {
           this.changing = false;
           return;
         }
-        this.modelValue.value = value;
+        this.setModelValueFromMaster(value);
         if (this.isMediaField()) {
           this.clearSelectedFiles();
         }
@@ -1200,7 +1233,7 @@ export class Field extends UIBase {
             this.changing = false;
             return;
           }
-          this.modelValue.value = value;
+          this.setModelValueFromMaster(value);
           if (this.isMediaField()) {
             this.clearSelectedFiles();
           }
