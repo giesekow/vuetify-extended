@@ -250,6 +250,9 @@ export declare class Field extends UIBase {
     private modelValue;
     private options;
     private changing;
+    private immediateModelSyncPending;
+    private immediateModelSyncValue;
+    private immediateModelSyncVersion;
     private selectItems;
     private optionLoaded;
     private collectionLoaded;
@@ -316,6 +319,8 @@ export declare class Field extends UIBase {
     get $hasPendingUpload(): boolean;
     props(): never[];
     setup(props: any, context: any): void;
+    private consumeImmediateModelSync;
+    private setModelValueAndSync;
     private modelBinding;
     private componentOptions;
     private inputIconProps;

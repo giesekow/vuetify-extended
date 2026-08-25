@@ -286,6 +286,9 @@ export class Field extends UIBase {
   private modelValue = this.$makeRef();
   private options: FieldOptions;
   private changing: boolean;
+  private immediateModelSyncPending = false;
+  private immediateModelSyncValue: any;
+  private immediateModelSyncVersion = 0;
   private selectItems: Ref<any[]>;
   private optionLoaded: Ref<boolean>;
   private collectionLoaded: Ref<boolean>;
@@ -486,6 +489,9 @@ export class Field extends UIBase {
 
   setup(props: any, context: any) {
     this.$watch(this.modelValue, () => {
+      if (this.consumeImmediateModelSync()) {
+        return;
+      }
       if (this.isAssetMode()) {
         void this.syncResolvedAssets();
       }
@@ -496,6 +502,32 @@ export class Field extends UIBase {
     });
     if (this.options.setup) this.options.setup(this);
     this.handleOn('setup', this);
+  }
+
+  private consumeImmediateModelSync() {
+    if (!this.immediateModelSyncPending || !Object.is(this.modelValue.value, this.immediateModelSyncValue)) {
+      return false;
+    }
+
+    this.immediateModelSyncPending = false;
+    this.immediateModelSyncValue = undefined;
+    return true;
+  }
+
+  private setModelValueAndSync(value: any) {
+    this.modelValue.value = value;
+
+    const syncVersion = ++this.immediateModelSyncVersion;
+    this.immediateModelSyncValue = this.modelValue.value;
+    this.immediateModelSyncPending = true;
+    this.valueChanged(value);
+
+    void nextTick(() => {
+      if (this.immediateModelSyncVersion === syncVersion) {
+        this.immediateModelSyncPending = false;
+        this.immediateModelSyncValue = undefined;
+      }
+    });
   }
 
   private modelBinding() {
@@ -3042,7 +3074,7 @@ export class Field extends UIBase {
   buildDatetime(props: any, context: any) {
     const h = this.$h;
     const updateValue = (value: any) => {
-      this.modelValue.value = value;
+      this.setModelValueAndSync(value);
     };
     return [
       h(
