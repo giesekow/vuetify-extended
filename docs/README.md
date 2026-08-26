@@ -13,6 +13,9 @@ This folder collects project-level documentation for `vuetify-extended`.
 - [UI Reference](./ui/Index.md)
   Detailed reference pages for the class-based UI layer: app shell, menus, forms, reports, dialogs, fields, and shell widgets.
 
+- [Refreshing UI Data](./ui/Refreshing.md)
+  Practical guidance for reloading Trigger results, complete Triggers and Reports, Dashboards, and individual dashboard widgets without losing user context unnecessarily.
+
 - [Misc Reference](./misc/Index.md)
   Detailed reference pages for shared helpers such as Excel, validators, print support, and general utilities.
 

@@ -49,6 +49,9 @@ export interface DashboardOptions {
     setup?: (dashboard: Dashboard) => void;
     on?: (dashboard: Dashboard) => OnHandler;
 }
+export interface DashboardRefreshOptions {
+    progress?: boolean;
+}
 export interface DashboardWidgetParams {
     ref?: string;
     title?: UIText;
@@ -668,6 +671,7 @@ export declare class Dashboard extends UIBase {
     private shortcutHandler?;
     private detectedVuetifyTheme;
     private vuetifyThemeObserver?;
+    private refreshPromise?;
     private static defaultParams;
     constructor(params?: DashboardParams, options?: DashboardOptions);
     static setDefault(value: DashboardParams, reset?: boolean): void;
@@ -688,7 +692,7 @@ export declare class Dashboard extends UIBase {
     removeEventListeners(): void;
     validate(): Promise<string | undefined>;
     forceCancel(): Promise<void>;
-    refresh(): Promise<void>;
+    refresh(options?: DashboardRefreshOptions): Promise<void>;
     private resolveDashboardChildren;
     private invalidateDashboardChildren;
     private renderHeaderMenu;

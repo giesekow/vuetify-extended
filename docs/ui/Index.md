@@ -36,6 +36,8 @@ The UI layer is class-based and centers around `UIBase` descendants that render 
   Reusable section/grouping primitive for composing forms and reports from smaller labelled blocks.
 - [Report](./Report.md)
   Multi-step workflow screen for create/edit/reporting tasks with forms, navigation, progress, side buttons, and finish/cancel behavior.
+- [Refreshing UI Data](./Refreshing.md)
+  Comparison and usage guide for result-only Trigger reloads, full Trigger and Report refreshes, Dashboard/widget refreshes, progress handling, preserved state, and realtime refresh patterns.
 - [Selector](./Selector.md)
   Selection-oriented screen/dialog pattern for choosing one or more items from a list or service source.
 - [Shell Widgets](./ShellWidgets.md)

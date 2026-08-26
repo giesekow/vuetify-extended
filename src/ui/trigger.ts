@@ -78,6 +78,10 @@ export interface TriggerOptions {
   rightMenu?: (trigger: Trigger) => Promise<MenuTarget | undefined> | MenuTarget | undefined;
 }
 
+export interface TriggerRefreshOptions {
+  progress?: boolean;
+}
+
 export interface ServerTableOptions {
   page: number,
   itemsPerPage: any,
@@ -113,6 +117,8 @@ export class Trigger extends UIBase {
   private compactSideActions: Ref<boolean>;
   private sideActionMediaQuery?: MediaQueryList;
   private sideActionMediaHandler?: ((ev: MediaQueryListEvent) => void) | undefined;
+  private refreshPromise?: Promise<void>;
+  private resultsRefreshPromise?: Promise<void>;
   private static defaultParams: TriggerParams = {
     fluid: true,
     sideButtonPosition: 'right',
@@ -343,7 +349,11 @@ export class Trigger extends UIBase {
         data = await this.load(this.currentSearchText, options);
       }
       
-      if(Array.isArray(data)) {
+      if (!data) {
+        this.items.value = [];
+        this.tableOptions.value.total = 0;
+        this.tableOptions.value.page = options.page || 1;
+      } else if(Array.isArray(data)) {
         this.items.value = this.options.format ? await this.options.format(this, data) || [] : data;
         this.tableOptions.value.itemsPerPage = -1;
         this.tableOptions.value.total = data.length;
@@ -360,6 +370,63 @@ export class Trigger extends UIBase {
       this.loading.value = false;
     }
 
+  }
+
+  async refreshResults(options: TriggerRefreshOptions = {}): Promise<void> {
+    if (options.progress) {
+      Dialogs.$showProgress({});
+    }
+
+    const refreshPromise = this.resultsRefreshPromise || (async () => {
+      if (this.hasAccess.value) {
+        await this.loadItems({
+          page: this.tableOptions.value.page || 1,
+          itemsPerPage: this.tableOptions.value.itemsPerPage,
+          total: this.tableOptions.value.total,
+          selectedFilterFields: this.selectedSearchFields.value || [],
+        });
+      } else {
+        this.items.value = [];
+        this.tableOptions.value.total = 0;
+      }
+    })();
+    this.resultsRefreshPromise = refreshPromise;
+
+    try {
+      await refreshPromise;
+    } finally {
+      if (this.resultsRefreshPromise === refreshPromise) {
+        this.resultsRefreshPromise = undefined;
+      }
+      if (options.progress) {
+        Dialogs.$hideProgress();
+      }
+    }
+  }
+
+  async refresh(options: TriggerRefreshOptions = {}): Promise<void> {
+    if (options.progress) {
+      Dialogs.$showProgress({});
+    }
+
+    const refreshPromise = this.refreshPromise || (async () => {
+      this.loaded = true;
+      await this.initialize();
+      await this.refreshResults();
+      this.forceRender();
+    })();
+    this.refreshPromise = refreshPromise;
+
+    try {
+      await refreshPromise;
+    } finally {
+      if (this.refreshPromise === refreshPromise) {
+        this.refreshPromise = undefined;
+      }
+      if (options.progress) {
+        Dialogs.$hideProgress();
+      }
+    }
   }
 
   render(props: any, context: any): VNode|undefined {

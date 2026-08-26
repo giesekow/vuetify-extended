@@ -78,12 +78,17 @@ export interface ReportOptions {
   title?: (report: Report, index?: number) => string
   sideButtons?: (props: any, context: any, report: Report) => Array<Button>|undefined
 }
+
+export interface ReportRefreshOptions {
+  progress?: boolean;
+}
 ```
 
 ### `Report`
 
 ```ts
 export class Report extends UIBase {
+  refresh(options?: ReportRefreshOptions): Promise<void>;
   // see source for full implementation
 }
 ```
@@ -91,4 +96,32 @@ export class Report extends UIBase {
 ## Key Methods
 
 - `static setDefault(value: ReportParams, reset?: boolean)`
+- `loadObject()`
+- `refresh(options?: ReportRefreshOptions)`
 - `render(props: any, context: any)`
+
+## Refreshing Report Data
+
+Use `Report.refresh()` when API data may have changed and the complete visible report should reflect the latest state:
+
+```ts
+await report.refresh();
+```
+
+`refresh()` performs the following sequence:
+
+1. Calls `report.loadObject()` to reload the current object through the normal Report and Master lifecycle.
+2. Updates the Report clean-state snapshot and executes `ReportOptions.loaded(report)` plus `before-loaded`/`loaded` events.
+3. Calls `report.forceRender()` so the current Form subtree and `sideButtons(...)` factory are reevaluated.
+
+Progress is disabled by default, which makes the method suitable for background and realtime refreshes. Enable the shared blocking progress dialog for a user-triggered refresh:
+
+```ts
+await report.refresh({ progress: true });
+```
+
+The progress dialog is closed in a `finally` block even when a loaded hook throws. Concurrent calls share the same in-flight API reload, preventing duplicate requests. Each caller still controls whether it displays progress.
+
+Refreshing does not save or reset the Report. Fields receive the reloaded Master data through their normal synchronization lifecycle, while side buttons are recreated from the latest Report state.
+
+Use `Report.refresh()` rather than only `report.$master.$load()` when report-level UI factories must also reflect the new data. For a comparison with Trigger and Dashboard refresh behavior, see [Refreshing UI Data](./Refreshing.md).

@@ -81,6 +81,10 @@ export interface TriggerOptions {
   exportTemplate?: (trigger: Trigger, mode?: ReportMode) => Promise<ExportTemplateInfo|undefined>|ExportTemplateInfo|undefined;
   sideButtons?: (props: any, context: any, trigger: Trigger) => Array<Button>|undefined;
 }
+
+export interface TriggerRefreshOptions {
+  progress?: boolean;
+}
 ```
 
 ### `ServerTableOptions`
@@ -98,6 +102,8 @@ export interface ServerTableOptions {
 
 ```ts
 export class Trigger extends UIBase {
+  refreshResults(options?: TriggerRefreshOptions): Promise<void>;
+  refresh(options?: TriggerRefreshOptions): Promise<void>;
   // see source for full implementation
 }
 ```
@@ -105,7 +111,60 @@ export class Trigger extends UIBase {
 ## Key Methods
 
 - `static setDefault(value: TriggerParams, reset?: boolean)`
+- `refreshResults(options?: TriggerRefreshOptions)`
+- `refresh(options?: TriggerRefreshOptions)`
 - `render(props: any, context: any)`
+
+## Refreshing Trigger Results
+
+Use `Trigger.refreshResults()` when only the API-backed result table must be reloaded, for example after another client or workflow creates a record:
+
+```ts
+await trigger.refreshResults();
+```
+
+It preserves and reuses the current browsing context:
+
+- committed search text
+- selected filter fields
+- the current query and `processQuery(...)`
+- current page and page size
+- the selected-items model, which is not explicitly cleared
+
+It reloads through `TriggerOptions.load(...)` or the default service query, applies `query(...)`, `processQuery(...)`, and `format(...)` through the normal loading path, and updates the reactive result table and total. It does not rerun access checks, headers, search-field configuration, top/bottom children, or side-button factories, and it does not force-remount the Trigger.
+
+Progress is disabled by default:
+
+```ts
+await trigger.refreshResults({ progress: true });
+```
+
+Use the broader `Trigger.refresh()` when configuration and buttons may also depend on changed external data:
+
+```ts
+await trigger.refresh();
+```
+
+The full refresh reruns access, headers, and search-field configuration; delegates table loading to `refreshResults()`; then forces a render so top, bottom, and side-button definitions are recreated.
+
+Progress is disabled by default. Enable it for a user-triggered refresh:
+
+```ts
+await trigger.refresh({ progress: true });
+```
+
+If current or refreshed access is denied, stale result items are cleared and no API result query is made. Concurrent result-only calls share one table request, and concurrent full refreshes share one full operation.
+
+### Which Trigger refresh should I use?
+
+| Situation | Method |
+| --- | --- |
+| A new API row should appear without disturbing the user's search | `refreshResults()` |
+| A realtime update changed result values | `refreshResults()` |
+| Available filters or table headers changed | `refresh()` |
+| Access or side-button visibility changed | `refresh()` |
+
+For the cross-component refresh guide and realtime examples, see [Refreshing UI Data](./Refreshing.md).
 
 
 ## Keyboard Navigation

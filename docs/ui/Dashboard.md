@@ -93,6 +93,10 @@ export interface DashboardOptions {
   setup?: (dashboard: Dashboard) => void;
   on?: (dashboard: Dashboard) => OnHandler;
 }
+
+export interface DashboardRefreshOptions {
+  progress?: boolean;
+}
 ```
 
 ### Notes
@@ -103,7 +107,7 @@ export interface DashboardOptions {
 - `textColor` overrides the theme-derived text color.
 - `backgroundGradient` and `backgroundImage` can be combined.
 - `menuItems(...)` uses existing `MenuItem` definitions, so shortcut display, navigation metadata, and built-in action types work out of the box.
-- `Dashboard.refresh()` cascades into all child widgets.
+- `Dashboard.refresh(options?)` cascades into all child widgets and recreates the cached three-dot menu definitions.
 
 ### Keyboard Behavior
 
@@ -866,9 +870,16 @@ export interface DashboardTabsWidgetOptions extends DashboardWidgetOptions {
 ## Refresh Model
 
 - `Dashboard.refresh()` cascades into every child widget.
+- After widget refresh completes, `menuItems(...)` runs again and access checks are reapplied so menu text, visibility, and actions use current data.
 - Widgets with async loaders refresh by reloading their data and redrawing their internal state.
 - Metric and progress widgets replay their animations on refresh.
-- The dashboard header refresh button and the `Enter` shortcut both call the same refresh path.
+- The dashboard header refresh button and the `Enter` shortcut call `dashboard.refresh({ progress: true })`.
+- Programmatic refresh does not show progress by default. Use `await dashboard.refresh({ progress: true })` for a blocking user-triggered refresh.
+- Concurrent calls share one in-flight widget/menu refresh operation.
+- `Dashboard.refresh()` operates on the already resolved widget instances; it does not replace the dashboard's `topChildren`, `children`, or `bottomChildren` definitions.
+- Call a retained widget instance's `refresh()` directly when only that card needs new data.
+
+For a comparison with Report refresh and Trigger result-only refresh, see [Refreshing UI Data](./Refreshing.md).
 
 ## Header Menu Model
 

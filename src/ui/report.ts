@@ -80,6 +80,10 @@ export interface ExportTemplateInfo {
   filename?: string;
 }
 
+export interface ReportRefreshOptions {
+  progress?: boolean;
+}
+
 export class Report extends UIBase {
   private params: Ref<ReportParams>;
   private hasAccess: Ref<boolean>;
@@ -105,6 +109,7 @@ export class Report extends UIBase {
   private compactSideActions: Ref<boolean>;
   private sideActionMediaQuery?: MediaQueryList;
   private sideActionMediaHandler?: ((ev: MediaQueryListEvent) => void) | undefined;
+  private refreshPromise?: Promise<void>;
   private static defaultParams: ReportParams = {
     sideButtonPosition: 'right',
     sideButtonWidth: 180,
@@ -249,6 +254,29 @@ export class Report extends UIBase {
       this.options.loaded(this)
     }
     this.handleOn('loaded', this);
+  }
+
+  async refresh(options: ReportRefreshOptions = {}): Promise<void> {
+    if (options.progress) {
+      Dialogs.$showProgress({});
+    }
+
+    const refreshPromise = this.refreshPromise || (async () => {
+      await this.loadObject();
+      this.forceRender();
+    })();
+    this.refreshPromise = refreshPromise;
+
+    try {
+      await refreshPromise;
+    } finally {
+      if (this.refreshPromise === refreshPromise) {
+        this.refreshPromise = undefined;
+      }
+      if (options.progress) {
+        Dialogs.$hideProgress();
+      }
+    }
   }
 
   async saved() {}

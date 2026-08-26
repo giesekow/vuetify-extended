@@ -70,6 +70,9 @@ export interface ExportTemplateInfo {
     template?: any;
     filename?: string;
 }
+export interface ReportRefreshOptions {
+    progress?: boolean;
+}
 export declare class Report extends UIBase {
     private params;
     private hasAccess;
@@ -95,6 +98,7 @@ export declare class Report extends UIBase {
     private compactSideActions;
     private sideActionMediaQuery?;
     private sideActionMediaHandler?;
+    private refreshPromise?;
     private static defaultParams;
     constructor(params?: ReportParams, options?: ReportOptions);
     static setDefault(value: ReportParams, reset?: boolean): void;
@@ -115,6 +119,7 @@ export declare class Report extends UIBase {
     private initialize;
     private runAccess;
     loadObject(): Promise<void>;
+    refresh(options?: ReportRefreshOptions): Promise<void>;
     saved(): Promise<void>;
     cancel(): Promise<void>;
     access(mode?: ReportAccessMode): Promise<boolean>;

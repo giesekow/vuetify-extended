@@ -20,6 +20,7 @@ Use the library's existing class-based runtime model. Prefer extending the estab
 - Do not confuse top-level `Collection` with `Field type: 'collection'`. The field type is for nested `Array<Record<string, any>>` data inside a parent record.
 - Preserve `Master` storage semantics. Before changing field behavior, read `references/fields.md`.
 - Prefer actual runtime instances over plain config objects. This library composes `new Report(...)`, `new Form(...)`, `new Field(...)`, etc.
+- When API-backed UI must be reloaded, read `docs/ui/Refreshing.md` and use the narrowest component refresh method instead of closing/reopening the screen or using `forceRender()` as an API reload.
 - Use `AppManager` display methods to show runtime UI:
   - `showReport(report)`
   - `showCollection(collection)`

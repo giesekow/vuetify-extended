@@ -86,3 +86,13 @@ If the task involves executing user-provided code that returns a UI object:
 ## Canonical Example Source
 
 Read `test/src/demos.ts` for real composition examples before designing new flows. It is the fastest way to match the repo's style.
+
+## Refresh Selection
+
+- API result rows changed but Trigger configuration did not: `trigger.refreshResults()`
+- Trigger access, headers, filters, children, or side buttons changed: `trigger.refresh()`
+- Report record and report-dependent Form/side-button UI changed: `report.refresh()`
+- all Dashboard widgets or its header menu changed: `dashboard.refresh()`
+- one retained Dashboard widget changed: `widget.refresh()`
+
+Progress is opt-in on the screen-level methods through `{ progress: true }`. Read `docs/ui/Refreshing.md` before using `forceRender()` as a substitute for an API refresh.

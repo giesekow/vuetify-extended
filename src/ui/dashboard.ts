@@ -76,6 +76,10 @@ export interface DashboardOptions {
   on?: (dashboard: Dashboard) => OnHandler;
 }
 
+export interface DashboardRefreshOptions {
+  progress?: boolean;
+}
+
 export interface DashboardWidgetParams {
   ref?: string;
   title?: UIText;
@@ -3551,6 +3555,7 @@ export class Dashboard extends UIBase {
   private shortcutHandler?: (ev: KeyboardEvent) => void;
   private detectedVuetifyTheme: DashboardTheme;
   private vuetifyThemeObserver?: MutationObserver;
+  private refreshPromise?: Promise<void>;
   private static defaultParams: DashboardParams = {
     fluid: true,
   };
@@ -3783,9 +3788,28 @@ export class Dashboard extends UIBase {
     this.emit('cancel', this);
   }
 
-  async refresh(): Promise<void> {
-    for (const child of this.childInstances) {
-      await (child as any).refresh?.();
+  async refresh(options: DashboardRefreshOptions = {}): Promise<void> {
+    if (options.progress) {
+      Dialogs.$showProgress({});
+    }
+
+    const refreshPromise = this.refreshPromise || (async () => {
+      for (const child of this.childInstances) {
+        await (child as any).refresh?.();
+      }
+      await this.loadDashboardMenuItems(true);
+    })();
+    this.refreshPromise = refreshPromise;
+
+    try {
+      await refreshPromise;
+    } finally {
+      if (this.refreshPromise === refreshPromise) {
+        this.refreshPromise = undefined;
+      }
+      if (options.progress) {
+        Dialogs.$hideProgress();
+      }
     }
   }
 
@@ -3941,12 +3965,7 @@ export class Dashboard extends UIBase {
   }
 
   private async runRefreshAction() {
-    Dialogs.$showProgress({});
-    try {
-      await this.refresh();
-    } finally {
-      Dialogs.$hideProgress();
-    }
+    await this.refresh({ progress: true });
   }
 
   private onDashboardKeydown(ev: KeyboardEvent) {

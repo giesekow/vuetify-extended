@@ -68,6 +68,9 @@ export interface TriggerOptions {
     sideButtons?: (props: any, context: any, trigger: Trigger) => Array<Button> | undefined;
     rightMenu?: (trigger: Trigger) => Promise<MenuTarget | undefined> | MenuTarget | undefined;
 }
+export interface TriggerRefreshOptions {
+    progress?: boolean;
+}
 export interface ServerTableOptions {
     page: number;
     itemsPerPage: any;
@@ -102,6 +105,8 @@ export declare class Trigger extends UIBase {
     private compactSideActions;
     private sideActionMediaQuery?;
     private sideActionMediaHandler?;
+    private refreshPromise?;
+    private resultsRefreshPromise?;
     private static defaultParams;
     constructor(params?: TriggerParams, options?: TriggerOptions);
     static setDefault(value: TriggerParams, reset?: boolean): void;
@@ -125,6 +130,8 @@ export declare class Trigger extends UIBase {
     props(): never[];
     onTableOptionsChanged(options: any): Promise<void>;
     private loadItems;
+    refreshResults(options?: TriggerRefreshOptions): Promise<void>;
+    refresh(options?: TriggerRefreshOptions): Promise<void>;
     render(props: any, context: any): VNode | undefined;
     private outerAlign;
     private outerJustify;

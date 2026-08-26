@@ -61,9 +61,17 @@ Read `docs/ui/Dashboard.md` for expected value/data formats before changing any 
 
 ## Interaction Rules
 
-- dashboard refresh should cascade through child widgets
+- dashboard refresh should cascade through child widgets and force-reload the cached header `menuItems(...)`
+- `dashboard.refresh({ progress: true })` enables progress; progress is off for `dashboard.refresh()`
 - dashboard menu reuses `MenuItem` definitions
 - keyboard behavior is part of the public dashboard model
 
 If a change affects dashboard actions, refresh, or keyboard support, update docs in `docs/ui/Dashboard.md`.
 
+## Refresh Selection
+
+- use `dashboard.refresh()` to refresh all resolved widgets and rebuild the cached dashboard header menu
+- use `dashboard.refresh({ progress: true })` for an explicit blocking user action
+- call `widget.refresh()` when only one retained widget instance needs to reload
+- do not expect Dashboard refresh to recreate the `topChildren`, `children`, or `bottomChildren` factory definitions
+- compare screen refresh semantics in `docs/ui/Refreshing.md`
