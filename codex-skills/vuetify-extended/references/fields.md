@@ -8,6 +8,8 @@ Primary sources:
 - `src/ui/field.ts`
 - `src/ui/widgets/field-rich-widgets.ts`
 - `src/ui/widgets/field-table-widgets.ts`
+- `src/ui/widgets/field-pagination-state.ts`
+- `src/ui/widgets/field-pagination-widget.ts`
 
 ## Non-Negotiable Rule
 
@@ -30,10 +32,61 @@ If a field change breaks the stored datatype, it will usually break reports, tri
   - stores `{ $numberDecimal: string }`
 - `collection`
   - stores `Array<Record<string, any>>`
+- `pagination`
+  - stores `{ page: number, limit: number, total: number }` when bound
+  - remains local UI state when `storage` is omitted
 - `map-*`
   - use the documented geometry shape exactly
 
 Before changing any of these, read `docs/ui/Field.md`.
+
+## Pagination Field
+
+Use `type: 'pagination'` beside an `htmlview` or another custom data presentation when the application, rather than a built-in table, owns data loading.
+
+```ts
+const pager = $FD(
+  {
+    ref: 'pager',
+    type: 'pagination',
+    default: { page: 1, limit: 10, total: 0 },
+    itemsPerPageOptions: [5, 10, 20],
+  },
+  {
+    paginationChanged: (_field, event) => loadData(event.skip, event.limit),
+  },
+);
+```
+
+Rules:
+
+- `page` is one-based; API offset is available as `event.skip`
+- changing `limit` resets `page` to one
+- `paginationChanged` covers page and limit changes
+- `pageChanged` and `itemsPerPageChanged` are narrower hooks
+- update API totals with `field.setPagination({ total }, { notify: false })` to avoid request loops
+- omit `storage` unless the pagination state belongs in `Master`
+- use `paginationLoading` or `readonly` to disable interaction
+- parent display mode does not disable pagination; only the field's explicit `readonly: true` does
+- incoming/default pagination values normalize to numeric `{ page, limit, total }`
+- use `color` and `paginationVariant` for controls; base styling follows Vuetify theme tokens
+
+## Interactive HTML View
+
+Use declarative data attributes instead of inline JavaScript:
+
+```html
+<button data-ve-event="open-item" data-ve-payload='{"id":"42"}'>Open</button>
+```
+
+Handle it locally or at report level:
+
+```ts
+htmlField.on('html:open-item', (event) => openItem(event.payload.id));
+report.on('field:html:open-item', (event) => openItem(event.payload.id));
+```
+
+`data-ve-on` may select `click`, `change`, `input`, or `submit`. Optional `data-ve-prevent-default` and `data-ve-stop-propagation` control native event behavior. Read the complete payload and security contract in `docs/ui/Field.md`.
 
 ## Nested `collection` Field
 

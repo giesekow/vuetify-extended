@@ -90,7 +90,28 @@ Notes:
 - `ve.app.closeLeftNav` and `ve.app.closeRightNav` are used by side navigation close buttons.
 - `ve.app.closeSideNav` is the shared fallback used by side-navigation menu close buttons when no side-specific close tooltip is supplied.
 - `ve.app.openLeftNav` and `ve.app.openRightNav` are used by temporary side navigation toggle buttons.
-- The older `ve.app.headerMenu` / `ve.app.closeHeaderMenu` wording is no longer part of the runtime key set.
+- The compact-header overflow drawer uses `ve.app.quickActions` for its title and `ve.common.close` for its close control. The older `ve.app.headerMenu` / `ve.app.closeHeaderMenu` wording is not part of the runtime key set.
+
+## `ve.field.pagination.*`
+
+First-class `pagination` field labels:
+
+- `ve.field.pagination.itemsPerPage`
+- `ve.field.pagination.navigation`
+- `ve.field.pagination.nextPage`
+- `ve.field.pagination.pageOf`
+- `ve.field.pagination.previousPage`
+- `ve.field.pagination.range`
+- `ve.field.pagination.setItemsPerPage`
+- `ve.field.pagination.zeroItems`
+
+Interpolation values:
+
+- `ve.field.pagination.pageOf`: `{ page }`, `{ total }`
+- `ve.field.pagination.range`: `{ start }`, `{ end }`, `{ total }`
+- `ve.field.pagination.setItemsPerPage`: `{ limit }`
+
+The visible previous/next button text uses `ve.common.prev` and `ve.common.next`.
 
 ## `ve.dialog.*`
 

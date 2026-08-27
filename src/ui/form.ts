@@ -338,7 +338,7 @@ export class Form extends UIBase {
 
     const type = field.$params.type || 'text';
 
-    if (['label', 'htmlview', 'button', 'chart', 'map', 'map-line', 'map-circle', 'map-rectangle', 'map-polygon', 'map-heatmap', 'map-cluster', 'map-geojson', 'table', 'viewtable', 'servertable', 'reporttable', 'collection', 'messagingbox', 'image', 'document'].includes(type)) {
+    if (['label', 'htmlview', 'pagination', 'button', 'chart', 'map', 'map-line', 'map-circle', 'map-rectangle', 'map-polygon', 'map-heatmap', 'map-cluster', 'map-geojson', 'table', 'viewtable', 'servertable', 'reporttable', 'collection', 'messagingbox', 'image', 'document'].includes(type)) {
       return 'skip';
     }
 

@@ -11,6 +11,21 @@ import { Report } from "./report";
 import { $v } from "../misc";
 import { buildChartWidget, buildCodeWidget, buildHTMLWidget, buildImageWidget, buildMapWidget, buildMessageBoxWidget, RichWidgetContext } from "./widgets/field-rich-widgets";
 import { buildReportTableWidget, buildServerTableWidget, buildTableWidget, buildViewTableWidget, TableWidgetContext } from "./widgets/field-table-widgets";
+import { buildPaginationWidget } from "./widgets/field-pagination-widget";
+import {
+  createFieldPaginationEvent,
+  normalizeFieldPaginationValue,
+  updateFieldPaginationValue,
+  type FieldPaginationChangeReason,
+  type FieldPaginationEvent,
+  type FieldPaginationValue,
+} from "./widgets/field-pagination-state";
+
+export type {
+  FieldPaginationChangeReason,
+  FieldPaginationEvent,
+  FieldPaginationValue,
+} from "./widgets/field-pagination-state";
 
 import '@vuepic/vue-datepicker/dist/main.css';
 import { Dialogs } from "./dialogs";
@@ -26,7 +41,7 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
                         'map'|'map-line'|'map-circle'|'map-rectangle'|'map-polygon'|'map-heatmap'|'map-cluster'|'map-geojson'|'code'|'color'|'html'|'htmlview'|'listselect'|'otp'|'file-upload'|
                         'time'|'date'|'datetime'|'button'|'image'|
                         'document'|'password'|'float'|'integer'|'decimal'|
-                        'collection'|'textarea'|'boolean'|'table'|'reporttable'|'servertable';
+                        'collection'|'textarea'|'boolean'|'pagination'|'table'|'reporttable'|'servertable';
 
 export type FieldUploadType = 'base64'|'file'|'metadata';
 export type FieldDateFormat = 'YYYY-MM-DD'|'YYYYMMDD'|'timestamp';
@@ -37,6 +52,24 @@ export interface FieldValueContext {
   origin: FieldValueOrigin;
   value: any;
   previousValue?: any;
+}
+
+export interface FieldPaginationSetOptions {
+  notify?: boolean;
+  origin?: FieldValueOrigin;
+  reason?: FieldPaginationChangeReason;
+}
+
+export type FieldHtmlEventType = 'click'|'change'|'input'|'submit';
+
+export interface FieldHtmlEvent {
+  name: string;
+  payload?: any;
+  value?: any;
+  eventType: FieldHtmlEventType;
+  field: Field;
+  element: HTMLElement;
+  nativeEvent: Event;
 }
 
 interface FieldUpdateOptions {
@@ -123,6 +156,7 @@ export const fieldTypeOptions = [
   {name: 'Float', _id: 'float', id: 'float'}, {name: 'Integer', _id: 'integer', id: 'integer'}, {name: 'Decimal', _id: 'decimal', id: 'decimal'},
   {name: 'OTP', _id: 'otp', id: 'otp'}, {name: 'File Upload', _id: 'file-upload', id: 'file-upload'},
   {name: 'Collection', _id: 'collection', id: 'collection'}, {name: 'Textarea', _id: 'textarea', id: 'textarea'}, {name: 'Boolean', _id: 'boolean', id: 'boolean'},
+  {name: 'Pagination', _id: 'pagination', id: 'pagination'},
   {name: 'Table', _id: 'table', id: 'table'}, {name: 'Report Table', _id: 'reporttable', id: 'reporttable'}, {name: 'Server Table', _id: 'servertable', id: 'servertable'},
 ]
 
@@ -149,6 +183,14 @@ export interface FieldParams {
   itemTitle?: string;
   returnObject?: boolean;
   itemsPerPage?: string|number;
+  itemsPerPageOptions?: number[];
+  page?: number;
+  totalItems?: number;
+  showItemsPerPage?: boolean;
+  showItemRange?: boolean;
+  showPageInfo?: boolean;
+  paginationLoading?: boolean;
+  paginationVariant?: "flat" | "text" | "outlined" | "plain" | "elevated" | "tonal";
   class?: string[];
   style?: any;
   height?: number;
@@ -277,6 +319,10 @@ export interface FieldOptions {
   rules?: (field: Field) => any[];
   changed?: (field: Field, context: FieldValueContext) => void;
   initialized?: (field: Field, context: FieldValueContext) => Promise<void>|void;
+  paginationChanged?: (field: Field, event: FieldPaginationEvent) => Promise<void>|void;
+  pageChanged?: (field: Field, event: FieldPaginationEvent) => Promise<void>|void;
+  itemsPerPageChanged?: (field: Field, event: FieldPaginationEvent) => Promise<void>|void;
+  htmlEvent?: (field: Field, event: FieldHtmlEvent) => Promise<void>|void;
   fileSelected?: (field: Field, payload: FieldSelectedFilePayload) => Promise<void>|void;
   assetUploaded?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
   assetsResolved?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
@@ -548,11 +594,84 @@ export class Field extends UIBase {
     this.markCurrentModelSyncHandled();
   }
 
-  private setModelValueAndSync(value: any) {
+  private setModelValueAndSync(value: any, origin: FieldValueOrigin = 'user') {
     const previousValue = this.modelValue.value;
     this.modelValue.value = value;
     this.markCurrentModelSyncHandled();
-    this.valueChanged(value, 'user', previousValue);
+    this.valueChanged(value, origin, previousValue);
+  }
+
+  private normalizePaginationValue(value?: Partial<FieldPaginationValue> | any): FieldPaginationValue {
+    return normalizeFieldPaginationValue(value, {
+      page: this.params.value.page,
+      limit: Number(this.params.value.itemsPerPage || 10),
+      total: this.params.value.totalItems,
+    });
+  }
+
+  private paginationEvent(value: FieldPaginationValue, previousValue: FieldPaginationValue, reason: FieldPaginationChangeReason): FieldPaginationEvent {
+    return createFieldPaginationEvent(value, previousValue, reason);
+  }
+
+  get $pagination(): FieldPaginationValue {
+    return this.normalizePaginationValue(this.modelValue.value);
+  }
+
+  get $paginationItemsPerPageOptions(): number[] {
+    const currentLimit = this.$pagination.limit;
+    const configured = this.params.value.itemsPerPageOptions || [5, 10, 20, 50, 100];
+    return Array.from(new Set([...configured, currentLimit]
+      .map((value) => Math.trunc(Number(value)))
+      .filter((value) => value > 0)))
+      .sort((left, right) => left - right);
+  }
+
+  async setPagination(value: Partial<FieldPaginationValue>, options: FieldPaginationSetOptions = {}): Promise<FieldPaginationValue> {
+    const previousValue = this.$pagination;
+    const reason = options.reason || 'programmatic';
+    const nextValue = updateFieldPaginationValue(previousValue, value, reason);
+
+    if (
+      nextValue.page === previousValue.page
+      && nextValue.limit === previousValue.limit
+      && nextValue.total === previousValue.total
+    ) {
+      return previousValue;
+    }
+
+    if (options.notify) {
+      this.setModelValueAndSync(nextValue, options.origin || 'programmatic');
+    } else {
+      this.setModelValueFromMaster(nextValue);
+      if (this.$master && this.params.value.storage) {
+        this.$master.$set(this.params.value.storage, nextValue);
+      }
+      if (this.options.modifies) {
+        this.options.modifies.value = nextValue;
+      }
+    }
+
+    if (options.notify) {
+      const event = this.paginationEvent(nextValue, previousValue, reason);
+      if (this.options.paginationChanged) {
+        await this.options.paginationChanged(this, event);
+      }
+      this.handleOn('paginationChanged', event);
+
+      if (reason === 'page') {
+        if (this.options.pageChanged) {
+          await this.options.pageChanged(this, event);
+        }
+        this.handleOn('pageChanged', event);
+      } else if (reason === 'limit') {
+        if (this.options.itemsPerPageChanged) {
+          await this.options.itemsPerPageChanged(this, event);
+        }
+        this.handleOn('itemsPerPageChanged', event);
+      }
+    }
+
+    return nextValue;
   }
 
   private selectionValuesEqual(left: any, right: any) {
@@ -577,6 +696,19 @@ export class Field extends UIBase {
   private modelValuesEqual(left: any, right: any) {
     if (this.params.value.type === 'select' || this.params.value.type === 'autocomplete') {
       return this.selectionValuesEqual(left, right);
+    }
+
+    if (this.params.value.type === 'pagination') {
+      const leftMissing = left === undefined || left === null;
+      const rightMissing = right === undefined || right === null;
+      if (leftMissing || rightMissing) {
+        return leftMissing && rightMissing;
+      }
+      const normalizedLeft = this.normalizePaginationValue(left);
+      const normalizedRight = this.normalizePaginationValue(right);
+      return normalizedLeft.page === normalizedRight.page
+        && normalizedLeft.limit === normalizedRight.limit
+        && normalizedLeft.total === normalizedRight.total;
     }
 
     return this.isEqual(left, right);
@@ -1458,6 +1590,10 @@ export class Field extends UIBase {
 
   private preprocess(value: any) {
     if (value === undefined || value === null) return value;
+
+    if (this.params.value.type === 'pagination') {
+      return this.normalizePaginationValue(value);
+    }
     
     if (this.params.value.type === "date") {
       if (Array.isArray(value)) {
@@ -1492,6 +1628,10 @@ export class Field extends UIBase {
 
   private postprocess(value: any) {
     if (value === undefined || value === null) return value;
+
+    if (this.params.value.type === 'pagination') {
+      return this.normalizePaginationValue(value);
+    }
     
     if (this.params.value.type === "date") {
       if (Array.isArray(value)) {
@@ -2412,6 +2552,8 @@ export class Field extends UIBase {
         return this.buildHTML(props, context);
       case 'htmlview':
         return this.buildHTMLView(props, context);
+      case 'pagination':
+        return this.buildPagination(props, context);
       case 'image':
         {
           if (!this.params.value.fileAccepts) {
@@ -2519,9 +2661,87 @@ export class Field extends UIBase {
       {
         class: this.params.value.class || [],
         style: this.params.value.style || {},
-        innerHTML: this.params.value.resolveFormulas ? this.renderMathInHtml(this.modelValue.value) : this.modelValue.value
+        innerHTML: this.params.value.resolveFormulas ? this.renderMathInHtml(this.modelValue.value) : this.modelValue.value,
+        onClick: (event: Event) => this.dispatchHtmlViewEvent(event, 'click'),
+        onChange: (event: Event) => this.dispatchHtmlViewEvent(event, 'change'),
+        onInput: (event: Event) => this.dispatchHtmlViewEvent(event, 'input'),
+        onSubmit: (event: Event) => this.dispatchHtmlViewEvent(event, 'submit'),
       },
     );
+  }
+
+  private parseHtmlEventPayload(value: string | null) {
+    if (value === null || value === '') {
+      return value === '' ? '' : undefined;
+    }
+
+    try {
+      return JSON.parse(value);
+    } catch (_error) {
+      return value;
+    }
+  }
+
+  private htmlEventElementValue(element: any) {
+    if (element?.type === 'checkbox' || element?.type === 'radio') {
+      return !!element.checked;
+    }
+    return element && 'value' in element ? element.value : undefined;
+  }
+
+  private async dispatchHtmlViewEvent(nativeEvent: Event, eventType: FieldHtmlEventType) {
+    const target = nativeEvent.target as any;
+    const currentTarget = nativeEvent.currentTarget as any;
+    const element = target?.closest?.('[data-ve-event]') as HTMLElement | undefined;
+    if (!element || (currentTarget?.contains && !currentTarget.contains(element))) {
+      return;
+    }
+
+    const configuredEvents = (element.getAttribute('data-ve-on') || 'click')
+      .split(/[\s,]+/)
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean);
+    if (!configuredEvents.includes(eventType)) {
+      return;
+    }
+
+    const name = (element.getAttribute('data-ve-event') || '').trim();
+    if (!/^[A-Za-z][A-Za-z0-9_.:-]*$/.test(name)) {
+      return;
+    }
+
+    if (element.hasAttribute('data-ve-prevent-default')) {
+      nativeEvent.preventDefault();
+    }
+    if (element.hasAttribute('data-ve-stop-propagation')) {
+      nativeEvent.stopPropagation();
+    }
+
+    const event: FieldHtmlEvent = {
+      name,
+      payload: this.parseHtmlEventPayload(element.getAttribute('data-ve-payload')),
+      value: this.htmlEventElementValue(element),
+      eventType,
+      field: this,
+      element,
+      nativeEvent,
+    };
+
+    if (this.options.htmlEvent) {
+      await this.options.htmlEvent(this, event);
+    }
+    this.handleOn('html-event', event);
+    this.handleOn(`html:${name}`, event);
+
+    const report = this.$parentReport;
+    if (report) {
+      report.emit('field:html-event', event);
+      report.emit(`field:html:${name}`, event);
+    }
+  }
+
+  buildPagination(_props: any, _context: any) {
+    return buildPaginationWidget(this);
   }
 
   buildSelect(props: any, context: any) {

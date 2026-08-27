@@ -302,17 +302,17 @@ export interface AppSideNavOptions {
   breakpoint?: number;
   autoCloseOnNavigate?: boolean;
   mobileMode?: 'temporary' | 'rail';
-}
-```
-
-Nested drawer menu options:
-
-```ts
-export interface AppSideNavOptions {
   submenuMode?: 'screen' | 'inline';
   accordion?: boolean;
+  showToggleButton?: boolean;
+  toggleIcon?: string;
+  toggleColor?: string;
+  toggleVariant?: string;
+  toggleTooltip?: UIText;
 }
 ```
+
+A temporary navigation toggle is rendered only after its configured, contextual, or runtime source successfully resolves to a `Menu`. A configured resolver that returns `undefined`, fails access checks, or is cleared does not leave an orphan toggle button. `showToggleButton: false` disables the automatic toggle for an otherwise valid temporary menu.
 
 Meaning:
 
@@ -431,6 +431,11 @@ Drawer behavior:
   - `headerCenter`
   - `headerEnd`
 - non-empty groups are separated with divider lines
+- the compact-header menu icon is rendered only when at least one visible header item is routed to `mobileLocation: 'drawer'`
+- opening the icon displays those overflow header items in a temporary Vuetify navigation drawer
+- if every mobile-visible header item remains in the header, no overflow icon or drawer is rendered
+- this compact-header overflow drawer is separate from the app's configurable `leftNav` and `rightNav` side-navigation menus
+- hiding all drawer-routed items with `hideOnMobile: true` also removes the overflow icon
 
 Example:
 

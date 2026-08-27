@@ -7,16 +7,21 @@ const fieldSource = fs.readFileSync(
   'utf8',
 );
 
-const immediateSyncStart = fieldSource.indexOf('private setModelValueAndSync(value: any)');
+const immediateSyncStart = fieldSource.indexOf("private setModelValueAndSync(value: any, origin: FieldValueOrigin = 'user')");
 const modelBindingStart = fieldSource.indexOf('private modelBinding()', immediateSyncStart);
 assert.notEqual(immediateSyncStart, -1, 'Field must provide an immediate model-to-Master synchronization path.');
 assert.notEqual(modelBindingStart, -1, 'Unable to locate the end of the immediate synchronization method.');
 
 const immediateSyncSource = fieldSource.slice(immediateSyncStart, modelBindingStart);
 const localUpdateIndex = immediateSyncSource.indexOf('this.modelValue.value = value;');
-const masterUpdateIndex = immediateSyncSource.indexOf("this.valueChanged(value, 'user', previousValue);");
+const masterUpdateIndex = immediateSyncSource.indexOf('this.valueChanged(value, origin, previousValue);');
 assert.ok(localUpdateIndex >= 0, 'Immediate synchronization must update the field model.');
 assert.ok(masterUpdateIndex > localUpdateIndex, 'The field model must update before the value is committed to Master.');
+assert.match(
+  immediateSyncSource,
+  /origin: FieldValueOrigin = 'user'/,
+  'Immediate UI synchronization must continue to use user origin by default.',
+);
 
 const datetimeStart = fieldSource.indexOf('buildDatetime(props: any, context: any)');
 const passwordStart = fieldSource.indexOf('buildPassword(props: any, context: any)', datetimeStart);

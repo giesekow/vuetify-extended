@@ -29,7 +29,7 @@ export type FieldType =
   'text'|'select'|'autocomplete'|'label'|
   'messagingbox'|'chart'|'viewtable'|
   'map'|'map-line'|'map-circle'|'map-rectangle'|'map-polygon'|'map-heatmap'|'map-cluster'|'map-geojson'|
-  'code'|'color'|'html'|'htmlview'|'listselect'|'file-upload'|
+  'code'|'color'|'html'|'htmlview'|'listselect'|'file-upload'|'otp'|'pagination'|
   'time'|'date'|'datetime'|'button'|'image'|
   'document'|'password'|'float'|'integer'|'decimal'|
   'collection'|'textarea'|'boolean'|'table'|'reporttable'|'servertable';
@@ -44,7 +44,7 @@ Use this mental split when designing a field:
 - Selection fields:
   `select`, `autocomplete`, `listselect`
 - Display fields:
-  `label`, `htmlview`, `chart`
+  `label`, `htmlview`, `chart`, `pagination`
 - Rich editor/media fields:
   `html`, `code`, `image`, `document`, `file-upload`, `messagingbox`
 - Dataset widgets:
@@ -80,6 +80,14 @@ export interface FieldParams {
   itemTitle?: string;
   returnObject?: boolean;
   itemsPerPage?: string|number;
+  itemsPerPageOptions?: number[];
+  page?: number;
+  totalItems?: number;
+  showItemsPerPage?: boolean;
+  showItemRange?: boolean;
+  showPageInfo?: boolean;
+  paginationLoading?: boolean;
+  paginationVariant?: 'flat'|'text'|'outlined'|'plain'|'elevated'|'tonal';
   class?: string[];
   style?: any;
   height?: number;
@@ -207,6 +215,10 @@ export interface FieldOptions {
   rules?: (field: Field) => any[];
   changed?: (field: Field, context: FieldValueContext) => void;
   initialized?: (field: Field, context: FieldValueContext) => Promise<void>|void;
+  paginationChanged?: (field: Field, event: FieldPaginationEvent) => Promise<void>|void;
+  pageChanged?: (field: Field, event: FieldPaginationEvent) => Promise<void>|void;
+  itemsPerPageChanged?: (field: Field, event: FieldPaginationEvent) => Promise<void>|void;
+  htmlEvent?: (field: Field, event: FieldHtmlEvent) => Promise<void>|void;
   fileSelected?: (field: Field, payload: FieldSelectedFilePayload) => Promise<void>|void;
   assetUploaded?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
   assetsResolved?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
@@ -545,6 +557,7 @@ This is the most important quick reference when binding a field to `Master`.
 | `color` | `string` |
 | `html` | `string` |
 | `htmlview` | `string` if bound |
+| `pagination` | `{ page: number, limit: number, total: number }` when `storage` is configured; otherwise the same shape remains local to the field |
 | `code` | `string` |
 | `image` | direct mode: base64/URL `string` or `string[]`; asset mode: asset id `string` or `string[]` |
 | `document` | direct mode: base64/URL `string` or `string[]`; asset mode: asset id `string` or `string[]` |
@@ -940,9 +953,164 @@ Supported `timeFormat` values:
 - Relevant params:
   `resolveFormulas`, `class`, `style`
 - Relevant options:
-  rarely needed
+  `htmlEvent(field, event)`
 - Notes:
   If `resolveFormulas` is true, inline/display math is rendered before display.
+
+#### Interactive HTML events
+
+`htmlview` supports delegated, CSP-safe events without inline JavaScript. Put `data-ve-event` on an element inside the rendered HTML. The field listens at its root, so dynamically replaced HTML continues to work without rebinding handlers.
+
+```ts
+const activityView = $FD(
+  {
+    ref: 'activityView',
+    type: 'htmlview',
+    default: `
+      <button
+        type="button"
+        data-ve-event="inspect-item"
+        data-ve-payload='{"id":"activity-7","name":"Review invoice"}'
+      >
+        Inspect
+      </button>
+    `,
+  },
+  {
+    htmlEvent: (_field, event) => {
+      console.log(event.name, event.payload);
+    },
+  },
+);
+```
+
+Supported attributes:
+
+| Attribute | Purpose |
+| --- | --- |
+| `data-ve-event="name"` | Required event name. Names may contain letters, numbers, `_`, `.`, `:`, and `-`, and must start with a letter. |
+| `data-ve-on="click change"` | Native event types to accept. Supported values are `click`, `change`, `input`, and `submit`; default is `click`. Commas may also separate values. |
+| `data-ve-payload='{"id":1}'` | Optional JSON payload. Invalid JSON is supplied as its original string. |
+| `data-ve-prevent-default` | Calls `preventDefault()` before dispatch. Useful for forms and links. |
+| `data-ve-stop-propagation` | Calls `stopPropagation()` before dispatch. |
+
+The event object is:
+
+```ts
+interface FieldHtmlEvent {
+  name: string;
+  payload?: any;
+  value?: any; // input value, or checked state for checkbox/radio controls
+  eventType: 'click'|'change'|'input'|'submit';
+  field: Field;
+  element: HTMLElement;
+  nativeEvent: Event;
+}
+```
+
+Events are dispatched after `FieldOptions.htmlEvent` in this order:
+
+```ts
+field.on('html-event', (event) => { /* every HTML event */ });
+field.on('html:inspect-item', (event) => { /* one named event */ });
+
+report.on('field:html-event', (event) => { /* every child htmlview event */ });
+report.on('field:html:inspect-item', (event) => { /* one named child event */ });
+```
+
+Only trusted application HTML should be rendered. The bridge avoids inline script execution, but it does not sanitize untrusted HTML.
+
+### `pagination`
+
+- Stored datatype:
+  `{ page: number, limit: number, total: number }` when `storage` is provided
+- Widget:
+  responsive pagination controls with page-size choices, item range, page status, and previous/next actions
+- Relevant params:
+  `storage`, `default`, `page`, `itemsPerPage`, `totalItems`, `itemsPerPageOptions`, `showItemsPerPage`, `showItemRange`, `showPageInfo`, `paginationLoading`, `color`, `paginationVariant`, `readonly`, `label`
+- Relevant options:
+  `paginationChanged`, `pageChanged`, `itemsPerPageChanged`
+
+The normalized value and callback payload types are:
+
+```ts
+interface FieldPaginationValue {
+  page: number;  // one-based
+  limit: number;
+  total: number;
+}
+
+interface FieldPaginationEvent extends FieldPaginationValue {
+  skip: number;
+  pageCount: number;
+  start: number; // one-based visible range, or 0 for an empty dataset
+  end: number;
+  reason: 'page'|'limit'|'programmatic';
+  previousValue: FieldPaginationValue;
+}
+```
+
+Use no `storage` for UI-only pagination. Add `storage` when the pagination state should be available in `Master` or included in the form payload.
+
+```ts
+$FD(
+  {
+    ref: 'activityPagination',
+    type: 'pagination',
+    default: { page: 1, limit: 10, total: 87 },
+    itemsPerPageOptions: [5, 10, 20, 50],
+    color: 'primary',
+    paginationVariant: 'outlined',
+    cols: 12,
+  },
+  {
+    paginationChanged: async (field, event) => {
+      const response = await Api.instance.service('activity').find({
+        query: { $skip: event.skip, $limit: event.limit },
+      });
+
+      field.$master?.$set('visibleActivity', response.data);
+      await field.setPagination(
+        { total: response.total },
+        { notify: false },
+      );
+    },
+  },
+);
+```
+
+Behavior:
+
+- changing the page size resets `page` to `1`
+- page values are clamped to the available page count
+- `readonly: true` or `paginationLoading: true` disables controls
+- inherited form/report display mode does not disable pagination because paging is UI navigation rather than record editing; set the field's own `readonly: true` when paging must be disabled
+- defaults, stored values, and programmatic updates are normalized to numeric `{ page, limit, total }` values
+- `paginationChanged` runs for both page and page-size gestures
+- `pageChanged` runs only for page navigation
+- `itemsPerPageChanged` runs only for page-size changes
+- callback functions run before matching `.on(...)` listeners
+- all callback/event state is synchronized to the field and `Master` first
+- labels use built-in translation keys and the widget uses Vuetify surface, text, and border theme tokens
+
+Programmatic updates are silent by default. This is useful when an API response updates `total` without triggering another request:
+
+```ts
+await pagination.setPagination({ total: response.total });
+
+await pagination.setPagination(
+  { page: 2 },
+  { notify: true, origin: 'programmatic', reason: 'page' },
+);
+```
+
+Equivalent listeners are available when callbacks are not convenient:
+
+```ts
+pagination.on('paginationChanged', (event) => loadPage(event));
+pagination.on('pageChanged', (event) => console.log(event.page));
+pagination.on('itemsPerPageChanged', (event) => console.log(event.limit));
+```
 
 ### `code`
 
@@ -1344,6 +1512,7 @@ export class Field extends UIBase {
 Commonly useful methods:
 
 - `setParams(params)`
+- `setPagination(value, options?)` for `pagination` fields
 - `forceLoadCollectionInfo()`
 - `forceLoadTableInfo()`
 - `clearTableSelection()`

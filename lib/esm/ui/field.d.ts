@@ -4,11 +4,13 @@ import { Master } from "../master";
 import { Button } from "./button";
 import { Form } from "./form";
 import { Report } from "./report";
+import { type FieldPaginationChangeReason, type FieldPaginationEvent, type FieldPaginationValue } from "./widgets/field-pagination-state";
+export type { FieldPaginationChangeReason, FieldPaginationEvent, FieldPaginationValue, } from "./widgets/field-pagination-state";
 import '@vuepic/vue-datepicker/dist/main.css';
 import { OnHandler } from "./lib";
 import 'katex/dist/katex.min.css';
 import { UIText } from "./runtime";
-export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagingbox' | 'chart' | 'viewtable' | 'map' | 'map-line' | 'map-circle' | 'map-rectangle' | 'map-polygon' | 'map-heatmap' | 'map-cluster' | 'map-geojson' | 'code' | 'color' | 'html' | 'htmlview' | 'listselect' | 'otp' | 'file-upload' | 'time' | 'date' | 'datetime' | 'button' | 'image' | 'document' | 'password' | 'float' | 'integer' | 'decimal' | 'collection' | 'textarea' | 'boolean' | 'table' | 'reporttable' | 'servertable';
+export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagingbox' | 'chart' | 'viewtable' | 'map' | 'map-line' | 'map-circle' | 'map-rectangle' | 'map-polygon' | 'map-heatmap' | 'map-cluster' | 'map-geojson' | 'code' | 'color' | 'html' | 'htmlview' | 'listselect' | 'otp' | 'file-upload' | 'time' | 'date' | 'datetime' | 'button' | 'image' | 'document' | 'password' | 'float' | 'integer' | 'decimal' | 'collection' | 'textarea' | 'boolean' | 'pagination' | 'table' | 'reporttable' | 'servertable';
 export type FieldUploadType = 'base64' | 'file' | 'metadata';
 export type FieldDateFormat = 'YYYY-MM-DD' | 'YYYYMMDD' | 'timestamp';
 export type FieldTimeFormat = 'HH:mm' | 'HHMM' | 'timestamp';
@@ -17,6 +19,21 @@ export interface FieldValueContext {
     origin: FieldValueOrigin;
     value: any;
     previousValue?: any;
+}
+export interface FieldPaginationSetOptions {
+    notify?: boolean;
+    origin?: FieldValueOrigin;
+    reason?: FieldPaginationChangeReason;
+}
+export type FieldHtmlEventType = 'click' | 'change' | 'input' | 'submit';
+export interface FieldHtmlEvent {
+    name: string;
+    payload?: any;
+    value?: any;
+    eventType: FieldHtmlEventType;
+    field: Field;
+    element: HTMLElement;
+    nativeEvent: Event;
 }
 export interface AssetRecord {
     id: string;
@@ -89,6 +106,14 @@ export interface FieldParams {
     itemTitle?: string;
     returnObject?: boolean;
     itemsPerPage?: string | number;
+    itemsPerPageOptions?: number[];
+    page?: number;
+    totalItems?: number;
+    showItemsPerPage?: boolean;
+    showItemRange?: boolean;
+    showPageInfo?: boolean;
+    paginationLoading?: boolean;
+    paginationVariant?: "flat" | "text" | "outlined" | "plain" | "elevated" | "tonal";
     class?: string[];
     style?: any;
     height?: number;
@@ -236,6 +261,10 @@ export interface FieldOptions {
     rules?: (field: Field) => any[];
     changed?: (field: Field, context: FieldValueContext) => void;
     initialized?: (field: Field, context: FieldValueContext) => Promise<void> | void;
+    paginationChanged?: (field: Field, event: FieldPaginationEvent) => Promise<void> | void;
+    pageChanged?: (field: Field, event: FieldPaginationEvent) => Promise<void> | void;
+    itemsPerPageChanged?: (field: Field, event: FieldPaginationEvent) => Promise<void> | void;
+    htmlEvent?: (field: Field, event: FieldHtmlEvent) => Promise<void> | void;
     fileSelected?: (field: Field, payload: FieldSelectedFilePayload) => Promise<void> | void;
     assetUploaded?: (field: Field, assets: AssetRecord[]) => Promise<void> | void;
     assetsResolved?: (field: Field, assets: AssetRecord[]) => Promise<void> | void;
@@ -332,6 +361,11 @@ export declare class Field extends UIBase {
     private markCurrentModelSyncHandled;
     private setModelValueFromMaster;
     private setModelValueAndSync;
+    private normalizePaginationValue;
+    private paginationEvent;
+    get $pagination(): FieldPaginationValue;
+    get $paginationItemsPerPageOptions(): number[];
+    setPagination(value: Partial<FieldPaginationValue>, options?: FieldPaginationSetOptions): Promise<FieldPaginationValue>;
     private selectionValuesEqual;
     private modelValuesEqual;
     private modelBinding;
@@ -510,6 +544,12 @@ export declare class Field extends UIBase {
         [key: string]: any;
     }>;
     buildHTMLView(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
+        [key: string]: any;
+    }>;
+    private parseHtmlEventPayload;
+    private htmlEventElementValue;
+    private dispatchHtmlViewEvent;
+    buildPagination(_props: any, _context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;
     buildSelect(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {

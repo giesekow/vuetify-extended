@@ -712,6 +712,7 @@ The field system is broad. Common types include:
 - `time`
 - `html`
 - `htmlview`
+- `pagination`
 - `code`
 - `image`
 - `document`

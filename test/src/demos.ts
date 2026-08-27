@@ -1168,6 +1168,30 @@ function buildBasicsForm() {
 }
 
 function buildRichWidgetsForm() {
+  const paginationDemoItems = Array.from({ length: 23 }, (_, index) => ({
+    id: index + 1,
+    name: `Generated activity ${index + 1}`,
+    status: index % 3 === 0 ? 'Review' : index % 2 === 0 ? 'Complete' : 'Open',
+  }));
+  const paginationDemoHtml = (page: number, limit: number) => {
+    const start = (page - 1) * limit;
+    return `
+      <div style="display:grid;gap:8px">
+        ${paginationDemoItems.slice(start, start + limit).map((item) => `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid rgba(var(--v-border-color),var(--v-border-opacity));border-radius:10px;background:rgb(var(--v-theme-surface))">
+            <div>
+              <strong>${item.name}</strong>
+              <div style="font-size:.78rem;opacity:.72">Status: ${item.status}</div>
+            </div>
+            <button type="button" data-ve-event="inspect-item" data-ve-payload='${JSON.stringify(item)}' style="padding:6px 12px;border:1px solid rgb(var(--v-theme-primary));border-radius:999px;color:rgb(var(--v-theme-primary));background:transparent;cursor:pointer">
+              Inspect
+            </button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  };
+
   return new Form(
     {
       title: 'Rich Widgets',
@@ -1183,6 +1207,33 @@ function buildRichWidgetsForm() {
               buildInfoLabel('Rich widget coverage: HTML, HTML view, code editor, chart, message box, direct media fields, and asset-backed uploads that store only asset ids in the master.'),
               new Field({ label: 'Notes HTML', storage: 'notesHtml', type: 'html', height: 260, cols: 12 }),
               new Field({ label: 'HTML Preview', storage: 'welcomeHtml', type: 'htmlview', cols: 12 }),
+              buildInfoLabel('Interactive HTML view + pagination: page changes redraw the generated rows, while Inspect uses data-ve-event and bubbles to the parent Report.'),
+              new Field({
+                ref: 'interactiveHtmlDemo',
+                label: 'Interactive HTML View',
+                storage: 'interactiveHtmlDemo',
+                type: 'htmlview',
+                default: paginationDemoHtml(1, 5),
+                cols: 12,
+              }),
+              new Field(
+                {
+                  ref: 'interactivePaginationDemo',
+                  label: 'Items per page',
+                  type: 'pagination',
+                  default: { page: 1, limit: 5, total: paginationDemoItems.length },
+                  itemsPerPageOptions: [5, 10, 20],
+                  color: 'primary',
+                  paginationVariant: 'outlined',
+                  cols: 12,
+                },
+                {
+                  paginationChanged: async (field, event) => {
+                    field.$master?.$set('interactiveHtmlDemo', paginationDemoHtml(event.page, event.limit));
+                    field.$refs.interactiveHtmlDemo?.updateValue();
+                  },
+                },
+              ),
               new Field({ label: 'Script', storage: 'script', type: 'code', lang: 'javascript', height: 260, cols: 6 }),
               new Field(
                 { label: 'Activity Chart', type: 'chart', chartType: 'bar', height: 260, cols: 6 },
@@ -1591,7 +1642,7 @@ function buildTablesForm() {
 }
 
 function buildFullReport(params?: { objectId?: string; mode?: 'create' | 'edit' | 'display'; title?: string }) {
-  return new Report(
+  const report = new Report(
     {
       title: params?.title || 'Person Workspace',
       objectType: 'people',
@@ -1642,6 +1693,13 @@ function buildFullReport(params?: { objectId?: string; mode?: 'create' | 'edit' 
       ],
     },
   );
+
+  report.on('field:html:inspect-item', (event: any) => {
+    const item = event?.payload || {};
+    Dialogs.$success(`Report received the HTML action for ${item.name || `item ${item.id || ''}`}.`);
+  });
+
+  return report;
 }
 
 function buildCompactReport() {

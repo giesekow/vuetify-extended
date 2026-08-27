@@ -13,7 +13,7 @@ import { AppManager } from "./appmanager";
 import { Api } from "../api";
 import { DialogForm } from "./dialogform";
 import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent } from "./shortcut";
-import { VApp, VAppBar, VAppBarTitle, VBtn, VCard, VCardText, VFooter, VMain, VMenu, VNavigationDrawer } from 'vuetify/components';
+import { VApp, VAppBar, VAppBarTitle, VBtn, VCard, VCardText, VDivider, VFooter, VMain, VMenu, VNavigationDrawer } from 'vuetify/components';
 import { Master } from "../master";
 import { attachCapacitorBackButton, createNavigationPersistenceAdapter, createNavigationId, detectCapacitorEnvironment, isValidSnapshot, makeSerializable, navigationStorageKey, resolveDefaultNavigationStorageMode, type AppNavigationOptions, type AppSnapshot, type InlineNavigationOptions, type NavigationEntry, type NavigationMenuRestoreStep, type NavigationPersistenceAdapter, type NavigationScreenFactory, type NavigationScreenType, type UIText } from "./runtime";
 
@@ -1162,6 +1162,7 @@ export class AppMain extends UIBase {
     const footerBar = this.renderShellBar('footer');
     const showHeader = this.params.value.showHeader || !!headerBar || !!header;
     const showFooter = this.params.value.showFooter || !!footerBar || !!footer;
+    const mobileHeaderDrawer = showHeader ? this.renderMobileHeaderDrawer() : undefined;
     const hideSideNavs = this.shouldHideSideNavsForActiveItem();
     const sideNavDrawers = hideSideNavs
       ? []
@@ -1244,7 +1245,8 @@ export class AppMain extends UIBase {
             () => footerBar || footer || ''
           ),
         ] : []),
-        ...sideNavDrawers
+        ...sideNavDrawers,
+        ...(mobileHeaderDrawer ? [mobileHeaderDrawer] : []),
       ]
     );
   }
@@ -1459,11 +1461,7 @@ export class AppMain extends UIBase {
       return false;
     }
 
-    if (this.sideNavMenuRef(side).value) {
-      return true;
-    }
-
-    return side === 'left' ? !!this.options.leftNav : !!this.options.rightNav;
+    return !!this.sideNavMenuRef(side).value;
   }
 
   private renderTemporarySideNavToggle(side: AppSideNavSide) {
@@ -1864,6 +1862,7 @@ export class AppMain extends UIBase {
     }
 
     const entries = items
+      .filter((item) => !this.shouldHideShellItem(item))
       .map((item, index) => ({
         index,
         item,
@@ -1924,6 +1923,93 @@ export class AppMain extends UIBase {
           this.mobileHeaderDrawerOpen.value = true;
         },
       })])] : []),
+    ]);
+  }
+
+  private mobileHeaderDrawerSections() {
+    return (['Start', 'Center', 'End'] as const)
+      .map((section) => {
+        const nodes = this.getShellBarSectionItems('header', section)
+          .filter((item) => !this.shouldHideShellItem(item) && this.resolveMobileShellLocation(item) === 'drawer')
+          .map((item) => this.normalizeShellItem(item))
+          .filter((node): node is VNode => !!node);
+
+        return { section, nodes };
+      })
+      .filter((section) => section.nodes.length > 0);
+  }
+
+  private renderMobileHeaderDrawer() {
+    if (!this.compactShellLayout.value) {
+      return undefined;
+    }
+
+    const sections = this.mobileHeaderDrawerSections();
+    if (sections.length === 0) {
+      return undefined;
+    }
+
+    const h = this.$h;
+    const content: VNode[] = [];
+    sections.forEach((section, index) => {
+      if (index > 0) {
+        content.push(h(VDivider, { class: ['my-2'] }));
+      }
+
+      content.push(h('div', {
+        class: ['px-4', 'py-2'],
+        'data-mobile-header-section': section.section.toLowerCase(),
+        style: {
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch',
+          gap: '10px',
+        },
+      }, section.nodes));
+    });
+
+    return h(VNavigationDrawer, {
+      modelValue: this.mobileHeaderDrawerOpen.value,
+      'onUpdate:modelValue': (value: boolean) => {
+        this.mobileHeaderDrawerOpen.value = value;
+      },
+      location: 'right',
+      temporary: true,
+      scrim: true,
+      app: true,
+      width: 340,
+      class: ['vuetify-extended-mobile-header-drawer'],
+    } as any, () => [
+      h('div', {
+        class: ['px-4', 'py-3'],
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+        },
+      }, [
+        h('div', { class: ['text-subtitle-1', 'font-weight-bold'] }, this.$uiText('ve.app.quickActions', 'Quick actions')),
+        h(VBtn, {
+          icon: 'mdi-close',
+          variant: 'text',
+          size: 'small',
+          title: this.$uiText('ve.common.close', 'Close'),
+          'aria-label': this.$uiText('ve.common.close', 'Close'),
+          onClick: () => {
+            this.mobileHeaderDrawerOpen.value = false;
+          },
+        }),
+      ]),
+      h(VDivider),
+      h('div', {
+        style: {
+          minHeight: 0,
+          overflowY: 'auto',
+          paddingTop: '8px',
+          paddingBottom: '16px',
+        },
+      }, content),
     ]);
   }
 

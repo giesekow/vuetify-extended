@@ -293,6 +293,8 @@ export declare class AppMain extends UIBase {
     private normalizeShellContent;
     private renderMobileHeaderBrand;
     private renderCompactShellOverflow;
+    private mobileHeaderDrawerSections;
+    private renderMobileHeaderDrawer;
     private resolveMobileShellLocation;
     private mobileShellPriority;
     private shouldHideShellItem;
