@@ -225,7 +225,7 @@ export interface FieldOptions {
   assetRemoved?: (field: Field, assets: AssetRecord[]) => Promise<void>|void;
   focusChanged?: (field: Field, focused: boolean) => void;
   setup?: (field: Field) => void;
-  validate?: (field: Field) => Promise<string|undefined>|string|undefined;
+  validate?: (field: Field) => Promise<UIValidationResult>|UIValidationResult;
   default?: (field: Field) => any;
   on?: (field: Field) => OnHandler;
   canRemoveItem?: (field: Field, item: any) => Promise<boolean>|boolean|undefined;
@@ -289,7 +289,7 @@ export interface FieldOptions {
 - `format(...)`
   Final display transformation hook for datasets before rendering.
 - `validate(...)`
-  Extra custom validation beyond the built-in `validation` object.
+  Extra custom validation beyond the built-in `validation` object. It may return a plain string or any `UIText`, including `{ key, fallback, values }`.
 - `changed(...)`
   Runs after a user or programmatic value transition has synchronized the field and `Master`. Its context origin is `user` or `programmatic`.
 - `initialized(...)`
@@ -306,6 +306,39 @@ export interface FieldOptions {
   Focus gain/loss callback.
 - `on(...)`
   Event handlers registered through the field event system.
+
+## Localized Validation
+
+Validation callbacks accept the shared result types:
+
+```ts
+type UIValidationResult = UIText | true | undefined | void;
+type UIValidationRuleResult = UIValidationResult | false;
+```
+
+Return `true` or `undefined` when valid. Return a string, lazy text callback, or keyed descriptor when invalid:
+
+```ts
+const code = $FD(
+  { storage: 'code', label: $l('fields.code', 'Code') },
+  {
+    validate: (field) => {
+      const value = String(field.$value || '');
+      return value.length >= 6
+        ? undefined
+        : $l(
+            'validation.codeLength',
+            'Code must contain at least {min} characters.',
+            { min: 6 },
+          );
+    },
+  },
+)
+```
+
+`FieldOptions.rules(...)` supports the same translated error values. The field resolves `UIText` rule results into strings before passing them to Vuetify.
+
+Built-in `required` and `validation` rules use `ve.validation.*` keys. For example, `validation.range` resolves through `ve.validation.min` or `ve.validation.max`, while `maxLen` uses `ve.validation.maxLength`. Applications override these through the normal i18n adapter; see [Built-In Translation Keys](../runtime/BuiltInTranslationKeys.md#vevalidation).
 
 ## Event Model
 

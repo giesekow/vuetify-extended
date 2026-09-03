@@ -39,7 +39,7 @@ export interface PartParams {
 ```ts
 export interface PartOptions {
   master?: Master;
-  validate?: (part: Part) => Promise<string|undefined>|string|undefined;
+  validate?: (part: Part) => Promise<UIValidationResult>|UIValidationResult;
   topChildren?: (props: any, context: any) => Array<Part|Field>;
   bottomChildren?: (props: any, context: any) => Array<Part|Field>;
   children?: (props: any, context: any) => Array<Part|Field>;
@@ -60,3 +60,7 @@ export class Part extends UIBase {
 
 - `static setDefault(value: PartParams, reset?: boolean)`
 - `render(props: any, context: any)`
+
+## Localized Validation
+
+`PartOptions.validate(part)` accepts `UIValidationResult`, so errors may be plain strings or translation-aware `UIText` descriptors. Child field/part validation descriptors are preserved while bubbling to the owning form and resolved for display there.

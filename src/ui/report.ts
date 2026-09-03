@@ -11,7 +11,7 @@ import { OnHandler } from "./lib";
 import { PRefs } from "./part";
 import { Refs } from "./field";
 import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent } from "./shortcut";
-import { UIText } from "./runtime";
+import { type UIText, type UIValidationResult } from "./runtime";
 
 export type ReportButtonStyle = 'text'|'outlined'|'elevated';
 
@@ -56,6 +56,7 @@ export interface ReportOptions {
   master?: Master;
   form?: (props: any, context: any, index: number) => Promise<Form|undefined>|Form|undefined;
   hasForm?: (props: any, context: any, index: number) => Promise<boolean|undefined>|boolean|undefined;
+  validate?: (report: Report, form: Form, index: number) => Promise<UIValidationResult>|UIValidationResult;
   saved?: (report: Report) => Promise<void>|void;
   cancel?: (report: Report) => Promise<void>|void;
   access?: (report: Report, mode?: ReportAccessMode) => Promise<boolean>|boolean;
@@ -285,6 +286,10 @@ export class Report extends UIBase {
 
   async access(mode?: ReportAccessMode): Promise<boolean> {
     return this.options.access ? await this.options.access(this, mode) : true;
+  }
+
+  async validate(form: Form, index: number = this.currentIndex.value): Promise<UIValidationResult> {
+    return this.options.validate ? await this.options.validate(this, form, index) : undefined;
   }
 
   async getRightMenuTarget(): Promise<MenuTarget | undefined> {
@@ -1113,7 +1118,7 @@ export class Report extends UIBase {
   }
 
   async forceSave() {
-    this.save()
+    await this.currentForm?.$save();
   }
 
   private triggerButtonShortcut(ev: KeyboardEvent) {

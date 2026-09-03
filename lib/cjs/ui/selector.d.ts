@@ -2,7 +2,7 @@ import { VNode } from "vue";
 import { SelectorMode, UIBase } from "./base";
 import { ButtonParams } from "./button";
 import { OnHandler } from "./lib";
-import { UIText } from "./runtime";
+import { UIText, type UIValidationResult } from "./runtime";
 import type { DialogSizeParams } from "./dialogform";
 export interface SelectorParams extends DialogSizeParams {
     ref?: string;
@@ -56,7 +56,7 @@ export declare class Selector extends UIBase {
     get $params(): SelectorParams;
     get $access(): boolean;
     private runAccess;
-    validate(): Promise<string | true | undefined | void>;
+    validate(): Promise<UIValidationResult>;
     selected(item: any, mode?: SelectorMode): Promise<void>;
     format(item: any, items: any[]): Promise<any | undefined>;
     cancel(): Promise<void>;

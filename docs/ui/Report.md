@@ -61,6 +61,7 @@ export interface ReportOptions {
   master?: Master;
   form?: (props: any, context: any, index: number) => Promise<Form|undefined>|Form|undefined;
   hasForm?: (props: any, context: any, index: number) => Promise<boolean|undefined>|boolean|undefined;
+  validate?: (report: Report, form: Form, index: number) => Promise<UIValidationResult>|UIValidationResult;
   saved?: () => Promise<void>|void;
   cancel?: () => Promise<void>|void;
   access?: (report: Report, mode: any) => Promise<boolean>|boolean;
@@ -88,6 +89,7 @@ export interface ReportRefreshOptions {
 
 ```ts
 export class Report extends UIBase {
+  validate(form: Form, index?: number): Promise<UIValidationResult>;
   refresh(options?: ReportRefreshOptions): Promise<void>;
   // see source for full implementation
 }
@@ -96,9 +98,52 @@ export class Report extends UIBase {
 ## Key Methods
 
 - `static setDefault(value: ReportParams, reset?: boolean)`
+- `validate(form: Form, index?: number)`
 - `loadObject()`
 - `refresh(options?: ReportRefreshOptions)`
 - `render(props: any, context: any)`
+
+## Report-Level Validation
+
+Use `ReportOptions.validate` for rules that span forms, depend on the current workflow step, or belong to the report rather than one field or form. It runs after the active form and all its child parts have passed validation, but before a confirmation dialog, `Master.$save()`, or movement to the next form.
+
+```ts
+import { $FD, $FM, $PT, $RP, $l } from 'vuetify-extended';
+
+const report = $RP(
+  { title: 'Booking', forms: 2, mode: 'create' },
+  {
+    form: (_props, _context, index) => $FM({}, {
+      children: () => [
+        $PT({}, {
+          children: () => [
+            $FD({ storage: index === 0 ? 'startDate' : 'endDate', type: 'date' }),
+          ],
+        }),
+      ],
+    }),
+    validate: (report, _form, index) => {
+      const start = report.$master?.$data.startDate;
+      const end = report.$master?.$data.endDate;
+
+      if (index === 1 && start && end && end < start) {
+        return $l(
+          'booking.validation.dateOrder',
+          'End date must be on or after start date.',
+        );
+      }
+
+      return undefined;
+    },
+  },
+);
+```
+
+The callback receives the owning `Report`, the active `Form`, and its zero-based form index. Return a plain string or `UIText` descriptor to stop the action and show the message in the form validation summary. Return `true` or `undefined` to continue. Validation failures prevent both next-step navigation and final saving.
+
+Standalone forms are unaffected because report-level validation only runs when the form belongs to a `Report`.
+
+`await report.forceSave()` follows the same validation, confirmation, persistence, and report-step pipeline as the visible Save/Next button. It delegates to the active form rather than bypassing validation.
 
 ## Refreshing Report Data
 

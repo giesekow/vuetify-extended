@@ -5,7 +5,7 @@ import { OnHandler } from "./lib";
 import { Part, PRefs } from "./part";
 import { Field, Refs } from "./field";
 import { ExportTemplateInfo } from "./report";
-import { UIText } from "./runtime";
+import { UIText, type UIValidationResult } from "./runtime";
 export interface TriggerParams {
     ref?: string;
     invisible?: boolean;
@@ -117,7 +117,7 @@ export declare class Trigger extends UIBase {
     get $params(): TriggerParams;
     get $access(): boolean;
     private runAccess;
-    validate(): Promise<string | true | undefined | void>;
+    validate(): Promise<UIValidationResult>;
     saved(): Promise<void>;
     cancel(): Promise<void>;
     access(mode?: TriggerAccessMode): Promise<boolean>;

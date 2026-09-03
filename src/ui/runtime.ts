@@ -9,6 +9,8 @@ export interface UITextDescriptor {
 }
 
 export type UIText = string | UITextDescriptor | (() => string);
+export type UIValidationResult = UIText | true | undefined | void;
+export type UIValidationRuleResult = UIValidationResult | false;
 
 export interface VuetifyExtendedI18nAdapter {
   localeRef?: Ref<string>;
@@ -31,6 +33,14 @@ export function getVuetifyExtendedI18n() {
 
 export function isUITextDescriptor(value: any): value is UITextDescriptor {
   return !!value && typeof value === 'object' && !Array.isArray(value) && typeof value.key === 'string';
+}
+
+export function isUIValidationMessage(value: any): value is UIText {
+  return typeof value === 'string' || typeof value === 'function' || isUITextDescriptor(value);
+}
+
+export function resolveUIValidationMessage(value: UIValidationResult): string|undefined {
+  return isUIValidationMessage(value) ? resolveUIText(value) : undefined;
 }
 
 export function interpolateUITextTemplate(template?: string, values?: Record<string, any>) {

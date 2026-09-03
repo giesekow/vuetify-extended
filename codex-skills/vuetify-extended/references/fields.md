@@ -349,6 +349,8 @@ Driven by `FieldParams`:
 
 Driven by `FieldOptions.validate(field)`.
 
+The callback returns `UIValidationResult`. Prefer `$l(key, fallback, values)` for user-visible errors so validation follows the active locale. Plain strings remain valid.
+
 Use this when validation depends on:
 
 - another field value
@@ -361,9 +363,13 @@ Important implementation detail:
 - `Field.validate()` delegates to `options.validate(...)` when provided
 - if custom validation is added, preserve any built-in checks the flow still requires
 
-### Form-Level Validation
+### Form And Report Validation
 
 Driven by `FormOptions.validate(form)`.
+
+Form, `PartOptions.validate(part)`, and `ReportOptions.validate(report, form, index)` callbacks use the same `UIValidationResult` contract. Report validation is the final custom stage for report-owned forms and can block both next-step navigation and final saving. Built-in rules resolve through `ve.validation.*`; consult `docs/runtime/BuiltInTranslationKeys.md` before introducing new library-owned validation wording.
+
+Use `await report.forceSave()` for programmatic saves. It delegates to the active form and follows the complete field, part, form, and report validation pipeline before persistence or step navigation.
 
 Use this for cross-field rules such as:
 

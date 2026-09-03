@@ -10,7 +10,7 @@ import { AppManager } from "./appmanager";
 import { Field, Refs } from "./field";
 import { OnHandler } from "./lib";
 import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent } from "./shortcut";
-import { UIText } from "./runtime";
+import { isUIValidationMessage, resolveUIValidationMessage, type UIText, type UIValidationResult } from "./runtime";
 
 export interface FormParams {
   ref?: string;
@@ -50,7 +50,7 @@ export interface FormOptions {
   bottomButtons?: (props: any, context: any) => Array<Button>;
   leftButtons?: (props: any, context: any) => Array<Button>;
   bottomLeftButtons?: (props: any, context: any) => Array<Button>;
-  validate?: (form: Form) => Promise<string|true|undefined|void>|string|true|undefined|void;
+  validate?: (form: Form) => Promise<UIValidationResult>|UIValidationResult;
   saved?: (form: Form) => Promise<void>|void;
   afterSaved?: (form: Form) => Promise<void>|void;
   onError?: (form: Form, error: any) => Promise<void>|void;
@@ -155,15 +155,21 @@ export class Form extends UIBase {
     }
   }
 
-  async validate (): Promise<string|true|undefined|void> {
+  async validate (): Promise<UIValidationResult> {
     if (this.options.validate) {
       const v = await this.options.validate(this);
-      if (typeof v === 'string') return v;
+      if (isUIValidationMessage(v)) return v;
     };
 
     for (let i = 0; i < this.childrenInstances.length; i++) {
       const v = await this.childrenInstances[i].validate();
-      if (typeof v === 'string') return v;
+      if (isUIValidationMessage(v)) return v;
+    }
+
+    const report = this.$parentReport;
+    if (report) {
+      const v = await report.validate(this);
+      if (isUIValidationMessage(v)) return v;
     }
   }
 
@@ -860,8 +866,9 @@ export class Form extends UIBase {
 
     const vres = await this.validate();
     
-    canProceed = typeof vres !== 'string';
-    this.setValidationSummary(typeof vres === 'string' ? [vres] : []);
+    const validationFailed = isUIValidationMessage(vres);
+    canProceed = !validationFailed;
+    this.setValidationSummary(validationFailed ? [resolveUIValidationMessage(vres) || ''] : []);
 
     this.handleOn('validate', this);
 

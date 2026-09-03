@@ -4,7 +4,7 @@ import { VDivider, VRow, VCard, VCardTitle, VCardText, VCardActions, VSpacer, VC
 import { Button, ButtonParams } from "./button";
 import { Master } from "../master";
 import { OnHandler } from "./lib";
-import { UIText } from "./runtime";
+import { UIText, type UIValidationResult } from "./runtime";
 import type { DialogSizeParams } from "./dialogform";
 
 export interface SelectorParams extends DialogSizeParams {
@@ -99,7 +99,7 @@ export class Selector extends UIBase {
     }
   }
 
-  async validate (): Promise<string|true|undefined|void> {
+  async validate (): Promise<UIValidationResult> {
   }
 
   async selected(item: any, mode?: SelectorMode) {}

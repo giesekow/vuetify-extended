@@ -12,7 +12,7 @@ import { AppManager } from "./appmanager";
 import { $excel, computeFunctionalCodeAsync } from "../misc";
 import { normalizeButtonShortcut, normalizeButtonShortcutFromEvent } from "./shortcut";
 import { Master } from "../master";
-import { UIText } from "./runtime";
+import { UIText, type UIValidationResult } from "./runtime";
 
 export interface TriggerParams {
   ref?: string;
@@ -223,7 +223,7 @@ export class Trigger extends UIBase {
     }
   }
 
-  async validate (): Promise<string|true|undefined|void> {
+  async validate (): Promise<UIValidationResult> {
   }
 
   async saved() {}

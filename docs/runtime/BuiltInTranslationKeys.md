@@ -72,6 +72,41 @@ Shared mode labels used by forms and reports:
 - `ve.mode.display`
 - `ve.mode.edit`
 
+## `ve.validation.*`
+
+Shared validation messages used by `FieldParams.required`, `FieldParams.validation`, the exported `$v` helpers, file-size checks, and `Master` validation errors:
+
+- `ve.validation.equal`
+- `ve.validation.error`
+- `ve.validation.excludes`
+- `ve.validation.fileMaxSize`
+- `ve.validation.greaterThan`
+- `ve.validation.greaterThanOrEqual`
+- `ve.validation.includes`
+- `ve.validation.lessThan`
+- `ve.validation.lessThanOrEqual`
+- `ve.validation.max`
+- `ve.validation.maxLength`
+- `ve.validation.min`
+- `ve.validation.minLength`
+- `ve.validation.notEqual`
+- `ve.validation.notOneOf`
+- `ve.validation.oneOf`
+- `ve.validation.regex`
+- `ve.validation.required`
+
+Interpolation values:
+
+- `ve.validation.equal`, `notEqual`, `greaterThan`, `greaterThanOrEqual`, `lessThan`, `lessThanOrEqual`, `includes`, and `excludes`: `{ value }`
+- `ve.validation.max` and `maxLength`: `{ max }`
+- `ve.validation.min` and `minLength`: `{ min }`
+- `ve.validation.oneOf` and `notOneOf`: `{ values }`
+- `ve.validation.regex`: `{ pattern }`
+- `ve.validation.fileMaxSize`: `{ file }`, `{ max }`
+- `ve.validation.error`: `{ message }`
+
+`FieldParams.validation.range` uses `ve.validation.min` or `ve.validation.max`, depending on which boundary failed.
+
 ## `ve.app.*`
 
 `AppMain` shell and navigation labels:

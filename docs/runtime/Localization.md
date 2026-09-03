@@ -134,6 +134,31 @@ The built-in catalog now also includes feature and infrastructure namespaces suc
 - `ve.shell.*` and `ve.user.*` for shell accessibility and user-menu helper text
 - `ve.shortcut.*` for modifier names
 - `ve.editor.*` for the rich HTML editor toolbar, prompts, table actions, and video actions
+- `ve.validation.*` for required, range, comparison, list, length, regex, file-size, and Master validation messages
+
+## Translation-Aware Validation
+
+Field, part, form, report, dashboard-child, and Master validation flows accept the same text contract as visible labels:
+
+```ts
+type UIValidationResult = UIText | true | undefined | void;
+```
+
+Return `true` or `undefined` for success. Return a string or `UIText` for an error. Keyed descriptors support normal interpolation:
+
+```ts
+validate: (field) => field.$value
+  ? undefined
+  : $l(
+      'pages.people.validation.nameRequired',
+      '{field} is required.',
+      { field: $t('pages.people.fields.name', 'Name') },
+    )
+```
+
+`FieldOptions.rules(...)` also accepts translated validation values; the field resolves descriptors before giving the result to Vuetify. Standard `FieldParams.required`, `FieldParams.validation`, and `$v` rules use the documented `ve.validation.*` keys, which applications may override globally.
+
+`ReportOptions.validate(report, form, index)` uses the same result type. It is useful for translated workflow-wide rules and runs after active-form validation but before confirmation, step advancement, or persistence.
 
 Recommended rule:
 

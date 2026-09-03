@@ -9,7 +9,7 @@ export type { FieldPaginationChangeReason, FieldPaginationEvent, FieldPagination
 import '@vuepic/vue-datepicker/dist/main.css';
 import { OnHandler } from "./lib";
 import 'katex/dist/katex.min.css';
-import { UIText } from "./runtime";
+import { type UIText, type UIValidationResult } from "./runtime";
 export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagingbox' | 'chart' | 'viewtable' | 'map' | 'map-line' | 'map-circle' | 'map-rectangle' | 'map-polygon' | 'map-heatmap' | 'map-cluster' | 'map-geojson' | 'code' | 'color' | 'html' | 'htmlview' | 'listselect' | 'otp' | 'file-upload' | 'time' | 'date' | 'datetime' | 'button' | 'image' | 'document' | 'password' | 'float' | 'integer' | 'decimal' | 'collection' | 'textarea' | 'boolean' | 'pagination' | 'table' | 'reporttable' | 'servertable';
 export type FieldUploadType = 'base64' | 'file' | 'metadata';
 export type FieldDateFormat = 'YYYY-MM-DD' | 'YYYYMMDD' | 'timestamp';
@@ -272,7 +272,7 @@ export interface FieldOptions {
     finished?: (field: Field, value: string) => Promise<void> | void;
     focusChanged?: (field: Field, focused: boolean) => void;
     setup?: (field: Field) => void;
-    validate?: (field: Field) => Promise<string | undefined> | string | undefined;
+    validate?: (field: Field) => Promise<UIValidationResult> | UIValidationResult;
     default?: (field: Field) => any;
     on?: (field: Field) => OnHandler;
     canRemoveItem?: (field: Field, item: any) => Promise<boolean> | boolean | undefined;
@@ -530,8 +530,9 @@ export declare class Field extends UIBase {
     messageFormat(data: any): any[];
     $reload(): Promise<void>;
     render(props: any, context: any): VNode | undefined;
-    validate(): Promise<string | undefined>;
+    validate(): Promise<UIValidationResult>;
     private rules;
+    private resolveValidationRule;
     build(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }> | VNode<RendererNode, import("vue").RendererElement, {

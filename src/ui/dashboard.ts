@@ -25,7 +25,7 @@ import { Report } from './report';
 import { Dialogs } from './dialogs';
 import { MenuItem, executeMenuItemAction } from './menu';
 import { describeShortcut, normalizeShortcut, normalizeShortcutFromEvent } from './shortcut';
-import type { UIText } from './runtime';
+import { isUIValidationMessage, type UIText, type UIValidationResult } from './runtime';
 
 export type DashboardTheme = 'light' | 'dark';
 
@@ -958,10 +958,10 @@ export class DashboardWidget extends UIBase {
     super.removeEventListeners();
   }
 
-  async validate(): Promise<string | undefined> {
+  async validate(): Promise<UIValidationResult> {
     for (const child of this.childInstances) {
       const value = await (child as any).validate?.();
-      if (typeof value === 'string') return value;
+      if (isUIValidationMessage(value)) return value;
     }
   }
 
@@ -3777,10 +3777,10 @@ export class Dashboard extends UIBase {
     super.removeEventListeners();
   }
 
-  async validate(): Promise<string | undefined> {
+  async validate(): Promise<UIValidationResult> {
     for (const child of this.childInstances) {
       const value = await (child as any).validate?.();
-      if (typeof value === 'string') return value;
+      if (isUIValidationMessage(value)) return value;
     }
   }
 

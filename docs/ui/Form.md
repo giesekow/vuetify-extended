@@ -58,7 +58,7 @@ export interface FormOptions {
   bottomButtons?: (props: any, context: any) => Array<Button>;
   leftButtons?: (props: any, context: any) => Array<Button>;
   bottomLeftButtons?: (props: any, context: any) => Array<Button>;
-  validate?: (form: Form) => Promise<string|true|undefined|void>|string|true|undefined|void;
+  validate?: (form: Form) => Promise<UIValidationResult>|UIValidationResult;
   saved?: (form: Form) => Promise<void>|void;
   afterSaved?: (form: Form) => Promise<void>|void;
   cancel?: () => Promise<void>|void;
@@ -86,3 +86,30 @@ export class Form extends UIBase {
 
 - `static setDefault(value: FormParams, reset?: boolean)`
 - `render(props: any, context: any)`
+
+## Localized Validation
+
+`FormOptions.validate(form)` may return any `UIText` when cross-field validation fails. The form resolves it through the active i18n adapter before rendering the validation summary.
+
+```ts
+validate: (form) => {
+  const start = form.$master?.$data.startDate;
+  const end = form.$master?.$data.endDate;
+  return !start || !end || start <= end
+    ? undefined
+    : $l(
+        'validation.dateOrder',
+        'End date must be on or after start date.',
+      );
+}
+```
+
+Validation returned by child `Part` and `Field` instances follows the same path. If the form belongs to a `Report`, `ReportOptions.validate(report, form, index)` then runs as the final application-level validation stage. A string remains supported for backward compatibility; `true` or `undefined` means validation passed.
+
+The complete custom validation order is:
+
+1. `FormOptions.validate(form)`
+2. Child `Part` and `Field` validation
+3. `ReportOptions.validate(report, form, index)`, for report-owned forms only
+
+The first validation message stops the pipeline. All three levels support translated `UIText` values.

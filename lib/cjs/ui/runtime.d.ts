@@ -6,6 +6,8 @@ export interface UITextDescriptor {
     values?: Record<string, any>;
 }
 export type UIText = string | UITextDescriptor | (() => string);
+export type UIValidationResult = UIText | true | undefined | void;
+export type UIValidationRuleResult = UIValidationResult | false;
 export interface VuetifyExtendedI18nAdapter {
     localeRef?: Ref<string>;
     t?: (key: string, values?: Record<string, any>) => string;
@@ -17,6 +19,8 @@ export interface VuetifyExtendedI18nAdapter {
 export declare function setVuetifyExtendedI18n(adapter?: VuetifyExtendedI18nAdapter): void;
 export declare function getVuetifyExtendedI18n(): VuetifyExtendedI18nAdapter | undefined;
 export declare function isUITextDescriptor(value: any): value is UITextDescriptor;
+export declare function isUIValidationMessage(value: any): value is UIText;
+export declare function resolveUIValidationMessage(value: UIValidationResult): string | undefined;
 export declare function interpolateUITextTemplate(template?: string, values?: Record<string, any>): string;
 export declare function $l(key: string, fallback?: string, values?: Record<string, any>): UITextDescriptor;
 export declare function $t(key: string, fallback?: string, values?: Record<string, any>): string;

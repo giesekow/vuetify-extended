@@ -4,7 +4,7 @@ import { Master } from '../master';
 import { OnHandler } from './lib';
 import { Report } from './report';
 import { MenuItem } from './menu';
-import type { UIText } from './runtime';
+import { type UIText, type UIValidationResult } from './runtime';
 export type DashboardTheme = 'light' | 'dark';
 export interface DashboardParams {
     ref?: string;
@@ -388,7 +388,7 @@ export declare class DashboardWidget extends UIBase {
     setup(): void;
     attachEventListeners(): void;
     removeEventListeners(): void;
-    validate(): Promise<string | undefined>;
+    validate(): Promise<UIValidationResult>;
     forceCancel(): Promise<void>;
     refresh(): Promise<void>;
     private handleOn;
@@ -690,7 +690,7 @@ export declare class Dashboard extends UIBase {
     setup(): void;
     attachEventListeners(): void;
     removeEventListeners(): void;
-    validate(): Promise<string | undefined>;
+    validate(): Promise<UIValidationResult>;
     forceCancel(): Promise<void>;
     refresh(options?: DashboardRefreshOptions): Promise<void>;
     private resolveDashboardChildren;

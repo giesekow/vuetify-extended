@@ -3,6 +3,7 @@ import { DialogMode, UIBase } from "./base";
 import { Form } from "./form";
 import { Master } from "../master";
 import { OnHandler } from "./lib";
+import type { UIValidationResult } from "./runtime";
 export interface DialogSizeParams {
     width?: number | string;
     maxWidth?: number | string;
@@ -47,7 +48,7 @@ export declare class DialogForm extends UIBase {
     get $params(): DialogParams;
     get $access(): boolean;
     private runAccess;
-    validate(): Promise<string | true | undefined | void>;
+    validate(): Promise<UIValidationResult>;
     saved(): Promise<void>;
     cancel(): Promise<void>;
     access(mode?: DialogMode): Promise<boolean>;

@@ -1,4 +1,5 @@
 import { EventEmitter } from "../ui/lib";
+import { type UIValidationResult } from "../ui/runtime";
 export interface MasterOptions {
     type?: string;
     id?: any;
@@ -37,9 +38,9 @@ export declare class Master extends EventEmitter {
     get $hasParent(): boolean;
     set $parent(parent: Master | undefined);
     get $parent(): Master | undefined;
-    addValidation(name: string, callback: any): void;
+    addValidation(name: string, callback: (data: any) => Promise<UIValidationResult> | UIValidationResult): void;
     removeValidation(name: string): void;
-    validate(data: any): Promise<any>;
+    validate(data: any): Promise<UIValidationResult>;
     addPreprocess(name: string, callback: (master: Master, data: any) => Promise<any | undefined> | any | undefined): void;
     addPostprocess(name: string, callback: (master: Master, data: any) => Promise<any | undefined> | any | undefined): void;
     removePreprocess(name: string): void;
@@ -61,6 +62,7 @@ export declare class Master extends EventEmitter {
     private load;
     private remove;
     $save(mode?: any): Promise<boolean | string>;
+    private validationErrorMessage;
     $remove(): Promise<void>;
     $load(): Promise<void>;
     $reset(data?: any, id?: any): Promise<void>;

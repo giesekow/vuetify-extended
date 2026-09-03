@@ -66,3 +66,15 @@ That means Mongo-style objects and SQL-style `{ id: ... }` objects can both work
 
 - `Collection`, `Selector`, `Trigger`, `Field`, and table widgets now use these helpers for fallback behavior.
 - `arrayToObject(...)` in [`src/misc/general.ts`](../../src/misc/general.ts) also uses the same id-field fallback when `options.key` is omitted.
+
+## Localized Validation
+
+Callbacks registered through `Master.addValidation(...)` may return `UIValidationResult`, including keyed `UIText` descriptors:
+
+```ts
+master.addValidation('reference', (data) => data.reference
+  ? true
+  : $l('validation.referenceRequired', 'A reference is required.'))
+```
+
+When saving fails, the descriptor is resolved using the active locale. The surrounding error uses `ve.validation.error` with the resolved validation text in `{ message }`.

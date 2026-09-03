@@ -4,6 +4,7 @@ import { VBtn, VCard, VCardActions, VCardText, VDialog, VSpacer } from 'vuetify/
 import { Form } from "./form";
 import { Master } from "../master";
 import { OnHandler } from "./lib";
+import type { UIValidationResult } from "./runtime";
 
 export interface DialogSizeParams {
   width?: number|string;
@@ -94,7 +95,7 @@ export class DialogForm extends UIBase {
     }
   }
 
-  async validate (): Promise<string|true|undefined|void> {
+  async validate (): Promise<UIValidationResult> {
   }
 
   async saved() {}

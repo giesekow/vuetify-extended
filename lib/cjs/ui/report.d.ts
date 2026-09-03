@@ -6,7 +6,7 @@ import { Button, ButtonParams } from "./button";
 import { OnHandler } from "./lib";
 import { PRefs } from "./part";
 import { Refs } from "./field";
-import { UIText } from "./runtime";
+import { type UIText, type UIValidationResult } from "./runtime";
 export type ReportButtonStyle = 'text' | 'outlined' | 'elevated';
 export interface ReportParams {
     objectType?: any;
@@ -48,6 +48,7 @@ export interface ReportOptions {
     master?: Master;
     form?: (props: any, context: any, index: number) => Promise<Form | undefined> | Form | undefined;
     hasForm?: (props: any, context: any, index: number) => Promise<boolean | undefined> | boolean | undefined;
+    validate?: (report: Report, form: Form, index: number) => Promise<UIValidationResult> | UIValidationResult;
     saved?: (report: Report) => Promise<void> | void;
     cancel?: (report: Report) => Promise<void> | void;
     access?: (report: Report, mode?: ReportAccessMode) => Promise<boolean> | boolean;
@@ -123,6 +124,7 @@ export declare class Report extends UIBase {
     saved(): Promise<void>;
     cancel(): Promise<void>;
     access(mode?: ReportAccessMode): Promise<boolean>;
+    validate(form: Form, index?: number): Promise<UIValidationResult>;
     getRightMenuTarget(): Promise<MenuTarget | undefined>;
     form(props: any, context: any, index: number): Promise<Form | undefined>;
     hasForm(props: any, context: any, index: number): Promise<boolean>;

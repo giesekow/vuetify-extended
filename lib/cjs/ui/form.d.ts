@@ -6,7 +6,7 @@ import { Button, ButtonParams } from "./button";
 import { Report } from "./report";
 import { Refs } from "./field";
 import { OnHandler } from "./lib";
-import { UIText } from "./runtime";
+import { type UIText, type UIValidationResult } from "./runtime";
 export interface FormParams {
     ref?: string;
     readonly?: boolean;
@@ -44,7 +44,7 @@ export interface FormOptions {
     bottomButtons?: (props: any, context: any) => Array<Button>;
     leftButtons?: (props: any, context: any) => Array<Button>;
     bottomLeftButtons?: (props: any, context: any) => Array<Button>;
-    validate?: (form: Form) => Promise<string | true | undefined | void> | string | true | undefined | void;
+    validate?: (form: Form) => Promise<UIValidationResult> | UIValidationResult;
     saved?: (form: Form) => Promise<void> | void;
     afterSaved?: (form: Form) => Promise<void> | void;
     onError?: (form: Form, error: any) => Promise<void> | void;
@@ -86,7 +86,7 @@ export declare class Form extends UIBase {
     get $params(): FormParams;
     get $access(): boolean;
     runAccess(): Promise<void>;
-    validate(): Promise<string | true | undefined | void>;
+    validate(): Promise<UIValidationResult>;
     saved(): Promise<void>;
     afterSaved(): Promise<void>;
     cancel(): Promise<void>;

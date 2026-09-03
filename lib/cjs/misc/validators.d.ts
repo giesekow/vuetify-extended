@@ -1,5 +1,5 @@
 export declare const $v: {
-    isRequired(): (va: any) => true | "Field is required!";
+    isRequired(): (va: any) => string | true;
     range(mi: any, ma: any, converter?: any): (va: any) => string | true;
     max(m: any, converter?: any): (va: any) => string | true;
     min(m: any, converter?: any): (va: any) => string | true;

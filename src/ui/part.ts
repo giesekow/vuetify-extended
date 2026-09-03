@@ -5,6 +5,7 @@ import { Master } from "../master";
 import { Field, Refs } from "./field";
 import { Report } from "./report";
 import { OnHandler } from "./lib";
+import { isUIValidationMessage, type UIValidationResult } from "./runtime";
 
 export interface PartParams {
   ref?: string;
@@ -25,7 +26,7 @@ export interface PartParams {
 
 export interface PartOptions {
   master?: Master;
-  validate?: (part: Part) => Promise<string|undefined>|string|undefined;
+  validate?: (part: Part) => Promise<UIValidationResult>|UIValidationResult;
   topChildren?: (props: any, context: any) => Array<Part|Field>;
   bottomChildren?: (props: any, context: any) => Array<Part|Field>;
   children?: (props: any, context: any) => Array<Part|Field>;
@@ -175,17 +176,17 @@ export class Part extends UIBase {
     );
   }
 
-  async validate(): Promise<string|undefined> {
+  async validate(): Promise<UIValidationResult> {
     if (this.params.value.invisible) return undefined;
     
     if (this.options.validate) {
       const v = await this.options.validate(this);
-      if (typeof v === 'string') return v;
+      if (isUIValidationMessage(v)) return v;
     }
 
     for (let i = 0; i < this.childrenInstances.length; i++) {
       const v = await this.childrenInstances[i].validate();
-      if (typeof v === 'string') return v;
+      if (isUIValidationMessage(v)) return v;
     }
   }
 

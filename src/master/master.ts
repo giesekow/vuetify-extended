@@ -1,6 +1,7 @@
 import nestedproperty from "nested-property";
 import { EventEmitter } from "../ui/lib";
 import nestedProperty from "nested-property";
+import { isUIValidationMessage, resolveUIValidationMessage, resolveUIText, type UIValidationResult } from "../ui/runtime";
 
 export interface MasterOptions {
   type?: string;
@@ -143,7 +144,7 @@ export class Master extends EventEmitter {
     return this.parent;
   }
 
-  addValidation(name: string, callback: any) {
+  addValidation(name: string, callback: (data: any) => Promise<UIValidationResult>|UIValidationResult) {
     this.validates.push({name, callback});
   }
 
@@ -151,10 +152,10 @@ export class Master extends EventEmitter {
     this.validates = this.validates.filter((v: any) => v.name !== name);
   }
 
-  async validate(data: any): Promise<any> {
+  async validate(data: any): Promise<UIValidationResult> {
     for (let v = 0; v < this.validates.length; v++) {
       const r: any = await this.validates[v].callback(data);
-      if (typeof r === "string") {
+      if (isUIValidationMessage(r)) {
         return r;
       }
     }
@@ -316,8 +317,8 @@ export class Master extends EventEmitter {
   private async saveSub() {
     try {
       const val: any = await this.validate(this.$data);
-      if (typeof val === "string") {
-        throw new Error(`Validation Error: ${val}`);
+      if (isUIValidationMessage(val)) {
+        throw new Error(this.validationErrorMessage(val));
       }
       if (this.parent && (this.itemType || this.itemType === "") && (this.itemId || this.itemId === 0)) {
         this.emit("before-saved", {type: this.itemType, id: this.itemId, idField: this.idField});
@@ -424,8 +425,8 @@ export class Master extends EventEmitter {
   async $save(mode?: any): Promise<boolean|string> {
     try {
       const val: any = await this.validate(this.data);
-      if (typeof val === "string") {
-        throw new Error(`Validation Error: ${val}`);
+      if (isUIValidationMessage(val)) {
+        throw new Error(this.validationErrorMessage(val));
       }
 
       if (this.$hasParent) {
@@ -438,6 +439,14 @@ export class Master extends EventEmitter {
       this.emit("error", {error, action: "save"});
       return (error as any).message;
     }
+  }
+
+  private validationErrorMessage(value: UIValidationResult): string {
+    return resolveUIText({
+      key: 've.validation.error',
+      fallback: 'Validation Error: {message}',
+      values: { message: resolveUIValidationMessage(value) || '' },
+    });
   }
 
   async $remove() {

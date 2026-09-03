@@ -4,6 +4,7 @@ import { Master } from "../master";
 import { Field, Refs } from "./field";
 import { Report } from "./report";
 import { OnHandler } from "./lib";
+import { type UIValidationResult } from "./runtime";
 export interface PartParams {
     ref?: string;
     readonly?: boolean;
@@ -22,7 +23,7 @@ export interface PartParams {
 }
 export interface PartOptions {
     master?: Master;
-    validate?: (part: Part) => Promise<string | undefined> | string | undefined;
+    validate?: (part: Part) => Promise<UIValidationResult> | UIValidationResult;
     topChildren?: (props: any, context: any) => Array<Part | Field>;
     bottomChildren?: (props: any, context: any) => Array<Part | Field>;
     children?: (props: any, context: any) => Array<Part | Field>;
@@ -55,7 +56,7 @@ export declare class Part extends UIBase {
     build(props: any, context: any): VNode<import("vue").RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;
-    validate(): Promise<string | undefined>;
+    validate(): Promise<UIValidationResult>;
     setup(props: any, context: any): void;
     private handleOn;
 }

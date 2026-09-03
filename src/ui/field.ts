@@ -33,7 +33,7 @@ import nestedProperty from "nested-property";
 import { OnHandler } from "./lib";
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
-import { UIText } from "./runtime";
+import { isUIValidationMessage, resolveUIText, type UIText, type UIValidationResult, type UIValidationRuleResult } from "./runtime";
 
 
 export type FieldType = 'text'|'select'|'autocomplete'|'label'|
@@ -330,7 +330,7 @@ export interface FieldOptions {
   finished?: (field: Field, value: string) => Promise<void>|void;
   focusChanged?: (field: Field, focused: boolean) => void;
   setup?: (field: Field) => void;
-  validate?: (field: Field) => Promise<string|undefined>|string|undefined;
+  validate?: (field: Field) => Promise<UIValidationResult>|UIValidationResult;
   default?: (field: Field) => any;
   on?: (field: Field) => OnHandler;
   canRemoveItem?: (field: Field, item: any) => Promise<boolean>|boolean|undefined;
@@ -1049,7 +1049,11 @@ export class Field extends UIBase {
 
     for (const file of files) {
       if (maxSize > 0 && file.size > (maxSize * 1024)) {
-        Dialogs.$error(`${file.name} exceeds the maximum allowed size of ${maxSize} KB.`);
+        Dialogs.$error(this.$uiText(
+          've.validation.fileMaxSize',
+          '{file} exceeds the maximum allowed size of {max} KB.',
+          { file: file.name, max: maxSize },
+        ));
         continue;
       }
 
@@ -2445,15 +2449,17 @@ export class Field extends UIBase {
     );
   }
 
-  async validate(): Promise<string|undefined> {
+  async validate(): Promise<UIValidationResult> {
     if (this.params.value.invisible) return undefined;
     if (this.options.validate) return await this.options.validate(this);
   }
 
   private rules(): any[] {
-    if (this.options.rules) return this.options.rules(this);
-    
-    const items: any[] = [];
+    const items: any[] = this.options.rules ? this.options.rules(this) : [];
+
+    if (this.options.rules) {
+      return items.map((rule) => this.resolveValidationRule(rule));
+    }
 
     if (this.params.value.required) {
       items.push($v.isRequired());
@@ -2488,7 +2494,21 @@ export class Field extends UIBase {
       if (v.regex) items.push($v.regex(v.regex));
     }
 
-    return items;
+    return items.map((rule) => this.resolveValidationRule(rule));
+  }
+
+  private resolveValidationRule(rule: any) {
+    if (typeof rule !== 'function') {
+      return rule;
+    }
+
+    return (value: any) => {
+      const result = rule(value);
+      if (result && typeof result.then === 'function') {
+        return result.then((resolved: UIValidationRuleResult) => isUIValidationMessage(resolved) ? resolveUIText(resolved) : resolved);
+      }
+      return isUIValidationMessage(result) ? resolveUIText(result) : result;
+    };
   }
 
   build(props: any, context: any) {
