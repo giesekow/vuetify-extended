@@ -10,12 +10,31 @@ Global modal/dialog manager for alerts, confirms, progress, prompts, and other b
 
 - Expose one mounted root and static helpers such as `$confirm(...)`.
 - Confirm dialogs support keyboard shortcuts like Enter/Y for yes and Escape/N for no.
+- Confirm, info, prompt, image preview, iframe, and document preview dialogs support typed width and height constraints.
+- Each global dialog helper supports mergeable application defaults through `Dialogs.set...Default(...)` and bootstrap `defaults`.
 - `$prompt(...)` uses an internal `DialogForm`, so it supports normal `Field`, `Form`, `Part`, and `Master` behavior instead of a one-off input control.
 - `$imagePreview(...)` opens an in-app zoomable image viewer with pan support.
 - `$iframe(...)` opens a generic embedded iframe dialog for browser-renderable content.
 - `$documentPreview(...)` opens an in-app document dialog for PDFs.
 
 ## Reference
+
+### `DialogSizeParams`
+
+All contained dialogs use the same size contract. Numbers are interpreted as pixels by Vuetify; strings may use CSS units such as `'42rem'`, `'80vw'`, or `'70vh'`.
+
+```ts
+export interface DialogSizeParams {
+  width?: number|string;
+  maxWidth?: number|string;
+  minWidth?: number|string;
+  height?: number|string;
+  maxHeight?: number|string;
+  minHeight?: number|string;
+}
+```
+
+`ConfirmParams` and `InfoParams` extend `DialogSizeParams` directly.
 
 ### `DialogOptions`
 
@@ -36,10 +55,12 @@ export interface DialogOptions {
 }
 ```
 
+`infoWindowWidth` and `infoWindowHeight` remain supported for backward compatibility. Prefer `Dialogs.setInfoDefault(...)` for new code; the legacy height is treated as `maxHeight`, matching its original behavior.
+
 ### `PromptParams`
 
 ```ts
-export interface PromptParams {
+export interface PromptParams extends DialogSizeParams {
   title?: string;
   text?: string;
   type?: FieldType;
@@ -63,21 +84,23 @@ export interface PromptOptions {
 }
 ```
 
-### `ImagePreviewOptions`
+### `ImagePreviewParams`
 
 ```ts
-export interface ImagePreviewOptions {
+export interface ImagePreviewParams extends DialogSizeParams {
   title?: string;
   fullscreen?: boolean;
 }
 ```
+
+`ImagePreviewOptions` remains as a deprecated type alias for source compatibility.
 
 ### `IframeParams`
 
 ```ts
 export type IframeSkin = 'inherit'|'light'|'dark';
 
-export interface IframeParams {
+export interface IframeParams extends DialogSizeParams {
   src?: string;
   srcdoc?: string;
   title?: string;
@@ -86,9 +109,6 @@ export interface IframeParams {
   downloadUrl?: string;
   prependActions?: boolean;
   skin?: IframeSkin;
-  width?: number|string;
-  maxWidth?: number|string;
-  height?: number|string;
   scrim?: string;
   backgroundColor?: string;
   toolbarBackground?: string;
@@ -125,10 +145,10 @@ export class Dialogs {
 ## Key Methods
 
 - `static rootComponent()`
-- `static $confirm(text: string, title?: string): Promise<boolean>`
-- `static $info(text: string, title?: string, options?: { width?: number; height?: number }): Promise<void>`
+- `static $confirm(text: UIText, title?: UIText, params?: ConfirmParams): Promise<boolean>`
+- `static $info(text: UIText, title?: UIText, params?: InfoParams): Promise<void>`
 - `static $prompt(params?: PromptParams, options?: PromptOptions): Promise<any | undefined>`
-- `static $imagePreview(src: string, options?: ImagePreviewOptions): Promise<void>`
+- `static $imagePreview(src: string, params?: ImagePreviewParams): Promise<void>`
 - `static $iframe(params?: IframeParams, options?: IframeOptions): Promise<void>`
 - `static $documentPreview(src: string, params?: DocumentPreviewParams, options?: IframeOptions): Promise<void>`
 - `static $warning(text: string)`
@@ -137,6 +157,79 @@ export class Dialogs {
 - `static $showProgress({ value, text }: any)`
 - `static $updateProgress({ value, text }: any)`
 - `static $hideProgress()`
+
+## Sizing
+
+Pass size constraints as the final params object for confirm and info dialogs:
+
+```ts
+const accepted = await Dialogs.$confirm(
+  'Delete this record?',
+  'Confirm deletion',
+  {
+    width: 480,
+    maxWidth: 'calc(100vw - 32px)',
+    minHeight: 220,
+  },
+)
+
+await Dialogs.$info('The import has completed.', 'Import', {
+  width: '36rem',
+  maxWidth: '90vw',
+  height: 320,
+})
+```
+
+Prompt sizes can be supplied directly on `PromptParams`. Existing sizes under `dialogParams` also work; direct prompt size values take precedence.
+
+```ts
+await Dialogs.$prompt({
+  title: 'Update reference',
+  width: 640,
+  maxWidth: '92vw',
+  maxHeight: '80vh',
+})
+```
+
+For image, iframe, and document previews, dimensions apply only in contained mode (`fullscreen: false`). Fullscreen mode intentionally occupies the viewport and ignores contained size constraints.
+
+## Global Defaults
+
+Each helper has a matching default setter:
+
+```ts
+Dialogs.setConfirmDefault({ width: 420, maxWidth: '92vw' })
+Dialogs.setInfoDefault({ width: 560, maxHeight: '75vh' })
+Dialogs.setPromptDefault({ width: 640, maxWidth: '92vw' })
+Dialogs.setImagePreviewDefault({ fullscreen: false, width: 1100, height: '82vh' })
+Dialogs.setIframeDefault({ fullscreen: false, width: 1200, height: '85vh' })
+Dialogs.setDocumentPreviewDefault({ fullscreen: false, maxWidth: '94vw' })
+```
+
+Defaults are merged by default. Pass `true` as the second argument to replace the previous defaults:
+
+```ts
+Dialogs.setConfirmDefault({ width: 360 }, true)
+```
+
+Call-specific params always win over defaults. Prompt defaults merge nested `fieldParams`, `formParams`, and `dialogParams`, allowing a call to override one nested property without losing unrelated defaults.
+
+The same defaults can be configured during bootstrap:
+
+```ts
+createVuetifyExtendedApp({
+  defaults: {
+    confirm: { width: 420, maxWidth: '92vw' },
+    info: { width: 560, maxHeight: '75vh' },
+    prompt: { width: 640, maxWidth: '92vw' },
+    imagePreview: { fullscreen: false, height: '82vh' },
+    iframe: { fullscreen: false, width: 1200, height: '85vh' },
+    documentPreview: { maxWidth: '94vw' },
+  },
+})
+```
+
+`DialogForm` and `Selector` are class-based dialogs rather than static `Dialogs` helpers. They accept the same six size properties through `DialogParams` and `SelectorParams`, and their existing `setDefault(...)` methods remain available through the `dialogForm` and `selector` bootstrap default keys.
 
 ## `$prompt(...)`
 
@@ -222,7 +315,7 @@ You can further tune the internal `Form` and `DialogForm`:
 - `formOptions`
   Lets you plug into normal `FormOptions` behavior such as validation, top/bottom children, custom buttons, and hooks.
 - `dialogParams`
-  Controls dialog-level flags like `persistent` and `fullscreen`.
+  Controls dialog-level flags like `persistent` and `fullscreen`. It also accepts `DialogSizeParams`; direct size properties on `PromptParams` take precedence.
 - `dialogOptions`
   Lets you plug into the underlying `DialogFormOptions`.
 
@@ -251,6 +344,8 @@ Example:
 await Dialogs.$imagePreview(imageUrl, {
   title: 'Profile Image',
   fullscreen: false,
+  width: 960,
+  height: '80vh',
 })
 ```
 
@@ -281,6 +376,8 @@ await Dialogs.$documentPreview(
   {
     title: 'Resume',
     fullscreen: false,
+    width: 1100,
+    height: '85vh',
   },
 )
 ```

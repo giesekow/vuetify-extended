@@ -194,8 +194,46 @@ createVuetifyExtendedApp({
     restoreOnLoad: true,
     storageMode: 'web-session',
   },
+  defaults: {
+    field: {
+      density: 'compact',
+    },
+    confirm: {
+      width: 420,
+      maxWidth: '92vw',
+    },
+    info: {
+      width: 560,
+      maxHeight: '75vh',
+    },
+    prompt: {
+      width: 640,
+      maxWidth: '92vw',
+    },
+    imagePreview: {
+      fullscreen: false,
+      height: '82vh',
+    },
+    iframe: {
+      fullscreen: false,
+      width: 1200,
+      height: '85vh',
+    },
+    documentPreview: {
+      maxWidth: '94vw',
+    },
+    dialogForm: {
+      maxWidth: '92vw',
+    },
+    selector: {
+      maxWidth: '92vw',
+      maxHeight: '85vh',
+    },
+  },
 })
 ```
+
+Dialog defaults follow the same application-default flow as fields, forms, reports, and other UI primitives. The flat keys `confirm`, `info`, `prompt`, `imagePreview`, `iframe`, and `documentPreview` call their matching `Dialogs.set...Default(...)` methods. `dialogForm` and `selector` continue to use their class-level `setDefault(...)` methods. See [Dialogs](./ui/Dialogs.md) for size precedence and direct setter examples.
 
 If `app` is passed as an already-created `AppMain` instance instead of `{ params, options }`, bootstrap overrides such as `navigation`, `menu`, `udfs`, and `makeUDF` are still merged into that instance.
 

@@ -3,7 +3,8 @@ import { SelectorMode, UIBase } from "./base";
 import { ButtonParams } from "./button";
 import { OnHandler } from "./lib";
 import { UIText } from "./runtime";
-export interface SelectorParams {
+import type { DialogSizeParams } from "./dialogform";
+export interface SelectorParams extends DialogSizeParams {
     ref?: string;
     invisible?: boolean;
     persistent?: boolean;
@@ -14,9 +15,6 @@ export interface SelectorParams {
     cancelButton?: ButtonParams;
     saveButton?: ButtonParams;
     elevation?: number;
-    maxWidth?: number | string | undefined;
-    minWidth?: number | string | undefined;
-    width?: number | string | undefined;
     selectFields?: any;
     objectType?: any;
     idField?: any;
@@ -70,6 +68,7 @@ export declare class Selector extends UIBase {
     render(props: any, context: any): VNode | undefined;
     private toCssSize;
     private clampToViewport;
+    private clampHeightToViewport;
     private cardSizeStyle;
     private buildTitle;
     private buildSubTitle;

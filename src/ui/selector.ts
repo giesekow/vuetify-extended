@@ -5,8 +5,9 @@ import { Button, ButtonParams } from "./button";
 import { Master } from "../master";
 import { OnHandler } from "./lib";
 import { UIText } from "./runtime";
+import type { DialogSizeParams } from "./dialogform";
 
-export interface SelectorParams {
+export interface SelectorParams extends DialogSizeParams {
   ref?: string;
   invisible?: boolean;
   persistent?: boolean;
@@ -17,9 +18,6 @@ export interface SelectorParams {
   cancelButton?: ButtonParams,
   saveButton?: ButtonParams,
   elevation?: number;
-  maxWidth?: number|string|undefined;
-  minWidth?: number|string|undefined;
-  width?: number|string|undefined;
   selectFields?: any;
   objectType?: any;
   idField?: any;
@@ -189,6 +187,9 @@ export class Selector extends UIBase {
         maxWidth: this.clampToViewport(this.params.value.maxWidth),
         width: this.clampToViewport(this.params.value.width),
         minWidth: this.clampToViewport(this.params.value.minWidth),
+        height: this.clampHeightToViewport(this.params.value.height),
+        maxHeight: this.clampHeightToViewport(this.params.value.maxHeight),
+        minHeight: this.clampHeightToViewport(this.params.value.minHeight),
         onAfterEnter: () => this.focusPrimaryInput(),
       } as any,
       () => h(
@@ -236,15 +237,33 @@ export class Selector extends UIBase {
     return `min(calc(100vw - 32px), ${size})`;
   }
 
+  private clampHeightToViewport(value?: string | number) {
+    const size = this.toCssSize(value);
+    if (!size) {
+      return undefined;
+    }
+    if (size.includes('%') || size.includes('vw') || size.includes('vh') || size.includes('calc(') || size.includes('min(') || size.includes('max(') || size.includes('clamp(')) {
+      return size;
+    }
+    return `min(calc(100vh - 32px), ${size})`;
+  }
+
   private cardSizeStyle() {
     const width = this.clampToViewport(this.params.value.width);
     const maxWidth = this.clampToViewport(this.params.value.maxWidth);
     const minWidth = this.clampToViewport(this.params.value.minWidth);
+    const height = this.clampHeightToViewport(this.params.value.height);
+    const maxHeight = this.clampHeightToViewport(this.params.value.maxHeight);
+    const minHeight = this.clampHeightToViewport(this.params.value.minHeight);
 
     return {
       width,
       maxWidth,
       minWidth,
+      height,
+      maxHeight,
+      minHeight,
+      overflow: height || maxHeight ? 'auto' : undefined,
       boxSizing: 'border-box',
     };
   }

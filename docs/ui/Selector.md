@@ -16,7 +16,7 @@ Selection-oriented screen/dialog pattern for choosing one or more items from a l
 ### `SelectorParams`
 
 ```ts
-export interface SelectorParams {
+export interface SelectorParams extends DialogSizeParams {
   ref?: string;
   invisible?: boolean;
   persistent?: boolean;
@@ -27,9 +27,6 @@ export interface SelectorParams {
   cancelButton?: ButtonParams,
   saveButton?: ButtonParams,
   elevation?: number;
-  maxWidth?: number|string|undefined;
-  minWidth?: number|string|undefined;
-  width?: number|string|undefined;
   selectFields?: any;
   objectType?: any;
   idField?: any;
@@ -42,6 +39,8 @@ export interface SelectorParams {
   align?: "center" | "end" | "start" | "stretch" | "baseline" | undefined;
 }
 ```
+
+The inherited `DialogSizeParams` provides `width`, `maxWidth`, `minWidth`, `height`, `maxHeight`, and `minHeight`. Numeric dimensions are pixels; CSS-unit strings are accepted and constrained to the viewport.
 
 ### `SelectorOptions`
 

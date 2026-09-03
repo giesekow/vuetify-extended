@@ -5,7 +5,16 @@ import { Form } from "./form";
 import { Master } from "../master";
 import { OnHandler } from "./lib";
 
-export interface DialogParams {
+export interface DialogSizeParams {
+  width?: number|string;
+  maxWidth?: number|string;
+  minWidth?: number|string;
+  height?: number|string;
+  maxHeight?: number|string;
+  minHeight?: number|string;
+}
+
+export interface DialogParams extends DialogSizeParams {
   ref?: string;
   objectType?: any;
   objectId?: any;
@@ -119,7 +128,12 @@ export class DialogForm extends UIBase {
       {
         modelValue: this.dialog.value,
         persistent: this.params.value.persistent !== false,
-        width: "auto",
+        width: this.params.value.fullscreen ? undefined : (this.params.value.width ?? "auto"),
+        maxWidth: this.params.value.fullscreen ? undefined : this.params.value.maxWidth,
+        minWidth: this.params.value.fullscreen ? undefined : this.params.value.minWidth,
+        height: this.params.value.fullscreen ? undefined : this.params.value.height,
+        maxHeight: this.params.value.fullscreen ? undefined : this.params.value.maxHeight,
+        minHeight: this.params.value.fullscreen ? undefined : this.params.value.minHeight,
         fullscreen: this.params.value.fullscreen,
         onAfterEnter: () => this.focusPrimaryInput(),
       },

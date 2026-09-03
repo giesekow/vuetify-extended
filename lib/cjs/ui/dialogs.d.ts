@@ -1,11 +1,11 @@
 import { Master } from "../master";
 import { Button } from "./button";
-import type { DialogFormOptions, DialogParams } from "./dialogform";
+import type { DialogFormOptions, DialogParams, DialogSizeParams } from "./dialogform";
 import type { Field, FieldOptions, FieldParams, FieldType } from "./field";
 import type { FormOptions, FormParams } from "./form";
 import type { Part } from "./part";
 import { type UIText } from "./runtime";
-export interface PromptParams {
+export interface PromptParams extends DialogSizeParams {
     title?: UIText;
     text?: UIText;
     type?: FieldType;
@@ -22,6 +22,10 @@ export interface PromptOptions {
     formOptions?: Omit<FormOptions, 'master' | 'children'>;
     dialogOptions?: Omit<DialogFormOptions, 'master' | 'form'>;
 }
+export interface ConfirmParams extends DialogSizeParams {
+}
+export interface InfoParams extends DialogSizeParams {
+}
 export interface DialogOptions {
     confirmColor?: string | undefined;
     successColor?: string | undefined;
@@ -33,15 +37,19 @@ export interface DialogOptions {
     warningTimeout?: number | undefined;
     progressSize?: number | undefined;
     progressWidth?: number | undefined;
+    /** @deprecated Use Dialogs.setInfoDefault({ width }). */
     infoWindowWidth?: number | undefined;
+    /** @deprecated Use Dialogs.setInfoDefault({ maxHeight }). */
     infoWindowHeight?: number | undefined;
 }
-export interface ImagePreviewOptions {
+export interface ImagePreviewParams extends DialogSizeParams {
     title?: UIText;
     fullscreen?: boolean;
 }
+/** @deprecated Use ImagePreviewParams. */
+export type ImagePreviewOptions = ImagePreviewParams;
 export type IframeSkin = 'inherit' | 'light' | 'dark';
-export interface IframeParams {
+export interface IframeParams extends DialogSizeParams {
     src?: string;
     srcdoc?: string;
     title?: UIText;
@@ -50,9 +58,6 @@ export interface IframeParams {
     downloadUrl?: string;
     prependActions?: boolean;
     skin?: IframeSkin;
-    width?: number | string;
-    maxWidth?: number | string;
-    height?: number | string;
     scrim?: string;
     backgroundColor?: string;
     toolbarBackground?: string;
@@ -78,10 +83,10 @@ export declare class Dialogs {
     private static documentPreviewDialog;
     private static confirmTitle;
     private static confirmText;
+    private static confirmParams;
     private static infoTitle;
     private static infoText;
-    private static infoWidth;
-    private static infoHeight;
+    private static infoParams;
     private static successText;
     private static errorText;
     private static warningText;
@@ -91,6 +96,7 @@ export declare class Dialogs {
     private static imagePreviewSrc;
     private static imagePreviewTitle;
     private static imagePreviewFullscreen;
+    private static imagePreviewParams;
     private static documentPreviewSrc;
     private static documentPreviewSrcdoc;
     private static documentPreviewRenderSrc;
@@ -100,7 +106,10 @@ export declare class Dialogs {
     private static documentPreviewSkin;
     private static documentPreviewWidth;
     private static documentPreviewMaxWidth;
+    private static documentPreviewMinWidth;
     private static documentPreviewHeight;
+    private static documentPreviewMaxHeight;
+    private static documentPreviewMinHeight;
     private static documentPreviewScrim;
     private static documentPreviewBackgroundColor;
     private static documentPreviewToolbarBackground;
@@ -122,7 +131,19 @@ export declare class Dialogs {
     private static promptVersion;
     private static promptResolver;
     private static options;
+    private static confirmDefaults;
+    private static infoDefaults;
+    private static promptDefaults;
+    private static imagePreviewDefaults;
+    private static iframeDefaults;
+    private static documentPreviewDefaults;
     static setOptions(options: DialogOptions): void;
+    static setConfirmDefault(value: ConfirmParams, reset?: boolean): void;
+    static setInfoDefault(value: InfoParams, reset?: boolean): void;
+    static setPromptDefault(value: PromptParams, reset?: boolean): void;
+    static setImagePreviewDefault(value: ImagePreviewParams, reset?: boolean): void;
+    static setIframeDefault(value: IframeParams, reset?: boolean): void;
+    static setDocumentPreviewDefault(value: DocumentPreviewParams, reset?: boolean): void;
     static get rootIsMounted(): boolean;
     static rootComponent(): import("vue").DefineComponent<{}, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
         [key: string]: any;
@@ -154,13 +175,10 @@ export declare class Dialogs {
     static progressComponent(): import("vue").DefineComponent<{}, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<{}> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, true, {}, any>;
-    static $confirm(text: UIText, title?: UIText): Promise<boolean>;
-    static $info(text: UIText, title?: UIText, options?: {
-        width?: number;
-        height?: number;
-    }): Promise<void>;
+    static $confirm(text: UIText, title?: UIText, params?: ConfirmParams): Promise<boolean>;
+    static $info(text: UIText, title?: UIText, params?: InfoParams): Promise<void>;
     static hasBlockingDialog(): boolean;
-    static $imagePreview(src: string, options?: ImagePreviewOptions): Promise<void>;
+    static $imagePreview(src: string, params?: ImagePreviewParams): Promise<void>;
     static $iframe(params?: IframeParams, options?: IframeOptions): Promise<void>;
     static $documentPreview(src: string, params?: DocumentPreviewParams, options?: IframeOptions): Promise<void>;
     static $prompt(params?: PromptParams, options?: PromptOptions): Promise<any | undefined>;
@@ -173,6 +191,8 @@ export declare class Dialogs {
     static $updateProgress({ value, text }: any): void;
     static $hideProgress(): void;
     private static closePrompt;
+    private static resolvePromptParams;
+    private static mergePromptParams;
     private static createPromptMaster;
     private static clonePromptData;
     private static createDocumentPreviewRenderSrc;

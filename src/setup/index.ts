@@ -14,7 +14,16 @@ import { AppManager } from '../ui/appmanager';
 import { Button, type ButtonParams } from '../ui/button';
 import { Collection, type CollectionParams } from '../ui/collection';
 import { DialogForm, type DialogParams } from '../ui/dialogform';
-import { DialogOptions, Dialogs } from '../ui/dialogs';
+import {
+  Dialogs,
+  type ConfirmParams,
+  type DialogOptions,
+  type DocumentPreviewParams,
+  type IframeParams,
+  type ImagePreviewParams,
+  type InfoParams,
+  type PromptParams,
+} from '../ui/dialogs';
 import { NotificationOptions, Notifications } from '../ui/notifications';
 import { Field, type FieldParams } from '../ui/field';
 import { Form, type FormParams } from '../ui/form';
@@ -33,10 +42,15 @@ export interface VuetifyExtendedDefaults {
   appTitleBlock?: AppTitleBlockParams;
   button?: ButtonParams;
   collection?: CollectionParams;
+  confirm?: ConfirmParams;
   dialogForm?: DialogParams;
+  documentPreview?: DocumentPreviewParams;
   environmentTag?: EnvironmentTagParams;
   field?: FieldParams;
   form?: FormParams;
+  iframe?: IframeParams;
+  imagePreview?: ImagePreviewParams;
+  info?: InfoParams;
   mailboxBell?: MailboxBellParams;
   mailboxView?: MailboxViewParams;
   master?: MasterOptions;
@@ -44,6 +58,7 @@ export interface VuetifyExtendedDefaults {
   menuItem?: MenuItemParams;
   notifications?: NotificationOptions;
   part?: PartParams;
+  prompt?: PromptParams;
   report?: ReportParams;
   selector?: SelectorParams;
   statusBadge?: StatusBadgeParams;
@@ -141,10 +156,15 @@ export function configureVuetifyExtendedDefaults(defaults: VuetifyExtendedDefaul
   if (defaults.appTitleBlock) AppTitleBlock.setDefault(defaults.appTitleBlock, reset);
   if (defaults.button) Button.setDefault(defaults.button, reset);
   if (defaults.collection) Collection.setDefault(defaults.collection, reset);
+  if (defaults.confirm) Dialogs.setConfirmDefault(defaults.confirm, reset);
   if (defaults.dialogForm) DialogForm.setDefault(defaults.dialogForm, reset);
+  if (defaults.documentPreview) Dialogs.setDocumentPreviewDefault(defaults.documentPreview, reset);
   if (defaults.environmentTag) EnvironmentTag.setDefault(defaults.environmentTag, reset);
   if (defaults.field) Field.setDefault(defaults.field, reset);
   if (defaults.form) Form.setDefault(defaults.form, reset);
+  if (defaults.iframe) Dialogs.setIframeDefault(defaults.iframe, reset);
+  if (defaults.imagePreview) Dialogs.setImagePreviewDefault(defaults.imagePreview, reset);
+  if (defaults.info) Dialogs.setInfoDefault(defaults.info, reset);
   if (defaults.mailboxBell) MailboxBell.setDefault(defaults.mailboxBell, reset);
   if (defaults.mailboxView) MailboxView.setDefault(defaults.mailboxView, reset);
   if (defaults.master) Master.setDefault(defaults.master, reset);
@@ -152,6 +172,7 @@ export function configureVuetifyExtendedDefaults(defaults: VuetifyExtendedDefaul
   if (defaults.menuItem) MenuItem.setDefault(defaults.menuItem, reset);
   if (defaults.notifications) Notifications.setDefault(defaults.notifications, reset);
   if (defaults.part) Part.setDefault(defaults.part, reset);
+  if (defaults.prompt) Dialogs.setPromptDefault(defaults.prompt, reset);
   if (defaults.report) Report.setDefault(defaults.report, reset);
   if (defaults.selector) Selector.setDefault(defaults.selector, reset);
   if (defaults.statusBadge) StatusBadge.setDefault(defaults.statusBadge, reset);

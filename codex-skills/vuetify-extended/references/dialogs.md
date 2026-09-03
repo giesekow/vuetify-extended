@@ -75,6 +75,32 @@ Prefer in-app preview helpers over new tabs/windows:
 - `prependActions` to place custom actions before defaults
 - dialog visual tuning through `IframeParams`
 
+## Sizing And Defaults
+
+Use the shared `DialogSizeParams` properties for contained dialogs:
+
+- `width`, `maxWidth`, `minWidth`
+- `height`, `maxHeight`, `minHeight`
+
+Confirm and info accept these as their third argument. Prompt accepts them directly in `PromptParams`. Image, iframe, and document preview dimensions apply when `fullscreen` is `false`.
+
+Prefer application defaults when a project needs consistent geometry:
+
+```ts
+createVuetifyExtendedApp({
+  defaults: {
+    confirm: { width: 420, maxWidth: '92vw' },
+    info: { width: 560, maxHeight: '75vh' },
+    prompt: { width: 640 },
+    imagePreview: { fullscreen: false, height: '82vh' },
+    iframe: { fullscreen: false, width: 1200, height: '85vh' },
+    documentPreview: { maxWidth: '94vw' },
+  },
+})
+```
+
+Direct equivalents are `Dialogs.setConfirmDefault`, `setInfoDefault`, `setPromptDefault`, `setImagePreviewDefault`, `setIframeDefault`, and `setDocumentPreviewDefault`. Their second `reset` argument replaces existing defaults when `true`; otherwise defaults merge. Per-call params win.
+
 ## Review Checklist
 
 Before finalizing a dialog-related change, check:
@@ -84,3 +110,4 @@ Before finalizing a dialog-related change, check:
 3. Are prompt validations still flowing through normal `Field` and `Form` logic?
 4. Does preview stay inside the app unless there is a deliberate reason to leave it?
 5. If iframe actions were added, do they coexist correctly with open/download actions?
+6. Do contained dimensions still yield to fullscreen behavior?

@@ -27,6 +27,8 @@ High-level sequence:
 
 Use this path when the user is building a host app from scratch or when the current bootstrap is inconsistent.
 
+Bootstrap defaults include global dialog geometry as well as normal UI primitives. Use `confirm`, `info`, `prompt`, `imagePreview`, `iframe`, and `documentPreview` for `Dialogs` helpers; use `dialogForm` and `selector` for the corresponding class-based dialogs. Call-specific params always override these defaults.
+
 ## Low-Level Bootstrap Path
 
 Use this only when the task explicitly needs manual setup control.
@@ -68,4 +70,3 @@ If a bug smells like "nothing opens" or "dialogs do not render", check setup fir
 - For new code, default to the high-level setup helper unless there is a concrete reason not to.
 - If the user asks about runtime-created reports/triggers/collections, assume `AppManager` and `AppMain` must already be initialized.
 - When modifying bootstrap, keep shell/header/footer behavior inside `AppMain`; do not recreate a second shell pattern around it unless the repo already does that.
-

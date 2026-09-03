@@ -2,13 +2,13 @@ import { Ref, defineComponent, h, markRaw, onMounted, onUnmounted, ref, shallowR
 import { VBtn, VCard, VCardActions, VCardText, VCardTitle, VCol, VDialog, VIcon, VLayout, VMenu, VOverlay, VProgressCircular, VRow, VSnackbar, VSpacer } from 'vuetify/components';
 import { Master } from "../master";
 import { Button } from "./button";
-import type { DialogForm, DialogFormOptions, DialogParams } from "./dialogform";
+import type { DialogForm, DialogFormOptions, DialogParams, DialogSizeParams } from "./dialogform";
 import type { Field, FieldOptions, FieldParams, FieldType } from "./field";
 import type { FormOptions, FormParams } from "./form";
 import type { Part } from "./part";
 import { resolveUIText, type UIText } from "./runtime";
 
-export interface PromptParams {
+export interface PromptParams extends DialogSizeParams {
   title?: UIText;
   text?: UIText;
   type?: FieldType;
@@ -27,6 +27,10 @@ export interface PromptOptions {
   dialogOptions?: Omit<DialogFormOptions, 'master'|'form'>;
 }
 
+export interface ConfirmParams extends DialogSizeParams {}
+
+export interface InfoParams extends DialogSizeParams {}
+
 export interface DialogOptions {
   confirmColor?: string|undefined;
   successColor?: string|undefined;
@@ -38,18 +42,23 @@ export interface DialogOptions {
   warningTimeout?: number|undefined;
   progressSize?: number|undefined;
   progressWidth?: number|undefined;
+  /** @deprecated Use Dialogs.setInfoDefault({ width }). */
   infoWindowWidth?: number|undefined;
+  /** @deprecated Use Dialogs.setInfoDefault({ maxHeight }). */
   infoWindowHeight?: number|undefined;
 }
 
-export interface ImagePreviewOptions {
+export interface ImagePreviewParams extends DialogSizeParams {
   title?: UIText;
   fullscreen?: boolean;
 }
 
+/** @deprecated Use ImagePreviewParams. */
+export type ImagePreviewOptions = ImagePreviewParams;
+
 export type IframeSkin = 'inherit'|'light'|'dark';
 
-export interface IframeParams {
+export interface IframeParams extends DialogSizeParams {
   src?: string;
   srcdoc?: string;
   title?: UIText;
@@ -58,9 +67,6 @@ export interface IframeParams {
   downloadUrl?: string;
   prependActions?: boolean;
   skin?: IframeSkin;
-  width?: number|string;
-  maxWidth?: number|string;
-  height?: number|string;
   scrim?: string;
   backgroundColor?: string;
   toolbarBackground?: string;
@@ -90,11 +96,11 @@ export class Dialogs {
 
   private static confirmTitle: Ref<any> = ref('');
   private static confirmText: Ref<any> = ref('');
+  private static confirmParams: Ref<ConfirmParams> = ref({});
   
   private static infoTitle: Ref<any> = ref('');
   private static infoText: Ref<any> = ref('');
-  private static infoWidth: Ref<number|undefined> = ref(0)
-  private static infoHeight: Ref<number|undefined> = ref(0)
+  private static infoParams: Ref<InfoParams> = ref({});
 
   private static successText: Ref<any> = ref('');
   private static errorText: Ref<any> = ref('');
@@ -106,6 +112,7 @@ export class Dialogs {
   private static imagePreviewSrc: Ref<string> = ref('');
   private static imagePreviewTitle: Ref<UIText | undefined> = ref(undefined);
   private static imagePreviewFullscreen: Ref<boolean> = ref(true);
+  private static imagePreviewParams: Ref<ImagePreviewParams> = ref({});
   private static documentPreviewSrc: Ref<string> = ref('');
   private static documentPreviewSrcdoc: Ref<string> = ref('');
   private static documentPreviewRenderSrc: Ref<string> = ref('');
@@ -115,7 +122,10 @@ export class Dialogs {
   private static documentPreviewSkin: Ref<IframeSkin> = ref('inherit');
   private static documentPreviewWidth: Ref<number|string|undefined> = ref(undefined);
   private static documentPreviewMaxWidth: Ref<number|string|undefined> = ref(undefined);
+  private static documentPreviewMinWidth: Ref<number|string|undefined> = ref(undefined);
   private static documentPreviewHeight: Ref<number|string|undefined> = ref(undefined);
+  private static documentPreviewMaxHeight: Ref<number|string|undefined> = ref(undefined);
+  private static documentPreviewMinHeight: Ref<number|string|undefined> = ref(undefined);
   private static documentPreviewScrim: Ref<string> = ref('');
   private static documentPreviewBackgroundColor: Ref<string> = ref('');
   private static documentPreviewToolbarBackground: Ref<string> = ref('');
@@ -139,9 +149,44 @@ export class Dialogs {
   private static promptResolver: ((value: any) => void)|undefined;
 
   private static options: Ref<DialogOptions> = ref({});
+  private static confirmDefaults: ConfirmParams = {};
+  private static infoDefaults: InfoParams = {};
+  private static promptDefaults: PromptParams = {};
+  private static imagePreviewDefaults: ImagePreviewParams = {};
+  private static iframeDefaults: IframeParams = {};
+  private static documentPreviewDefaults: DocumentPreviewParams = {};
 
   static setOptions(options: DialogOptions) {
     Dialogs.options.value = {...Dialogs.options.value , ...options};
+  }
+
+  static setConfirmDefault(value: ConfirmParams, reset?: boolean): void {
+    Dialogs.confirmDefaults = reset ? {...value} : {...Dialogs.confirmDefaults, ...value};
+  }
+
+  static setInfoDefault(value: InfoParams, reset?: boolean): void {
+    Dialogs.infoDefaults = reset ? {...value} : {...Dialogs.infoDefaults, ...value};
+  }
+
+  static setPromptDefault(value: PromptParams, reset?: boolean): void {
+    if (reset) {
+      Dialogs.promptDefaults = Dialogs.mergePromptParams({}, value);
+      return;
+    }
+
+    Dialogs.promptDefaults = Dialogs.mergePromptParams(Dialogs.promptDefaults, value);
+  }
+
+  static setImagePreviewDefault(value: ImagePreviewParams, reset?: boolean): void {
+    Dialogs.imagePreviewDefaults = reset ? {...value} : {...Dialogs.imagePreviewDefaults, ...value};
+  }
+
+  static setIframeDefault(value: IframeParams, reset?: boolean): void {
+    Dialogs.iframeDefaults = reset ? {...value} : {...Dialogs.iframeDefaults, ...value};
+  }
+
+  static setDocumentPreviewDefault(value: DocumentPreviewParams, reset?: boolean): void {
+    Dialogs.documentPreviewDefaults = reset ? {...value} : {...Dialogs.documentPreviewDefaults, ...value};
   }
 
   static get rootIsMounted(): boolean {
@@ -194,12 +239,18 @@ export class Dialogs {
           {
             modelValue: Dialogs.confirmDialog.value,
             persistent: true,
-            maxWidth: 300,
-            maxHeight: 200
+            width: Dialogs.confirmParams.value.width,
+            maxWidth: Dialogs.confirmParams.value.maxWidth ?? (Dialogs.confirmParams.value.width === undefined ? 300 : undefined),
+            minWidth: Dialogs.confirmParams.value.minWidth,
+            height: Dialogs.confirmParams.value.height,
+            maxHeight: Dialogs.confirmParams.value.maxHeight ?? (Dialogs.confirmParams.value.height === undefined ? 200 : undefined),
+            minHeight: Dialogs.confirmParams.value.minHeight,
           },
           () => h(
             VCard,
-            {},
+            {
+              style: Dialogs.confirmParams.value.height !== undefined ? { height: '100%' } : undefined,
+            },
             () => [
               h(
                 VCardTitle,
@@ -256,12 +307,19 @@ export class Dialogs {
           {
             modelValue: Dialogs.infoDialog.value,
             persistent: true,
-            width: Dialogs.infoWidth.value || Dialogs.options.value.infoWindowWidth || 400,
-            maxHeight: Dialogs.infoHeight.value || Dialogs.options.value.infoWindowHeight || 300
+            width: Dialogs.infoParams.value.width ?? Dialogs.options.value.infoWindowWidth ?? 400,
+            maxWidth: Dialogs.infoParams.value.maxWidth,
+            minWidth: Dialogs.infoParams.value.minWidth,
+            height: Dialogs.infoParams.value.height,
+            maxHeight: Dialogs.infoParams.value.maxHeight
+              ?? (Dialogs.infoParams.value.height === undefined ? (Dialogs.options.value.infoWindowHeight ?? 300) : undefined),
+            minHeight: Dialogs.infoParams.value.minHeight,
           },
           () => h(
             VCard,
-            {},
+            {
+              style: Dialogs.infoParams.value.height !== undefined ? { height: '100%' } : undefined,
+            },
             () => [
               h(
                 VCardTitle,
@@ -444,8 +502,12 @@ export class Dialogs {
           {
             modelValue: Dialogs.imagePreviewDialog.value,
             fullscreen: Dialogs.imagePreviewFullscreen.value,
-            width: Dialogs.imagePreviewFullscreen.value ? undefined : 1100,
-            maxWidth: Dialogs.imagePreviewFullscreen.value ? undefined : '92vw',
+            width: Dialogs.imagePreviewFullscreen.value ? undefined : (Dialogs.imagePreviewParams.value.width ?? 1100),
+            maxWidth: Dialogs.imagePreviewFullscreen.value ? undefined : (Dialogs.imagePreviewParams.value.maxWidth ?? '92vw'),
+            minWidth: Dialogs.imagePreviewFullscreen.value ? undefined : Dialogs.imagePreviewParams.value.minWidth,
+            height: Dialogs.imagePreviewFullscreen.value ? undefined : (Dialogs.imagePreviewParams.value.height ?? '88vh'),
+            maxHeight: Dialogs.imagePreviewFullscreen.value ? undefined : Dialogs.imagePreviewParams.value.maxHeight,
+            minHeight: Dialogs.imagePreviewFullscreen.value ? undefined : Dialogs.imagePreviewParams.value.minHeight,
             persistent: false,
             scrim: 'rgba(7, 10, 17, 0.88)',
             transition: 'dialog-bottom-transition',
@@ -464,7 +526,7 @@ export class Dialogs {
                 color: 'white',
                 display: 'flex',
                 flexDirection: 'column',
-                height: Dialogs.imagePreviewFullscreen.value ? '100vh' : '88vh',
+                height: '100%',
                 overflow: 'hidden',
               },
             },
@@ -699,8 +761,12 @@ export class Dialogs {
           {
             modelValue: Dialogs.documentPreviewDialog.value,
             fullscreen: Dialogs.documentPreviewFullscreen.value,
-            width: Dialogs.documentPreviewFullscreen.value ? undefined : (Dialogs.documentPreviewWidth.value || 1100),
-            maxWidth: Dialogs.documentPreviewFullscreen.value ? undefined : (Dialogs.documentPreviewMaxWidth.value || '92vw'),
+            width: Dialogs.documentPreviewFullscreen.value ? undefined : (Dialogs.documentPreviewWidth.value ?? 1100),
+            maxWidth: Dialogs.documentPreviewFullscreen.value ? undefined : (Dialogs.documentPreviewMaxWidth.value ?? '92vw'),
+            minWidth: Dialogs.documentPreviewFullscreen.value ? undefined : Dialogs.documentPreviewMinWidth.value,
+            height: Dialogs.documentPreviewFullscreen.value ? undefined : (Dialogs.documentPreviewHeight.value ?? '88vh'),
+            maxHeight: Dialogs.documentPreviewFullscreen.value ? undefined : Dialogs.documentPreviewMaxHeight.value,
+            minHeight: Dialogs.documentPreviewFullscreen.value ? undefined : Dialogs.documentPreviewMinHeight.value,
             persistent: false,
             ...(Dialogs.documentPreviewScrim.value
               ? { scrim: Dialogs.documentPreviewScrim.value }
@@ -734,7 +800,7 @@ export class Dialogs {
                 style: {
                   display: 'flex',
                   flexDirection: 'column',
-                  height: Dialogs.documentPreviewFullscreen.value ? '100vh' : (Dialogs.documentPreviewHeight.value || '88vh'),
+                  height: '100%',
                   overflow: 'hidden',
                   ...(cardBackground ? { background: cardBackground } : {}),
                   ...(textColor ? { color: textColor } : {}),
@@ -1061,7 +1127,9 @@ export class Dialogs {
     });
   }
 
-  static async $confirm(text: UIText, title?: UIText): Promise<boolean> {
+  static async $confirm(text: UIText, title?: UIText, params?: ConfirmParams): Promise<boolean> {
+    const resolvedParams = {...Dialogs.confirmDefaults, ...(params || {})};
+
     return new Promise((resolve: any) => {
       Dialogs.confirmYes = () => {
         Dialogs.removeConfirmKeydownHandler();
@@ -1076,11 +1144,14 @@ export class Dialogs {
       Dialogs.installConfirmKeydownHandler();
       Dialogs.confirmText.value = text;
       Dialogs.confirmTitle.value = title || { key: 've.dialog.confirmTitle', fallback: 'Confirm' };
+      Dialogs.confirmParams.value = resolvedParams;
       Dialogs.confirmDialog.value = true;
     })
   }
 
-  static async $info(text: UIText, title?: UIText, options?: {width?: number, height?: number}): Promise<void> {
+  static async $info(text: UIText, title?: UIText, params?: InfoParams): Promise<void> {
+    const resolvedParams = {...Dialogs.infoDefaults, ...(params || {})};
+
     return new Promise((resolve: any) => {
       Dialogs.infoClose = () => {
         Dialogs.removeConfirmKeydownHandler();
@@ -1090,8 +1161,7 @@ export class Dialogs {
       Dialogs.installConfirmKeydownHandler();
       Dialogs.infoText.value = text;
       Dialogs.infoTitle.value = title || { key: 've.dialog.infoTitle', fallback: 'Info' };
-      Dialogs.infoWidth.value = options?.width || Dialogs.options.value.infoWindowWidth || 400
-      Dialogs.infoHeight.value = options?.height || Dialogs.options.value.infoWindowHeight || 300
+      Dialogs.infoParams.value = resolvedParams;
       Dialogs.infoDialog.value = true;
     })
   }
@@ -1100,15 +1170,18 @@ export class Dialogs {
     return Dialogs.confirmDialog.value || Dialogs.progressDialog.value || !!Dialogs.promptForm.value || Dialogs.imagePreviewDialog.value || Dialogs.documentPreviewDialog.value;
   }
 
-  static async $imagePreview(src: string, options?: ImagePreviewOptions): Promise<void> {
+  static async $imagePreview(src: string, params?: ImagePreviewParams): Promise<void> {
+    const resolvedParams = {...Dialogs.imagePreviewDefaults, ...(params || {})};
+
     Dialogs.imagePreviewSrc.value = src;
-    Dialogs.imagePreviewTitle.value = options?.title || '';
-    Dialogs.imagePreviewFullscreen.value = options?.fullscreen !== false;
+    Dialogs.imagePreviewTitle.value = resolvedParams.title || '';
+    Dialogs.imagePreviewFullscreen.value = resolvedParams.fullscreen !== false;
+    Dialogs.imagePreviewParams.value = resolvedParams;
     Dialogs.imagePreviewDialog.value = true;
   }
 
   static async $iframe(params?: IframeParams, options?: IframeOptions): Promise<void> {
-    const resolvedParams = params || {};
+    const resolvedParams = {...Dialogs.iframeDefaults, ...(params || {})};
     const resolvedOptions = options || {};
     const src = resolvedParams.src || '';
     const renderSrc = src ? Dialogs.createDocumentPreviewRenderSrc(src) : '';
@@ -1123,7 +1196,10 @@ export class Dialogs {
     Dialogs.documentPreviewSkin.value = resolvedParams.skin || 'inherit';
     Dialogs.documentPreviewWidth.value = resolvedParams.width;
     Dialogs.documentPreviewMaxWidth.value = resolvedParams.maxWidth;
+    Dialogs.documentPreviewMinWidth.value = resolvedParams.minWidth;
     Dialogs.documentPreviewHeight.value = resolvedParams.height;
+    Dialogs.documentPreviewMaxHeight.value = resolvedParams.maxHeight;
+    Dialogs.documentPreviewMinHeight.value = resolvedParams.minHeight;
     Dialogs.documentPreviewScrim.value = resolvedParams.scrim || '';
     Dialogs.documentPreviewBackgroundColor.value = resolvedParams.backgroundColor || '';
     Dialogs.documentPreviewToolbarBackground.value = resolvedParams.toolbarBackground || '';
@@ -1141,15 +1217,17 @@ export class Dialogs {
   }
 
   static async $documentPreview(src: string, params?: DocumentPreviewParams, options?: IframeOptions): Promise<void> {
+    const resolvedParams = {...Dialogs.documentPreviewDefaults, ...(params || {})};
+
     await Dialogs.$iframe({
       src,
-      ...(params || {}),
+      ...resolvedParams,
       downloadUrl: src,
     }, options);
   }
 
   static async $prompt(params?: PromptParams, options?: PromptOptions): Promise<any|undefined> {
-    const promptParams = params || {};
+    const promptParams = Dialogs.resolvePromptParams(params);
     const promptOptions = options || {};
 
     if (Dialogs.promptResolver) {
@@ -1192,7 +1270,11 @@ export class Dialogs {
         mode: dialogParams.mode || formParams.mode || 'create',
         title: promptParams.title ?? formParams.title ?? { key: 've.dialog.promptTitle', fallback: 'Prompt' },
         subtitle: promptParams.text ?? formParams.subtitle,
-        width: formParams.width ?? (hasCustomChildren ? 760 : 520),
+        width: formParams.width ?? promptParams.width ?? (hasCustomChildren ? 760 : 520),
+        maxWidth: formParams.maxWidth ?? promptParams.maxWidth,
+        minWidth: formParams.minWidth ?? promptParams.minWidth,
+        maxHeight: formParams.maxHeight ?? promptParams.height ?? promptParams.maxHeight,
+        minHeight: formParams.minHeight ?? promptParams.height ?? promptParams.minHeight,
         saveButton: {
           ...(formParams.saveButton || {}),
           text: promptParams.confirmText || formParams.saveButton?.text || { key: 've.common.confirm', fallback: 'Confirm' },
@@ -1219,6 +1301,12 @@ export class Dialogs {
           persistent: dialogParams.persistent ?? true,
           mode: dialogParams.mode || 'create',
           fullscreen: dialogParams.fullscreen,
+          width: promptParams.width ?? dialogParams.width,
+          maxWidth: promptParams.maxWidth ?? dialogParams.maxWidth,
+          minWidth: promptParams.minWidth ?? dialogParams.minWidth,
+          height: promptParams.height ?? dialogParams.height,
+          maxHeight: promptParams.maxHeight ?? dialogParams.maxHeight,
+          minHeight: promptParams.minHeight ?? dialogParams.minHeight,
           invisible: dialogParams.invisible,
           objectType: dialogParams.objectType,
           objectId: dialogParams.objectId,
@@ -1358,6 +1446,26 @@ export class Dialogs {
     if (resolve) {
       resolve(value);
     }
+  }
+
+  private static resolvePromptParams(params?: PromptParams): PromptParams {
+    return Dialogs.mergePromptParams(Dialogs.promptDefaults, params || {});
+  }
+
+  private static mergePromptParams(base: PromptParams, override: PromptParams): PromptParams {
+    const resolved: PromptParams = {...base, ...override};
+
+    if (base.fieldParams || override.fieldParams) {
+      resolved.fieldParams = {...(base.fieldParams || {}), ...(override.fieldParams || {})};
+    }
+    if (base.formParams || override.formParams) {
+      resolved.formParams = {...(base.formParams || {}), ...(override.formParams || {})};
+    }
+    if (base.dialogParams || override.dialogParams) {
+      resolved.dialogParams = {...(base.dialogParams || {}), ...(override.dialogParams || {})};
+    }
+
+    return resolved;
   }
 
   private static createPromptMaster(source?: Master) {

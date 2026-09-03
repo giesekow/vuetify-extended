@@ -3,7 +3,15 @@ import { DialogMode, UIBase } from "./base";
 import { Form } from "./form";
 import { Master } from "../master";
 import { OnHandler } from "./lib";
-export interface DialogParams {
+export interface DialogSizeParams {
+    width?: number | string;
+    maxWidth?: number | string;
+    minWidth?: number | string;
+    height?: number | string;
+    maxHeight?: number | string;
+    minHeight?: number | string;
+}
+export interface DialogParams extends DialogSizeParams {
     ref?: string;
     objectType?: any;
     objectId?: any;
