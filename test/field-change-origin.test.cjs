@@ -62,13 +62,13 @@ assert.notEqual(handledSyncStart, -1, 'Unable to locate the end of Field.setup()
 
 const setupSource = fieldSource.slice(setupStart, handledSyncStart);
 const assetSyncIndex = setupSource.indexOf('this.syncResolvedAssets()');
-const autocompleteSyncIndex = setupSource.indexOf('this.syncServerAutocompleteSelection()');
+const autocompleteSyncIndex = setupSource.indexOf('this.syncAutocompleteSelectionDisplay()');
 const consumeHandledIndex = setupSource.indexOf('this.consumeHandledModelSync()');
 const changedIndex = setupSource.indexOf("this.valueChanged(value, 'user', previousValue)");
 assert.ok(assetSyncIndex >= 0 && assetSyncIndex < consumeHandledIndex,
   'Master hydration must still refresh resolved asset display data before suppressing the user-change callback.');
 assert.ok(autocompleteSyncIndex >= 0 && autocompleteSyncIndex < consumeHandledIndex,
-  'Master hydration must still refresh server-autocomplete selections before suppressing the user-change callback.');
+  'Master hydration must refresh default and table autocomplete selections before suppressing the user-change callback.');
 assert.ok(consumeHandledIndex >= 0 && consumeHandledIndex < changedIndex,
   'Only user-change propagation should be skipped for an already handled model synchronization.');
 

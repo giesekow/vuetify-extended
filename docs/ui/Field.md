@@ -107,6 +107,11 @@ export interface FieldParams {
   mapOptions?: any;
   mapZoom?: number;
   serverSearch?: boolean;
+  autocompleteFormat?: 'default'|'table';
+  autocompleteAddText?: UIText;
+  autocompleteSelectedText?: UIText;
+  autocompleteRemoveText?: UIText;
+  autocompleteDisableRemove?: boolean;
   autocompleteLoadMore?: 'scroll'|'button';
   searchDebounceMs?: number;
   minSearchChars?: number;
@@ -114,8 +119,8 @@ export interface FieldParams {
   searchPageSize?: number;
   cacheSearchResults?: boolean;
   keepSelectedItemsInOptions?: boolean;
-  autocompleteLoadMoreText?: string;
-  autocompleteLoadingMoreText?: string;
+  autocompleteLoadMoreText?: UIText;
+  autocompleteLoadingMoreText?: UIText;
   previewFullscreen?: boolean;
   hideMapText?: boolean;
   mapTextPageSize?: number;
@@ -205,7 +210,7 @@ export interface FieldOptions {
   autocompleteNoDataText?: (field: Field, search: string) => string|undefined;
   button?: (field: Field) => Button|undefined;
   form?: (field: Field) => Promise<Form|undefined>|Form|undefined;
-  headers?: (field: Field) => Promise<any[]|undefined>|any[]|undefined;
+  headers?: (field: Field) => Promise<UITableHeader[]|undefined>|UITableHeader[]|undefined;
   items?: (field: Field, options?: any) => Promise<any[]|any|undefined>|any[]|any|undefined;
   format?: (field: Field, items: any[]) => any[]|undefined;
   footer?: (field: Field, items: any[]) => any[]|undefined;
@@ -770,11 +775,11 @@ Each section below describes the stored datatype, relevant params, relevant opti
 - Stored datatype:
   same as `select`
 - Widget:
-  `VAutocomplete`
+  `VAutocomplete`, optionally paired with `VDataTable` for selected-item presentation
 - Relevant params:
-  `multiple`, `itemTitle`, `itemValue`, `idField`, `returnObject`, `clearable`, `serverSearch`, `autocompleteLoadMore`, `searchDebounceMs`, `minSearchChars`, `searchOnFocus`, `searchPageSize`, `cacheSearchResults`, `keepSelectedItemsInOptions`, `autocompleteLoadMoreText`, `autocompleteLoadingMoreText`
+  `multiple`, `itemTitle`, `itemValue`, `idField`, `returnObject`, `clearable`, `serverSearch`, `autocompleteFormat`, `autocompleteAddText`, `autocompleteSelectedText`, `autocompleteRemoveText`, `autocompleteDisableRemove`, `autocompleteLoadMore`, `searchDebounceMs`, `minSearchChars`, `searchOnFocus`, `searchPageSize`, `cacheSearchResults`, `keepSelectedItemsInOptions`, `autocompleteLoadMoreText`, `autocompleteLoadingMoreText`, `itemsPerPage`, `height`
 - Relevant options:
-  `selectOptions(...)`, `autocompleteSearch(...)`, `autocompleteResolveValue(...)`, `autocompleteNoSearchText(...)`, `autocompleteNoDataText(...)`
+  `selectOptions(...)`, `autocompleteSearch(...)`, `autocompleteResolveValue(...)`, `autocompleteNoSearchText(...)`, `autocompleteNoDataText(...)`, `headers(...)`, `format(...)`, `canRemoveItem(...)`, `on(...)`
 - Notes:
   Uses `autoSelectFirst: true` internally.
   Supports 2 modes:
@@ -803,6 +808,73 @@ Each section below describes the stored datatype, relevant params, relevant opti
   - or `{ items, total?, page?, hasMore? }`
   - or `{ data, total?, skip?, limit?, page?, hasMore? }`
   - the generated `vuetify-ext create autocomplete-source` helper returns the normalized `{ data, skip, limit, total }` form
+
+#### Selected-items table presentation
+
+Use `autocompleteFormat: 'table'` for a multiple autocomplete whose selected objects need more context than chips or comma-separated labels can provide. The ordinary autocomplete remains the default. Table presentation requires `multiple: true`; without it, the field falls back to the ordinary autocomplete.
+
+The editable layout contains a single-item search control with a compact `+` icon button in the autocomplete `append` slot, followed by a Vuetify data table. Selecting a suggestion only stages it. Pressing `+` appends it to the field value and `Master` in one update. `autocompleteAddText` supplies the icon button's translated tooltip and accessible label. Duplicate values are rejected using `itemValue` / `idField` identity. In readonly mode, only the selected-items table is rendered.
+
+The table does not inject an action column. In editable mode its rows are selectable; selecting one or more rows reveals one bulk-remove button. `autocompleteDisableRemove: true` disables row selection and removal. When supplied, `canRemoveItem(field, item)` runs once for every requested row and receives the hydrated selected object. Allowed removals are committed together, so `changed` runs once for the batch.
+
+`headers(field)` defines the table columns and supports the same header shape, translated titles, and `isHTML` columns as other Field tables. `format(field, items)` receives hydrated selected objects, not the IDs stored in `Master`, and controls the displayed rows. Keep the selected object's id field in each formatted row when reordering rows so removal can retain exact source identity.
+
+Header `title` accepts `UIText`, while a plain string continues to render as-is. Grouped headers are translated recursively through `children`. The same contract applies to `table`, `viewtable`, `servertable`, `reporttable`, and nested `collection` fields:
+
+```ts
+import { $l, type UITableHeader } from 'vuetify-extended';
+
+const headers: UITableHeader[] = [
+  { title: $l('people.columns.name', 'Name'), key: 'name' },
+  { title: $l('people.columns.email', 'Email'), key: 'email' },
+];
+```
+
+Initial value hydration follows these rules:
+
+- With `returnObject: true`, stored objects are used directly.
+- With local ID storage, selected objects are first matched from `selectOptions(...)`.
+- IDs not present locally or in cached search results are passed together to `autocompleteResolveValue(...)`.
+- Resolved rows retain the same order as the stored values.
+- An unresolved ID is still shown as a fallback row and remains removable.
+
+The standard `changed(field, context)` callback observes the final array with `context.origin === 'user'`. Event listeners may also use `item-added` for the hydrated object and `item-removed` for the hydrated object array. Required validation applies to the selected array, never to the staged search candidate.
+
+All table chrome uses Vuetify theme tokens. `autocompleteAddText`, `autocompleteSelectedText`, and `autocompleteRemoveText` accept `UIText`; selected and remove labels support `{count}`, while selected text also supports `{label}`.
+
+```ts
+$FD(
+  {
+    label: $l('people.administrators', 'Administrators'),
+    storage: 'administratorIds',
+    type: 'autocomplete',
+    autocompleteFormat: 'table',
+    multiple: true,
+    itemTitle: 'displayName',
+    itemValue: '_id',
+    itemsPerPage: 10,
+    height: 280,
+    autocompleteSelectedText: $l(
+      'people.selectedAdministrators',
+      'Selected administrators ({count})',
+    ),
+  },
+  {
+    selectOptions: () => api.people.list(),
+    headers: () => [
+      { title: $l('people.displayName', 'Display name'), key: 'displayName' },
+      { title: $l('people.userCode', 'User code'), key: 'userCode' },
+    ],
+    format: (_field, selectedPeople) => selectedPeople.map((person) => ({
+      ...person,
+      userCode: person.code.toUpperCase(),
+    })),
+    canRemoveItem: (_field, person) => !person.locked,
+    changed: (_field, context) => console.log(context.value),
+  },
+)
+```
+
   Example server-search setup:
 
 ```ts

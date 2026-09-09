@@ -3,14 +3,16 @@ import { VCard, VCol, VRow } from 'vuetify/components';
 import { VDataTable, VDataTableFooter, VDataTableServer, VDataTableVirtual } from 'vuetify/components';
 import nestedProperty from 'nested-property';
 import { Master } from '../../master';
+import { resolveUITableHeaders, type UITableHeader } from '../table-header';
 
 export interface TableWidgetContext {
   $h: any;
+  $text: (value: any, fallback?: string) => string;
   $readonly: boolean;
   params: Ref<any>;
   modelValue: Ref<any>;
   maxWidth: Ref<any>;
-  tableHeaders: Ref<any[]>;
+  tableHeaders: Ref<UITableHeader[]>;
   tableItems: Ref<any[]>;
   tableLoaded: Ref<boolean>;
   tableItemsPerPage: Ref<any>;
@@ -23,12 +25,13 @@ export interface TableWidgetContext {
   loadTableInformation: (options?: any) => void | Promise<void>;
   formatTableItems: (items: any[]) => any[];
   buildTableFooter: (items: any[]) => any[];
-  makeHTMLColumns: (headers: any[]) => any;
+  makeHTMLColumns: (headers: UITableHeader[]) => any;
   handleOn: (event: string, data?: any) => void;
 }
 
 export function buildTableWidget(field: TableWidgetContext): VNode {
   const h = field.$h;
+  const headers = resolvedTableHeaders(field);
 
   if (!field.tableLoaded.value) {
     field.loadTableInformation();
@@ -39,7 +42,7 @@ export function buildTableWidget(field: TableWidgetContext): VNode {
   }
 
   return buildStandardTableLayout(field, h(VDataTable, {
-    headers: field.tableHeaders.value || [],
+    headers: headers as any,
     items: field.getCurrentCollectionItems(),
     class: [...(field.params.value.class || []), 'dense-table', ...(field.params.value.bordered ? ['bordered-table'] : [])],
     showSelect: !field.$readonly,
@@ -53,11 +56,12 @@ export function buildTableWidget(field: TableWidgetContext): VNode {
     modelValue: field.modelValue.value,
     'onUpdate:modelValue': (value: any) => { field.modelValue.value = value; },
     'onClick:row': (_: any, { item }: any) => field.handleOn('click:row', item),
-  }, buildTableSlots(field)));
+  }, buildTableSlots(field, headers)));
 }
 
 export function buildServerTableWidget(field: TableWidgetContext): VNode {
   const h = field.$h;
+  const headers = resolvedTableHeaders(field);
 
   if (!field.tableLoaded.value) {
     field.loadTableInformation({ itemsPerPage: field.tableItemsPerPage.value, page: field.tablePage.value });
@@ -66,7 +70,7 @@ export function buildServerTableWidget(field: TableWidgetContext): VNode {
   }
 
   return buildStandardTableLayout(field, h(VDataTableServer, {
-    headers: field.tableHeaders.value || [],
+    headers: headers as any,
     items: field.tableItems.value,
     class: [...(field.params.value.class || []), 'dense-table', ...(field.params.value.bordered ? ['bordered-table'] : [])],
     showSelect: !field.$readonly,
@@ -87,11 +91,12 @@ export function buildServerTableWidget(field: TableWidgetContext): VNode {
     },
     'onUpdate:modelValue': (value: any) => { field.modelValue.value = value; },
     'onClick:row': (_: any, { item }: any) => field.handleOn('click:row', item),
-  }, buildTableSlots(field)));
+  }, buildTableSlots(field, headers)));
 }
 
 export function buildViewTableWidget(field: TableWidgetContext): VNode {
   const h = field.$h;
+  const headers = resolvedTableHeaders(field);
 
   if (!field.tableLoaded.value) {
     field.loadTableInformation();
@@ -100,7 +105,7 @@ export function buildViewTableWidget(field: TableWidgetContext): VNode {
   }
 
   return buildStandardTableLayout(field, h(VDataTableVirtual, {
-    headers: field.tableHeaders.value || [],
+    headers: headers as any,
     items: field.tableItems.value,
     class: [...(field.params.value.class || []), 'dense-table', ...(field.params.value.bordered ? ['bordered-table'] : [])],
     showSelect: !field.$readonly,
@@ -114,11 +119,12 @@ export function buildViewTableWidget(field: TableWidgetContext): VNode {
     modelValue: field.modelValue.value,
     'onUpdate:modelValue': (value: any) => { field.modelValue.value = value; },
     'onClick:row': (_: any, { item }: any) => field.handleOn('click:row', item),
-  }, buildTableSlots(field)));
+  }, buildTableSlots(field, headers)));
 }
 
 export function buildReportTableWidget(field: TableWidgetContext): VNode {
   const h = field.$h;
+  const headers = field.tableHeaders.value || [];
 
   if (!field.tableLoaded.value) {
     field.loadTableInformation();
@@ -150,9 +156,9 @@ export function buildReportTableWidget(field: TableWidgetContext): VNode {
             style: minWidth ? { minWidth } : {},
           },
           [
-            h('thead', {}, makeReportTableHeader(field)),
-            h('tbody', { style: { maxHeight: field.params.value.height ? `${field.params.value.height}px` : '400px' } }, makeReportTableBody(field)),
-            ...(field.params.value.hasFooter ? [h('tfoot', {}, makeReportTableFooter(field, field.getCurrentCollectionFooter()))] : []),
+            h('thead', {}, makeReportTableHeader(field, headers)),
+            h('tbody', { style: { maxHeight: field.params.value.height ? `${field.params.value.height}px` : '400px' } }, makeReportTableBody(field, headers)),
+            ...(field.params.value.hasFooter ? [h('tfoot', {}, makeReportTableFooter(field, field.getCurrentCollectionFooter(), headers))] : []),
           ]
         )
       )
@@ -174,13 +180,17 @@ function buildStandardTableLayout(field: TableWidgetContext, table: VNode) {
 
 function buildLabel(field: TableWidgetContext) {
   const h = field.$h;
-  return h(VCol, { cols: 12 }, () => h('div', {}, field.params.value.label));
+  return h(VCol, { cols: 12 }, () => h('div', {}, field.$text(field.params.value.label)));
 }
 
-function buildTableSlots(field: TableWidgetContext) {
+function resolvedTableHeaders(field: TableWidgetContext) {
+  return resolveUITableHeaders(field.tableHeaders.value, (value) => field.$text(value));
+}
+
+function buildTableSlots(field: TableWidgetContext, headers: UITableHeader[]) {
   const h = field.$h;
   return {
-    ...field.makeHTMLColumns(field.tableHeaders.value),
+    ...field.makeHTMLColumns(headers),
     ...(field.params.value.hasFooter ? {
       bottom: (options: any) => [
         h(VDataTable, {
@@ -200,46 +210,52 @@ function buildTableSlots(field: TableWidgetContext) {
   };
 }
 
-function getColspan(header: any): number {
+function getColspan(header: UITableHeader): number {
   let span = 1;
-  if (header.children?.length > 0) {
+  const children = header.children || [];
+  if (children.length > 0) {
     span = 0;
-    for (const child of header.children) {
+    for (const child of children) {
       span += getColspan(child);
     }
   }
   return span;
 }
 
-function calculateHeaderRows(headers: any[]) {
+interface ReportTableHeaderCell {
+  header: UITableHeader;
+  colspan: number;
+}
+
+function calculateHeaderRows(headers: UITableHeader[]) {
   let cnt = 0;
-  let children: any[] = [];
-  let currentHeaders: any[] = headers || [];
-  const headerRows: any[] = [];
+  let children: UITableHeader[] = [];
+  let currentHeaders: UITableHeader[] = headers || [];
+  const headerRows: ReportTableHeaderCell[][] = [];
 
   while (currentHeaders.length > 0) {
     children = [];
     cnt += 1;
+    const row: ReportTableHeaderCell[] = [];
     for (const item of currentHeaders) {
       if (item.children && item.children.length > 0) {
         children = children.concat(item.children || []);
-        item.colspan = getColspan(item);
-      } else {
-        item.colspan = 1;
       }
+      row.push({ header: item, colspan: getColspan(item) });
     }
-    headerRows.push(currentHeaders);
+    headerRows.push(row);
     currentHeaders = children;
   }
 
   return { headerRows, rowCount: cnt };
 }
 
-function getItemHeaders(headers: any[]) {
-  let items: any[] = [];
+function getItemHeaders(headers: UITableHeader[]) {
+  let items: UITableHeader[] = [];
   for (const item of headers) {
-    if (item.children?.length > 0) {
-      items = items.concat(getItemHeaders(item.children));
+    const children = item.children || [];
+    if (children.length > 0) {
+      items = items.concat(getItemHeaders(children));
     } else {
       items.push(item);
     }
@@ -247,22 +263,22 @@ function getItemHeaders(headers: any[]) {
   return items;
 }
 
-function makeReportTableHeader(field: TableWidgetContext) {
+function makeReportTableHeader(field: TableWidgetContext, headers: UITableHeader[]) {
   const h = field.$h;
-  const headers = field.tableHeaders.value || [];
   const { headerRows, rowCount } = calculateHeaderRows(headers);
   const rows: any[] = [];
 
   for (let i = 0; i < headerRows.length; i++) {
     const columns: any[] = [];
-    const heads = headerRows[i];
-    for (const col of heads) {
+    const cells = headerRows[i];
+    for (const cell of cells) {
+      const col = cell.header;
       columns.push(h('th', {
         ...(col.attributes || {}),
-        colspan: col.colspan || 1,
-        rowspan: col.children?.length > 0 ? 1 : rowCount - i,
+        colspan: cell.colspan,
+        rowspan: (col.children || []).length > 0 ? 1 : rowCount - i,
         onClick: () => field.handleOn('click:header', col),
-      }, col.title || ''));
+      }, field.$text(col.title)));
     }
     rows.push(h('tr', {}, columns));
   }
@@ -270,9 +286,9 @@ function makeReportTableHeader(field: TableWidgetContext) {
   return rows;
 }
 
-function makeReportTableBody(field: TableWidgetContext) {
+function makeReportTableBody(field: TableWidgetContext, tableHeaders: UITableHeader[]) {
   const h = field.$h;
-  const headers = getItemHeaders(field.tableHeaders.value || []);
+  const headers = getItemHeaders(tableHeaders);
   const items = field.tableItems.value || [];
   const rows: any[] = [];
 
@@ -293,9 +309,9 @@ function makeReportTableBody(field: TableWidgetContext) {
   return rows;
 }
 
-function makeReportTableFooter(field: TableWidgetContext, items: any[]) {
+function makeReportTableFooter(field: TableWidgetContext, items: any[], tableHeaders: UITableHeader[]) {
   const h = field.$h;
-  const headers = getItemHeaders(field.tableHeaders.value || []);
+  const headers = getItemHeaders(tableHeaders);
   const rows: any[] = [];
 
   for (const item of items) {

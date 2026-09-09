@@ -53,6 +53,29 @@ type UIText =
 - `() => string`
   Dynamic text evaluated at render time.
 
+### Table column titles
+
+All library-owned table renderers accept the same `UIText` contract for column titles. This includes Field types `table`, `viewtable`, `servertable`, `reporttable`, `collection`, and table-formatted `autocomplete` fields, plus Trigger result tables and Dashboard table widgets.
+
+Field and Trigger tables use the exported `UITableHeader` type. Dashboard tables use `DashboardTableColumn`, whose `title` has the same `UIText` type:
+
+```ts
+import { $l, type UITableHeader } from 'vuetify-extended';
+
+const headers: UITableHeader[] = [
+  { title: $l('orders.columns.name', 'Name'), key: 'name' },
+  {
+    title: $l('orders.columns.fulfilment', 'Fulfilment'),
+    children: [
+      { title: $l('orders.columns.status', 'Status'), key: 'status' },
+      { title: () => currentAmountLabel.value, key: 'amount', align: 'end' },
+    ],
+  },
+];
+```
+
+Plain strings remain unchanged. Descriptor and callback titles are resolved recursively for `UITableHeader` groups that use `children`; Dashboard columns remain flat. Resolution happens during rendering, so changing the registered `localeRef` updates visible titles without rebuilding the source definitions. All other Vuetify and library-specific header properties are preserved, and the source header array is not mutated.
+
 ## The Global Adapter Shape
 
 The runtime adapter shape is:

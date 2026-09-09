@@ -20,6 +20,7 @@ import {
   type FieldPaginationEvent,
   type FieldPaginationValue,
 } from "./widgets/field-pagination-state";
+import { appendUniqueAutocompleteValue, removeAutocompleteValuesAtIndexes } from "./widgets/field-autocomplete-table-state";
 
 export type {
   FieldPaginationChangeReason,
@@ -33,7 +34,8 @@ import nestedProperty from "nested-property";
 import { OnHandler } from "./lib";
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
-import { isUIValidationMessage, resolveUIText, type UIText, type UIValidationResult, type UIValidationRuleResult } from "./runtime";
+import { interpolateUITextTemplate, isUITextDescriptor, isUIValidationMessage, resolveUIText, type UIText, type UIValidationResult, type UIValidationRuleResult } from "./runtime";
+import { resolveUITableHeaders, type UITableHeader } from "./table-header";
 
 
 export type FieldType = 'text'|'select'|'autocomplete'|'label'|
@@ -46,6 +48,7 @@ export type FieldType = 'text'|'select'|'autocomplete'|'label'|
 export type FieldUploadType = 'base64'|'file'|'metadata';
 export type FieldDateFormat = 'YYYY-MM-DD'|'YYYYMMDD'|'timestamp';
 export type FieldTimeFormat = 'HH:mm'|'HHMM'|'timestamp';
+export type FieldAutocompleteFormat = 'default'|'table';
 export type FieldValueOrigin = 'default'|'master'|'user'|'programmatic';
 
 export interface FieldValueContext {
@@ -210,6 +213,11 @@ export interface FieldParams {
   mapOptions?: any;
   mapZoom?: number;
   serverSearch?: boolean;
+  autocompleteFormat?: FieldAutocompleteFormat;
+  autocompleteAddText?: UIText;
+  autocompleteSelectedText?: UIText;
+  autocompleteRemoveText?: UIText;
+  autocompleteDisableRemove?: boolean;
   autocompleteLoadMore?: 'scroll'|'button';
   searchDebounceMs?: number;
   minSearchChars?: number;
@@ -309,7 +317,7 @@ export interface FieldOptions {
   autocompleteNoDataText?: (field: Field, search: string) => string|undefined;
   button?: (field: Field) => Button|undefined;
   form?: (field: Field) => Promise<Form|undefined>|Form|undefined;
-  headers?: (field: Field) => Promise<any[]|undefined>|any[]|undefined;
+  headers?: (field: Field) => Promise<UITableHeader[]|undefined>|UITableHeader[]|undefined;
   items?: (field: Field, options?: any) => Promise<any[]|any|undefined>|any[]|any|undefined;
   format?: (field: Field, items: any[]) => any[]|undefined;
   footer?: (field: Field, items: any[]) => any[]|undefined;
@@ -356,11 +364,11 @@ export class Field extends UIBase {
   private collectionLoaded: Ref<boolean>;
   private collectionForm?: Form;
   private collectionSelectedItems: Ref<any[]>;
-  private collectionHeaders?: any[];
+  private collectionHeaders?: UITableHeader[];
   private collectionDialog: Ref<boolean>;
   private collectionFormMaster?: Master;
 
-  private tableHeaders: Ref<any[]>;
+  private tableHeaders: Ref<UITableHeader[]>;
   private tableItems: Ref<any[]>;
   private tableLoaded: Ref<boolean>;
   private tableItemsPerPage: Ref<any>;
@@ -397,6 +405,15 @@ export class Field extends UIBase {
   private autocompleteDebounceTimer?: ReturnType<typeof setTimeout>;
   private autocompleteAbortController?: AbortController;
   private autocompleteMenuClass: string;
+  private autocompleteTablePendingItem: Ref<any>;
+  private autocompleteTableHeaders: Ref<UITableHeader[]>;
+  private autocompleteTableHeadersLoaded: Ref<boolean>;
+  private autocompleteTableRows: Ref<any[]>;
+  private autocompleteTableSelectedKeys: Ref<string[]>;
+  private autocompleteTableLoading: Ref<boolean>;
+  private autocompleteTableRequestId: Ref<number>;
+  private autocompleteTableRowSources: Map<string, { item: any; index: number }>;
+  private optionLoading: Ref<boolean>;
   private selectedFiles: Ref<File[]>;
   private resolvedAssets: Ref<AssetRecord[]>;
   private assetResolveRequestId: Ref<number>;
@@ -448,6 +465,15 @@ export class Field extends UIBase {
     this.autocompleteResolvedItems = this.$makeRef([]);
     this.autocompleteCache = new Map();
     this.autocompleteMenuClass = `vef-autocomplete-menu-${Math.random().toString(36).slice(2, 10)}`;
+    this.autocompleteTablePendingItem = this.$makeRef();
+    this.autocompleteTableHeaders = this.$makeRef([]);
+    this.autocompleteTableHeadersLoaded = this.$makeRef(false);
+    this.autocompleteTableRows = this.$makeRef([]);
+    this.autocompleteTableSelectedKeys = this.$makeRef([]);
+    this.autocompleteTableLoading = this.$makeRef(false);
+    this.autocompleteTableRequestId = this.$makeRef(0);
+    this.autocompleteTableRowSources = new Map();
+    this.optionLoading = this.$makeRef(false);
     this.selectedFiles = this.$makeRef([]);
     this.resolvedAssets = this.$makeRef([]);
     this.assetResolveRequestId = this.$makeRef(0);
@@ -554,8 +580,8 @@ export class Field extends UIBase {
       if (this.isAssetMode()) {
         void this.syncResolvedAssets();
       }
-      if (this.isServerAutocomplete()) {
-        void this.syncServerAutocompleteSelection();
+      if (this.params.value.type === 'autocomplete') {
+        void this.syncAutocompleteSelectionDisplay();
       }
       if (this.consumeHandledModelSync()) {
         return;
@@ -1771,28 +1797,35 @@ export class Field extends UIBase {
     return undefined;
   }
 
-  async headers(): Promise<any[]|undefined> {
+  async headers(): Promise<UITableHeader[]|undefined> {
     if (this.options.headers) return await this.options.headers(this);
   }
 
-  makeHTMLColumns(headers: any[]) {
+  makeHTMLColumns(headers: UITableHeader[]) {
     const slots: any = {}
 
-    for (let i = 0; i < headers.length; i++) {
-      const header = headers[i];
-      if (header.isHTML) {
-        slots[`item.${header.key}`] = (options: any) => {
-          return this.$h(
-            header.tag || 'div',
-            {
-              innerHTML: options.value?.html ? options.value.html : options.value,
-              class: options.value?.class || [],
-              style: options.value?.style || {}
-            }
-          )
+    const addColumns = (columns: UITableHeader[]) => {
+      for (const header of columns) {
+        if (header.isHTML && header.key !== undefined) {
+          slots[`item.${header.key}`] = (options: any) => {
+            return this.$h(
+              header.tag || 'div',
+              {
+                innerHTML: options.value?.html ? options.value.html : options.value,
+                class: options.value?.class || [],
+                style: options.value?.style || {}
+              }
+            )
+          }
+        }
+
+        if (header.children?.length) {
+          addColumns(header.children);
         }
       }
-    }
+    };
+
+    addColumns(headers);
 
     return slots;
   }
@@ -1816,12 +1849,35 @@ export class Field extends UIBase {
   }
 
   async loadOptions() {
-    const options = await this.selectOptions();
-    if (options) {
-      this.selectItems.value = options;
-    } else {
-      this.selectItems.value = [];
+    this.optionLoading.value = true;
+    try {
+      const options = await this.selectOptions();
+      if (options) {
+        this.selectItems.value = options;
+      } else {
+        this.selectItems.value = [];
+      }
+    } finally {
+      this.optionLoading.value = false;
+      if (this.isAutocompleteTable()) {
+        void this.syncAutocompleteTableSelection();
+      }
     }
+  }
+
+  private isAutocompleteTable() {
+    return this.params.value.type === 'autocomplete'
+      && this.params.value.autocompleteFormat === 'table'
+      && this.params.value.multiple === true;
+  }
+
+  private async syncAutocompleteSelectionDisplay() {
+    if (this.isAutocompleteTable()) {
+      await this.syncAutocompleteTableSelection();
+      return;
+    }
+
+    await this.syncServerAutocompleteSelection();
   }
 
   private isServerAutocomplete() {
@@ -2158,6 +2214,237 @@ export class Field extends UIBase {
     }
   }
 
+  private autocompleteTableStoredValues() {
+    return this.normalizeAutocompleteItems(this.modelValue.value);
+  }
+
+  private autocompleteTableFallbackItem(value: any) {
+    const itemValue = this.params.value.itemValue || this.params.value.idField || Master.getDefaultIdField() || '_id';
+    const itemTitle = this.params.value.itemTitle || 'name';
+    const item: any = { __veAutocompleteUnresolved: true };
+
+    nestedProperty.set(item, itemValue, value);
+    nestedProperty.set(item, itemTitle, String(value ?? ''));
+    return item;
+  }
+
+  private autocompleteTableStoredValue(item: any) {
+    const normalized = this.normalizeAutocompleteComparisonValue(item);
+    if (this.params.value.returnObject) {
+      return normalized;
+    }
+
+    if (normalized && typeof normalized === 'object') {
+      return Master.getItemId(normalized, this.params.value.itemValue || this.params.value.idField);
+    }
+
+    return normalized;
+  }
+
+  private async resolveAutocompleteTableItems(requestId: number) {
+    const storedValues = this.autocompleteTableStoredValues();
+    if (storedValues.length === 0) {
+      return [];
+    }
+
+    if (this.params.value.returnObject) {
+      return storedValues.map((item) => this.normalizeAutocompleteComparisonValue(item));
+    }
+
+    let candidates = this.mergeAutocompleteItems(
+      this.autocompleteResolvedItems.value || [],
+      this.mergeAutocompleteItems(this.autocompleteResultItems.value || [], this.selectItems.value || []),
+    );
+    const missingValues = storedValues.filter(
+      (value) => !candidates.some((item) => this.autocompleteItemMatchesValue(item, value)),
+    );
+
+    if (missingValues.length > 0 && this.options.autocompleteResolveValue) {
+      try {
+        const resolved = await this.options.autocompleteResolveValue(this, missingValues, {});
+        if (requestId !== this.autocompleteTableRequestId.value) {
+          return [];
+        }
+        const resolvedItems = this.normalizeAutocompleteItems(resolved);
+        candidates = this.mergeAutocompleteItems(candidates, resolvedItems);
+        this.updateResolvedAutocompleteItems(
+          this.mergeAutocompleteItems(this.autocompleteResolvedItems.value || [], resolvedItems),
+        );
+      } catch (error: any) {
+        if (error?.name === 'AbortError') {
+          return [];
+        }
+      }
+    }
+
+    const orderedItems = storedValues.map(
+      (value) => candidates.find((item) => this.autocompleteItemMatchesValue(item, value))
+        || this.autocompleteTableFallbackItem(value),
+    );
+    this.updateResolvedAutocompleteItems(this.mergeAutocompleteItems(
+      this.autocompleteResolvedItems.value || [],
+      orderedItems.filter((item) => !item?.__veAutocompleteUnresolved),
+    ));
+    return orderedItems;
+  }
+
+  private async loadAutocompleteTableHeaders() {
+    if (this.autocompleteTableHeadersLoaded.value) {
+      return;
+    }
+
+    const headers = await this.headers();
+    this.autocompleteTableHeaders.value = headers?.length
+      ? headers
+      : [{ title: this.params.value.label || this.$uiText('ve.field.autocomplete.selectedItems', 'Selected items'), key: this.params.value.itemTitle || 'name' }];
+    this.autocompleteTableHeadersLoaded.value = true;
+  }
+
+  private autocompleteTableSourceKey(item: any, index: number) {
+    const value = this.params.value.returnObject ? item : this.autocompleteTableStoredValue(item);
+    return this.autocompleteItemKey(value, index);
+  }
+
+  private buildAutocompleteTableRows(items: any[]) {
+    const sources = items.map((item, index) => ({
+      item,
+      index,
+    }));
+    const sourceQueues = new Map<string, Array<typeof sources[number]>>();
+
+    sources.forEach((source) => {
+      const sourceKey = this.autocompleteTableSourceKey(source.item, source.index);
+      sourceQueues.set(sourceKey, [...(sourceQueues.get(sourceKey) || []), source]);
+    });
+
+    const formattedItems = this.format(items);
+    const usedIndexes = new Set<number>();
+    this.autocompleteTableRowSources.clear();
+
+    return formattedItems.map((formattedItem, index) => {
+      const formattedKey = this.autocompleteTableSourceKey(formattedItem, index);
+      let source = (sourceQueues.get(formattedKey) || []).find((candidate) => !usedIndexes.has(candidate.index));
+      source ||= sources[index];
+
+      if (source) {
+        usedIndexes.add(source.index);
+      }
+
+      const selectionKey = `selection:${source?.index ?? index}:${formattedKey}`;
+      const displayItem = formattedItem && typeof formattedItem === 'object'
+        ? { ...formattedItem }
+        : { [this.params.value.itemTitle || 'name']: String(formattedItem ?? '') };
+
+      displayItem.__veAutocompleteSelectionKey = selectionKey;
+      this.autocompleteTableRowSources.set(selectionKey, source || {
+        item: formattedItem,
+        index,
+      });
+      return displayItem;
+    });
+  }
+
+  private async syncAutocompleteTableSelection() {
+    if (!this.isAutocompleteTable() || this.optionLoading.value) {
+      return;
+    }
+
+    const requestId = this.autocompleteTableRequestId.value + 1;
+    this.autocompleteTableRequestId.value = requestId;
+    this.autocompleteTableLoading.value = true;
+
+    try {
+      await this.loadAutocompleteTableHeaders();
+      const items = await this.resolveAutocompleteTableItems(requestId);
+      if (requestId !== this.autocompleteTableRequestId.value) {
+        return;
+      }
+
+      this.autocompleteTableRows.value = this.buildAutocompleteTableRows(items);
+      const visibleKeys = new Set(this.autocompleteTableRows.value.map((item) => item.__veAutocompleteSelectionKey));
+      this.autocompleteTableSelectedKeys.value = this.autocompleteTableSelectedKeys.value.filter((key) => visibleKeys.has(key));
+    } finally {
+      if (requestId === this.autocompleteTableRequestId.value) {
+        this.autocompleteTableLoading.value = false;
+      }
+    }
+  }
+
+  private autocompleteTablePendingRawItem() {
+    return this.normalizeAutocompleteComparisonValue(this.autocompleteTablePendingItem.value);
+  }
+
+  private canAddAutocompleteTableItem() {
+    const item = this.autocompleteTablePendingRawItem();
+    if (item === undefined || item === null || item === '') {
+      return false;
+    }
+
+    const storedValue = this.autocompleteTableStoredValue(item);
+    if (storedValue === undefined || storedValue === null || storedValue === '') {
+      return false;
+    }
+
+    return !this.autocompleteTableStoredValues().some((value) => this.autocompleteValuesEqual(value, storedValue));
+  }
+
+  private async addAutocompleteTableItem() {
+    if (this.$readonly || !this.canAddAutocompleteTableItem()) {
+      return;
+    }
+
+    const item = this.autocompleteTablePendingRawItem();
+    const storedValue = this.autocompleteTableStoredValue(item);
+    const appended = appendUniqueAutocompleteValue(
+      this.autocompleteTableStoredValues(),
+      storedValue,
+      (left, right) => this.autocompleteValuesEqual(left, right),
+    );
+    if (!appended.added) {
+      return;
+    }
+
+    this.updateResolvedAutocompleteItems(this.mergeAutocompleteItems(this.autocompleteResolvedItems.value || [], [item]));
+    this.setModelValueAndSync(appended.values, 'user');
+    this.autocompleteTablePendingItem.value = undefined;
+    this.autocompleteSearchText.value = '';
+    this.handleOn('item-added', item);
+    await this.syncAutocompleteTableSelection();
+  }
+
+  private async removeAutocompleteTableItems() {
+    if (this.$readonly || this.params.value.autocompleteDisableRemove || this.autocompleteTableSelectedKeys.value.length === 0) {
+      return;
+    }
+
+    const removableIndexes = new Set<number>();
+    const removedItems: any[] = [];
+    for (const key of this.autocompleteTableSelectedKeys.value) {
+      const source = this.autocompleteTableRowSources.get(key);
+      if (!source) {
+        continue;
+      }
+
+      const canRemove = this.options.canRemoveItem
+        ? await this.options.canRemoveItem(this, source.item)
+        : true;
+      if (canRemove !== false) {
+        removableIndexes.add(source.index);
+        removedItems.push(source.item);
+      }
+    }
+
+    if (removableIndexes.size === 0) {
+      return;
+    }
+
+    const nextValue = removeAutocompleteValuesAtIndexes(this.autocompleteTableStoredValues(), removableIndexes);
+    this.setModelValueAndSync(nextValue, 'user');
+    this.autocompleteTableSelectedKeys.value = [];
+    this.handleOn('item-removed', removedItems);
+    await this.syncAutocompleteTableSelection();
+  }
+
   private async applyServerAutocompleteSearch(search: string, page = 1, options?: { bypassMinChars?: boolean; append?: boolean }) {
     if (!this.isServerAutocomplete() || !this.options.autocompleteSearch) {
       return;
@@ -2234,7 +2521,7 @@ export class Field extends UIBase {
         ? this.mergeAutocompleteItems(this.autocompleteResultItems.value, normalizedItems)
         : normalizedItems;
       this.refreshAutocompleteDisplayItems(this.autocompleteResultItems.value);
-      await this.syncServerAutocompleteSelection();
+      await this.syncAutocompleteSelectionDisplay();
       await this.maybePrimeScrollableAutocompleteResults(previousCount, { append: isAppend });
     } catch (error: any) {
       if (error?.name === 'AbortError') {
@@ -2394,6 +2681,46 @@ export class Field extends UIBase {
     return this.$text(this.params.value.autocompleteLoadingMoreText, this.$uiText('ve.field.autocomplete.loadingMore', 'Loading more...'));
   }
 
+  private autocompleteTableText(value: UIText|undefined, key: string, fallback: string, values?: Record<string, any>) {
+    if (isUITextDescriptor(value)) {
+      return resolveUIText({
+        ...value,
+        values: { ...(value.values || {}), ...(values || {}) },
+      }, fallback);
+    }
+
+    if (value !== undefined && value !== null) {
+      return interpolateUITextTemplate(this.$text(value), values);
+    }
+
+    return this.$uiText(key, fallback, values);
+  }
+
+  private autocompleteTableAddText() {
+    return this.autocompleteTableText(this.params.value.autocompleteAddText, 've.field.autocomplete.add', 'Add');
+  }
+
+  private autocompleteTableSelectedText() {
+    return this.autocompleteTableText(
+      this.params.value.autocompleteSelectedText,
+      've.field.autocomplete.selected',
+      'Selected {label} ({count})',
+      {
+        count: this.autocompleteTableStoredValues().length,
+        label: this.resolvedLabel() || this.$uiText('ve.field.autocomplete.items', 'items'),
+      },
+    );
+  }
+
+  private autocompleteTableRemoveText() {
+    return this.autocompleteTableText(
+      this.params.value.autocompleteRemoveText,
+      've.field.autocomplete.removeSelected',
+      'Remove selected items',
+      { count: this.autocompleteTableSelectedKeys.value.length },
+    );
+  }
+
   private resolvedLabel() {
     return this.$text(this.params.value.label);
   }
@@ -2525,7 +2852,9 @@ export class Field extends UIBase {
             this.optionLoaded.value = true;
             this.loadOptions();
           }
-          return ftype === 'autocomplete' ? this.buildAutocomplete(props, context) : this.buildSelect(props, context);
+          return ftype === 'autocomplete'
+            ? (this.isAutocompleteTable() ? this.buildAutocompleteTable(props, context) : this.buildAutocomplete(props, context))
+            : this.buildSelect(props, context);
         }
       case 'label':
         return this.buildLabel(props, context);
@@ -2891,25 +3220,62 @@ export class Field extends UIBase {
     ];
   }
 
-  buildAutocomplete(props: any, context: any) {
+  private autocompleteServerInputProps() {
+    if (!this.isServerAutocomplete()) {
+      return {};
+    }
+
+    const loadMoreMode = this.autocompleteLoadMoreMode();
+    return {
+      search: this.autocompleteSearchText.value,
+      noFilter: true,
+      noDataText: this.autocompleteNoDataText(),
+      menuProps: {
+        contentClass: this.autocompleteMenuClass,
+      },
+      listProps: loadMoreMode === 'scroll'
+        ? {
+            onScrollPassive: (ev: Event) => this.onAutocompleteListScroll(ev),
+          }
+        : undefined,
+      "onUpdate:search": (value: string) => this.scheduleServerAutocompleteSearch(value || ''),
+    };
+  }
+
+  private buildAutocompleteLoadMoreItem() {
     const h = this.$h;
     const loadMoreMode = this.autocompleteLoadMoreMode();
-    const serverAutocompleteProps = this.isServerAutocomplete()
-      ? {
-          search: this.autocompleteSearchText.value,
-          noFilter: true,
-          noDataText: this.autocompleteNoDataText(),
-          menuProps: {
-            contentClass: this.autocompleteMenuClass,
-          },
-          listProps: loadMoreMode === 'scroll'
-            ? {
-                onScrollPassive: (ev: Event) => this.onAutocompleteListScroll(ev),
-              }
-            : undefined,
-          "onUpdate:search": (value: string) => this.scheduleServerAutocompleteSearch(value || ''),
-        }
-      : {};
+
+    if (loadMoreMode === 'button' && (this.autocompleteHasMore.value || this.autocompleteLoadingMore.value)) {
+      return h(
+        'div',
+        { class: 'vef-autocomplete__load-more' },
+        [
+          h(
+            VBtn,
+            {
+              variant: 'text',
+              color: this.params.value.color || 'primary',
+              disabled: this.autocompleteLoadingMore.value,
+              prependIcon: this.autocompleteLoadingMore.value ? 'mdi-loading mdi-spin' : 'mdi-chevron-down',
+              onClick: () => this.loadMoreAutocompleteResults(),
+            },
+            () => this.autocompleteLoadingMore.value ? this.autocompleteLoadingMoreText() : this.autocompleteLoadMoreText(),
+          ),
+        ],
+      );
+    }
+
+    if (loadMoreMode === 'scroll' && this.autocompleteLoadingMore.value) {
+      return h('div', { class: 'vef-autocomplete__loading-more' }, this.autocompleteLoadingMoreText());
+    }
+
+    return undefined;
+  }
+
+  buildAutocomplete(props: any, context: any) {
+    const h = this.$h;
+    const serverAutocompleteProps = this.autocompleteServerInputProps();
 
     const autocompleteSlots: Record<string, any> | undefined = this.isServerAutocomplete() ? {
       selection: ({ item, index }: any) => h(
@@ -2933,52 +3299,7 @@ export class Field extends UIBase {
     } : undefined;
 
     if (this.isServerAutocomplete() && autocompleteSlots) {
-      autocompleteSlots['append-item'] = () => {
-        if (loadMoreMode === 'button' && (this.autocompleteHasMore.value || this.autocompleteLoadingMore.value)) {
-          return h(
-            'div',
-            {
-              style: {
-                padding: '8px 12px 12px 12px',
-                borderTop: '1px solid rgba(128,128,128,0.18)',
-                display: 'flex',
-                justifyContent: 'center',
-              },
-            },
-            [
-              h(
-                VBtn,
-                {
-                  variant: 'text',
-                  color: this.params.value.color || 'primary',
-                  disabled: this.autocompleteLoadingMore.value,
-                  prependIcon: this.autocompleteLoadingMore.value ? 'mdi-loading mdi-spin' : 'mdi-chevron-down',
-                  onClick: () => this.loadMoreAutocompleteResults(),
-                },
-                () => this.autocompleteLoadingMore.value ? this.autocompleteLoadingMoreText() : this.autocompleteLoadMoreText(),
-              ),
-            ],
-          );
-        }
-
-        if (loadMoreMode === 'scroll' && this.autocompleteLoadingMore.value) {
-          return h(
-            'div',
-            {
-              style: {
-                padding: '8px 12px 12px 12px',
-                borderTop: '1px solid rgba(128,128,128,0.18)',
-                textAlign: 'center',
-                fontSize: '0.9rem',
-                opacity: 0.82,
-              },
-            },
-            this.autocompleteLoadingMoreText(),
-          );
-        }
-
-        return undefined;
-      };
+      autocompleteSlots['append-item'] = () => this.buildAutocompleteLoadMoreItem();
     }
 
     return h(
@@ -3010,6 +3331,133 @@ export class Field extends UIBase {
         "onUpdate:focused": (ev: any) => this.onFocusChanged(ev),
       },
       autocompleteSlots,
+    );
+  }
+
+  buildAutocompleteTable(props: any, context: any) {
+    const h = this.$h;
+    const serverAutocompleteProps = this.autocompleteServerInputProps();
+    const autocompleteSlots: Record<string, any> = {};
+
+    if (this.isServerAutocomplete()) {
+      autocompleteSlots['append-item'] = () => this.buildAutocompleteLoadMoreItem();
+    }
+
+    autocompleteSlots.append = () => h(
+      VBtn,
+      {
+        color: this.params.value.color || 'primary',
+        variant: 'tonal',
+        size: 'small',
+        icon: true,
+        disabled: !this.canAddAutocompleteTableItem(),
+        title: this.autocompleteTableAddText(),
+        'aria-label': this.autocompleteTableAddText(),
+        onClick: () => this.addAutocompleteTableItem(),
+      },
+      () => h(VIcon, { size: 22 }, () => 'mdi-plus'),
+    );
+
+    const headers = resolveUITableHeaders(
+      this.autocompleteTableHeaders.value,
+      (value) => this.$text(value),
+    );
+    const allowRemove = !this.$readonly && this.params.value.autocompleteDisableRemove !== true;
+    const selectedCount = this.autocompleteTableSelectedKeys.value.length;
+    const tableRules = this.rules().map((rule) => typeof rule === 'function'
+      ? () => rule(this.modelValue.value)
+      : rule);
+
+    return h(
+      'div',
+      {
+        class: ['vef-autocomplete-table'].concat(this.params.value.class || []),
+        style: this.params.value.style || {},
+      },
+      [
+        ...(!this.$readonly ? [
+          h(
+            VAutocomplete as any,
+            {
+              modelValue: this.autocompleteTablePendingItem.value,
+              "onUpdate:modelValue": (value: any) => {
+                this.autocompleteTablePendingItem.value = value;
+              },
+              ...this.inputIconProps(),
+              autofocus: this.params.value.autofocus,
+              label: this.resolvedLabel(),
+              hint: this.resolvedHint(),
+              persistentHint: !!this.params.value.hint,
+              placeholder: this.resolvedPlaceholder(),
+              clearable: this.params.value.clearable !== false,
+              color: this.params.value.color || 'primary',
+              variant: this.params.value.variant || Field.defaultParams?.variant,
+              itemTitle: this.params.value.itemTitle || 'name',
+              itemValue: Master.resolveItemValueField(this.selectItems.value, this.params.value.itemValue || this.params.value.idField),
+              items: this.selectItems.value,
+              loading: this.autocompleteLoading.value || this.optionLoading.value,
+              autoSelectFirst: true,
+              returnObject: true,
+              valueComparator: (left: any, right: any) => this.autocompleteValuesEqual(left, right),
+              rules: tableRules,
+              ...serverAutocompleteProps,
+              class: 'vef-autocomplete-table__search',
+              "onUpdate:focused": (ev: any) => this.onFocusChanged(ev),
+            },
+            autocompleteSlots,
+          ),
+        ] : []),
+        h(
+          'div',
+          { class: 'vef-autocomplete-table__heading' },
+          [
+            h('span', { class: 'vef-autocomplete-table__selected-text' }, this.autocompleteTableSelectedText()),
+            ...(allowRemove && selectedCount > 0 ? [
+              h(
+                VBtn,
+                {
+                  color: 'error',
+                  variant: 'text',
+                  size: 'small',
+                  icon: true,
+                  title: this.autocompleteTableRemoveText(),
+                  'aria-label': this.autocompleteTableRemoveText(),
+                  onClick: () => this.removeAutocompleteTableItems(),
+                },
+                () => h(VIcon, { size: 22 }, () => 'mdi-delete'),
+              ),
+            ] : []),
+          ],
+        ),
+        h(
+          VCard,
+          {
+            class: ['vef-autocomplete-table__surface', 'overflow-auto'],
+            elevation: 0,
+          },
+          () => h(
+            VDataTable as any,
+            {
+              headers,
+              items: this.autocompleteTableRows.value,
+              loading: this.autocompleteTableLoading.value,
+              density: 'compact',
+              showSelect: allowRemove,
+              itemValue: '__veAutocompleteSelectionKey',
+              returnObject: false,
+              itemsPerPage: Number(this.params.value.itemsPerPage || 10),
+              fixedHeader: true,
+              fixedFooter: true,
+              height: this.params.value.height || 260,
+              modelValue: this.autocompleteTableSelectedKeys.value,
+              "onUpdate:modelValue": (value: string[]) => {
+                this.autocompleteTableSelectedKeys.value = value || [];
+              },
+            },
+            this.makeHTMLColumns(headers),
+          ),
+        ),
+      ],
     );
   }
 
@@ -3084,6 +3532,7 @@ export class Field extends UIBase {
   private tableWidgetContext(): TableWidgetContext {
     return {
       $h: this.$h,
+      $text: (value: any, fallback?: string) => this.$text(value, fallback),
       $readonly: this.$readonly,
       params: this.params,
       modelValue: this.modelValue,
@@ -3101,7 +3550,7 @@ export class Field extends UIBase {
       loadTableInformation: (options?: any) => this.loadTableInformation(options),
       formatTableItems: (items: any[]) => this.format(items),
       buildTableFooter: (items: any[]) => this.footer(items),
-      makeHTMLColumns: (headers: any[]) => this.makeHTMLColumns(headers),
+      makeHTMLColumns: (headers: UITableHeader[]) => this.makeHTMLColumns(headers),
       handleOn: (event: string, data?: any) => this.handleOn(event, data),
     };
   }
@@ -3585,6 +4034,10 @@ export class Field extends UIBase {
 
   buildCollection(props: any, context: any) {
     const h = this.$h;
+    const headers = resolveUITableHeaders(
+      this.collectionHeaders,
+      (value) => this.$text(value),
+    );
     
     if (!this.collectionLoaded.value) {
       this.loadCollectionInformation();
@@ -3683,7 +4136,7 @@ export class Field extends UIBase {
             () => h(
               VDataTable,
               {
-                headers: this.collectionHeaders || [],
+                headers: headers as any,
                 items: this.currentCollectionItems,
                 density: 'compact',
                 showSelect: !this.$readonly,
@@ -4231,7 +4684,7 @@ export class Field extends UIBase {
     if (this.options?.focusChanged) this.options.focusChanged(this, focused)
 
     if (focused && this.isServerAutocomplete()) {
-      void this.syncServerAutocompleteSelection();
+      void this.syncAutocompleteSelectionDisplay();
 
       if (this.params.value.searchOnFocus) {
         this.scheduleServerAutocompleteSearch(this.autocompleteSearchText.value || '', {
@@ -4247,13 +4700,14 @@ export class Field extends UIBase {
     if (this.isAssetMode()) {
       void this.syncResolvedAssets();
     }
-    if (this.isServerAutocomplete()) {
-      void this.syncServerAutocompleteSelection();
+    if (this.params.value.type === 'autocomplete') {
+      void this.syncAutocompleteSelectionDisplay();
     }
   }
 
   destructor() {
     this.initializationVersion += 1;
+    this.autocompleteTableRequestId.value += 1;
     if (this.autocompleteDebounceTimer) {
       clearTimeout(this.autocompleteDebounceTimer);
       this.autocompleteDebounceTimer = undefined;

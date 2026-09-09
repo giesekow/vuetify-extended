@@ -6,6 +6,7 @@ import { Part, PRefs } from "./part";
 import { Field, Refs } from "./field";
 import { ExportTemplateInfo } from "./report";
 import { UIText, type UIValidationResult } from "./runtime";
+import { type UITableHeader } from "./table-header";
 export interface TriggerParams {
     ref?: string;
     invisible?: boolean;
@@ -21,7 +22,7 @@ export interface TriggerParams {
     maxWidth?: number | string | undefined;
     minWidth?: number | string | undefined;
     width?: number | string | undefined;
-    headers?: any[];
+    headers?: UITableHeader[];
     tableHeight?: number | string;
     queryFields?: any[];
     selectFields?: any;
@@ -51,7 +52,7 @@ export interface TriggerOptions {
     access?: (tigger: Trigger, mode?: TriggerAccessMode) => Promise<boolean>;
     removeAccess?: (trigger: Trigger) => Promise<boolean>;
     canRemove?: (item: any, trigger: Trigger) => Promise<boolean>;
-    headers?: (trigger: Trigger) => Promise<any[]>;
+    headers?: (trigger: Trigger) => Promise<UITableHeader[] | undefined> | UITableHeader[] | undefined;
     load?: (searchText: string, trigger: Trigger, options: any) => Promise<any>;
     remove?: (item: any, trigger: Trigger) => Promise<boolean | string>;
     query?: (search: string, trigger: Trigger, mode?: TriggerMode, searchFields?: any[]) => Promise<any>;
@@ -143,7 +144,7 @@ export declare class Trigger extends UIBase {
     private buildFilterBar;
     private buildResultTable;
     private buildResultStatus;
-    headers(): Promise<any[]>;
+    headers(): Promise<UITableHeader[]>;
     searchFields(): Promise<any>;
     private initialize;
     private buildTopActions;

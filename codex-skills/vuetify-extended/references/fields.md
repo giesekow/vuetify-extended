@@ -40,6 +40,45 @@ If a field change breaks the stored datatype, it will usually break reports, tri
 
 Before changing any of these, read `docs/ui/Field.md`.
 
+## Autocomplete Table Presentation
+
+Use `autocompleteFormat: 'table'` with `multiple: true` when selected objects need several visible columns. Do not use it for a single autocomplete or when ordinary chips/labels are sufficient.
+
+```ts
+$FD(
+  {
+    type: 'autocomplete',
+    storage: 'administratorIds',
+    multiple: true,
+    autocompleteFormat: 'table',
+    itemTitle: 'name',
+    itemValue: '_id',
+  },
+  {
+    selectOptions: () => people,
+    headers: () => [
+      { title: $l('people.columns.name', 'Name'), key: 'name' },
+      { title: $l('people.columns.code', 'Code'), key: 'code' },
+    ],
+    format: (_field, selectedObjects) => selectedObjects,
+  },
+);
+```
+
+Rules:
+
+- the search selection is staged until the user presses `Add`
+- add and bulk remove each synchronize `Master` once and invoke `changed` once
+- duplicate protection uses `itemValue` / `idField`
+- no action column is added; editable rows use checkbox selection and one bulk-remove action
+- `headers`, `format`, `canRemoveItem`, local options, remote search, and load-more behavior are reused
+- `format` and `canRemoveItem` receive hydrated objects even when `Master` stores only ids
+- provide `autocompleteResolveValue` for server-side or locally missing initial ids
+- unresolved ids remain visible and removable
+- readonly mode hides search, Add, selection, and removal controls
+- built-in table styling follows the active Vuetify theme
+- every table header `title` accepts `UIText`; grouped `children` titles are translated recursively
+
 ## Pagination Field
 
 Use `type: 'pagination'` beside an `htmlview` or another custom data presentation when the application, rather than a built-in table, owns data loading.

@@ -30,7 +30,7 @@ export interface TriggerParams {
   maxWidth?: number|string|undefined;
   minWidth?: number|string|undefined;
   width?: number|string|undefined;
-  headers?: any[];
+  headers?: UITableHeader[];
   tableHeight?: number|string;
   queryFields?: any[];
   selectFields?: any;
@@ -65,7 +65,7 @@ export interface TriggerOptions {
   access?: (tigger: Trigger, mode?: 'create'|'edit'|'display') => Promise<boolean>;
   removeAccess?: (trigger: Trigger) => Promise<boolean>;
   canRemove?: (item: any, trigger: Trigger) => Promise<boolean>;
-  headers?: (trigger: Trigger) => Promise<any[]>;
+  headers?: (trigger: Trigger) => Promise<UITableHeader[]|undefined>|UITableHeader[]|undefined;
   load?: (searchText: string, trigger: Trigger, options: any) => Promise<any>;
   remove?: (item: any, trigger: Trigger) => Promise<boolean|string>;
   query?: (search: string, trigger: Trigger, mode?: 'create'|'edit'|'display', searchFields?: any[]) => Promise<any>;
@@ -86,6 +86,8 @@ export interface TriggerRefreshOptions {
   progress?: boolean;
 }
 ```
+
+`TriggerParams.headers` and `TriggerOptions.headers(...)` use the exported `UITableHeader` contract. Every header `title` accepts a plain string or `UIText`; nested `children` titles are resolved recursively and react to locale changes.
 
 ### `ServerTableOptions`
 

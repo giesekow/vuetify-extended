@@ -271,7 +271,7 @@ Use for tabular detail such as recent orders, top customers, approval queues, or
 ```ts
 export interface DashboardTableColumn {
   key: string;
-  title: string;
+  title: UIText;
   align?: 'start' | 'center' | 'end';
   width?: string | number;
 }
@@ -320,6 +320,7 @@ export interface DashboardTableWidgetOptions extends DashboardWidgetOptions {
 
 #### Notes
 
+- Column `title` accepts plain strings, translation descriptors, and callback-based `UIText` values.
 - Emits `rowClicked` and also supports `onRowClick(...)`.
 - `cell(...)` is for per-cell rendering without replacing the whole widget.
 - `pagination: true` enables the built-in footer pager.

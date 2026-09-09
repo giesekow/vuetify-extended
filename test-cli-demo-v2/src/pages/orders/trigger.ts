@@ -2,9 +2,9 @@
 import { $FD, $TG, type NavigationEntry, type ReportMode } from 'vuetify-extended';
 
 const ORDERS_HEADERS = [
-  { title: 'Name', key: 'name' },
-  { title: 'Description', key: 'description' },
-  { title: 'Status', key: 'status' },
+  { title: { key: 'pages.orders.trigger.headers.name', fallback: 'Name' }, key: 'name' },
+  { title: { key: 'pages.orders.trigger.headers.description', fallback: 'Description' }, key: 'description' },
+  { title: { key: 'pages.orders.trigger.headers.status', fallback: 'Status' }, key: 'status' },
 ];
 
 const ORDERS_ROWS = [

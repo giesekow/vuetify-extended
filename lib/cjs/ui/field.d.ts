@@ -10,10 +10,12 @@ import '@vuepic/vue-datepicker/dist/main.css';
 import { OnHandler } from "./lib";
 import 'katex/dist/katex.min.css';
 import { type UIText, type UIValidationResult } from "./runtime";
+import { type UITableHeader } from "./table-header";
 export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagingbox' | 'chart' | 'viewtable' | 'map' | 'map-line' | 'map-circle' | 'map-rectangle' | 'map-polygon' | 'map-heatmap' | 'map-cluster' | 'map-geojson' | 'code' | 'color' | 'html' | 'htmlview' | 'listselect' | 'otp' | 'file-upload' | 'time' | 'date' | 'datetime' | 'button' | 'image' | 'document' | 'password' | 'float' | 'integer' | 'decimal' | 'collection' | 'textarea' | 'boolean' | 'pagination' | 'table' | 'reporttable' | 'servertable';
 export type FieldUploadType = 'base64' | 'file' | 'metadata';
 export type FieldDateFormat = 'YYYY-MM-DD' | 'YYYYMMDD' | 'timestamp';
 export type FieldTimeFormat = 'HH:mm' | 'HHMM' | 'timestamp';
+export type FieldAutocompleteFormat = 'default' | 'table';
 export type FieldValueOrigin = 'default' | 'master' | 'user' | 'programmatic';
 export interface FieldValueContext {
     origin: FieldValueOrigin;
@@ -133,6 +135,11 @@ export interface FieldParams {
     mapOptions?: any;
     mapZoom?: number;
     serverSearch?: boolean;
+    autocompleteFormat?: FieldAutocompleteFormat;
+    autocompleteAddText?: UIText;
+    autocompleteSelectedText?: UIText;
+    autocompleteRemoveText?: UIText;
+    autocompleteDisableRemove?: boolean;
     autocompleteLoadMore?: 'scroll' | 'button';
     searchDebounceMs?: number;
     minSearchChars?: number;
@@ -251,7 +258,7 @@ export interface FieldOptions {
     autocompleteNoDataText?: (field: Field, search: string) => string | undefined;
     button?: (field: Field) => Button | undefined;
     form?: (field: Field) => Promise<Form | undefined> | Form | undefined;
-    headers?: (field: Field) => Promise<any[] | undefined> | any[] | undefined;
+    headers?: (field: Field) => Promise<UITableHeader[] | undefined> | UITableHeader[] | undefined;
     items?: (field: Field, options?: any) => Promise<any[] | any | undefined> | any[] | any | undefined;
     format?: (field: Field, items: any[]) => any[] | undefined;
     footer?: (field: Field, items: any[]) => any[] | undefined;
@@ -333,6 +340,15 @@ export declare class Field extends UIBase {
     private autocompleteDebounceTimer?;
     private autocompleteAbortController?;
     private autocompleteMenuClass;
+    private autocompleteTablePendingItem;
+    private autocompleteTableHeaders;
+    private autocompleteTableHeadersLoaded;
+    private autocompleteTableRows;
+    private autocompleteTableSelectedKeys;
+    private autocompleteTableLoading;
+    private autocompleteTableRequestId;
+    private autocompleteTableRowSources;
+    private optionLoading;
     private selectedFiles;
     private resolvedAssets;
     private assetResolveRequestId;
@@ -478,13 +494,15 @@ export declare class Field extends UIBase {
     selectOptions(): Promise<any[] | undefined>;
     button(): Button | undefined;
     form(): Promise<Form | undefined>;
-    headers(): Promise<any[] | undefined>;
-    makeHTMLColumns(headers: any[]): any;
+    headers(): Promise<UITableHeader[] | undefined>;
+    makeHTMLColumns(headers: UITableHeader[]): any;
     items(options?: any): Promise<any[] | undefined>;
     chartOptions(): Promise<any | undefined>;
     chartData(): Promise<any | undefined>;
     private loadChart;
     loadOptions(): Promise<void>;
+    private isAutocompleteTable;
+    private syncAutocompleteSelectionDisplay;
     private isServerAutocomplete;
     private autocompleteMinSearchChars;
     private autocompleteDebounceMs;
@@ -514,6 +532,18 @@ export declare class Field extends UIBase {
     private autocompleteCacheKey;
     private fetchAutocompleteSearchPage;
     private syncServerAutocompleteSelection;
+    private autocompleteTableStoredValues;
+    private autocompleteTableFallbackItem;
+    private autocompleteTableStoredValue;
+    private resolveAutocompleteTableItems;
+    private loadAutocompleteTableHeaders;
+    private autocompleteTableSourceKey;
+    private buildAutocompleteTableRows;
+    private syncAutocompleteTableSelection;
+    private autocompleteTablePendingRawItem;
+    private canAddAutocompleteTableItem;
+    private addAutocompleteTableItem;
+    private removeAutocompleteTableItems;
     private applyServerAutocompleteSearch;
     private scheduleServerAutocompleteSearch;
     private canLoadMoreAutocompleteResults;
@@ -524,6 +554,10 @@ export declare class Field extends UIBase {
     private autocompleteNoDataText;
     private autocompleteLoadMoreText;
     private autocompleteLoadingMoreText;
+    private autocompleteTableText;
+    private autocompleteTableAddText;
+    private autocompleteTableSelectedText;
+    private autocompleteTableRemoveText;
     private resolvedLabel;
     private resolvedHint;
     private resolvedPlaceholder;
@@ -562,7 +596,12 @@ export declare class Field extends UIBase {
     buildCheckboxSelect(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>[];
+    private autocompleteServerInputProps;
+    private buildAutocompleteLoadMoreItem;
     buildAutocomplete(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
+        [key: string]: any;
+    }>;
+    buildAutocompleteTable(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;
     private richWidgetContext;

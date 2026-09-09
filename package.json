@@ -1,6 +1,6 @@
 {
   "name": "vuetify-extended",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "A plugin to use vuetify in javascript mode",
   "scripts": {
     "test": "npm run test:csp && npm run test:fields && npm run test:report && npm run test:dialogs && npm run test:validation && npm run test:menu-a11y && npm run test:cli",
@@ -10,7 +10,7 @@
     "test:dialogs": "node test/dialog-sizing-defaults.test.cjs",
     "test:validation": "node test/validation-localization.test.cjs",
     "test:menu-a11y": "node test/menu-card-a11y.test.cjs",
-    "test:widgets": "node test/interactive-field-widgets.test.cjs && node test/mobile-header-overflow.test.cjs",
+    "test:widgets": "node test/interactive-field-widgets.test.cjs && node test/autocomplete-table-field.test.cjs && node test/table-header-localization.test.cjs && node test/mobile-header-overflow.test.cjs",
     "test:cli": "npm run build && npm run test:widgets && node test/ui-event-emitter.test.cjs && node test/cli/create-form.test.cjs && node test/cli/advanced-cli.test.cjs",
     "build": "npm run build-esm && npm run build-cjs",
     "build-esm": "npx tsc -p tsconfig.json && cp -r src/css lib/esm/",

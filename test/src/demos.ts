@@ -71,6 +71,8 @@ function totalLineItems(items: any[]) {
   return items.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
 }
 
+const AUTOCOMPLETE_TABLE_PEOPLE = createSeedStore().people;
+
 type DemoThemeMode = 'light' | 'dark';
 
 const DEMO_THEME_STORAGE_KEY = 'vuetify-extended-demo-theme';
@@ -1063,6 +1065,38 @@ function buildBasicsForm() {
                   autocompleteSearch: async (_field, search, options) =>
                     searchPeople(search, options?.page || 1, options?.limit || 25),
                   autocompleteResolveValue: async (_field, value) => resolvePeopleSelection(value),
+                },
+              ),
+              new Field(
+                {
+                  label: 'Administrators',
+                  storage: 'administratorIds',
+                  type: 'autocomplete',
+                  autocompleteFormat: 'table',
+                  multiple: true,
+                  itemTitle: 'name',
+                  itemValue: '_id',
+                  default: ['person-1', 'person-2', 'person-3'],
+                  cols: 12,
+                  height: 250,
+                  itemsPerPage: 5,
+                  clearable: true,
+                  placeholder: 'Search for an administrator',
+                  hint: 'Select a person, press +, then select table rows to remove them in one action.',
+                  autocompleteSelectedText: 'Selected administrators ({count})',
+                  autocompleteRemoveText: 'Remove selected administrators',
+                },
+                {
+                  selectOptions: () => AUTOCOMPLETE_TABLE_PEOPLE,
+                  headers: () => [
+                    { title: 'Display name', key: 'name' },
+                    { title: 'User code', key: 'userCode' },
+                    { title: 'Role', key: 'role' },
+                  ],
+                  format: (_field, items) => items.map((person) => ({
+                    ...person,
+                    userCode: `NIMT-${String(person._id || 'UNKNOWN').replace('person-', '').padStart(4, '0')}`,
+                  })),
                 },
               ),
               new Field(
