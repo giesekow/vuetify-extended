@@ -47,7 +47,6 @@ export class DialogForm extends UIBase {
   private dialogRoot: Ref<HTMLElement|undefined>;
   private leavePromise: Promise<void>|undefined;
   private resolveLeave: (() => void)|undefined;
-  private returnFocus: HTMLElement|undefined;
   private static defaultParams: DialogParams = {};
 
   constructor(params?: DialogParams, options?: DialogFormOptions) {
@@ -275,8 +274,6 @@ export class DialogForm extends UIBase {
   }
 
   async show() {
-    this.returnFocus = typeof document !== 'undefined' && document.activeElement instanceof HTMLElement
-      ? document.activeElement : undefined;
     this.dialog.value = true;
   }
 
@@ -292,8 +289,6 @@ export class DialogForm extends UIBase {
     await nextTick();
     if (mounted) await this.leavePromise;
     this.leavePromise = undefined;
-    if (this.returnFocus?.isConnected) this.returnFocus.focus({ preventScroll: true });
-    this.returnFocus = undefined;
   }
 
   private finishLeave() {
@@ -357,6 +352,10 @@ export class DialogForm extends UIBase {
 
     const root = el?.$el;
     this.dialogRoot.value = root instanceof HTMLElement ? root : undefined;
+    if (!this.dialogRoot.value) {
+      // An external unmount may skip VDialog's after-leave callback.
+      this.finishLeave();
+    }
   }
 
   private async focusPrimaryInput() {
@@ -432,7 +431,7 @@ export class DialogForm extends UIBase {
 
   async forceCancel() {
     await this.hide();
-    this.onCancelClicked();
+    await this.onCancelClicked();
   }
 
   setup(props: any, context: any) {

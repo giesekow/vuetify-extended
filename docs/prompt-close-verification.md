@@ -20,10 +20,14 @@ expects the overlay ref to still exist.
   mounted. A never-mounted dialog can still close without waiting for an event.
 - Programmatic dialogs use the CSS dialog transition rather than an activator
   geometry-based transition, avoiding invalid scaling for zero-sized targets.
-- The element focused when opening is restored after close if still connected.
+- `Dialogs.$prompt` restores the element focused before the prompt after close if
+  it is still connected. Shell-managed `DialogForm` instances continue to use
+  `AppMain` as their single focus-restoration owner.
 - Prompt resolution/unmounting follows completed hide. Delayed callbacks cannot
   close or resolve a newer prompt. Only the latest concurrent prompt request is
   mounted after lazy imports.
+- If the dialog is externally unmounted and Vuetify cannot emit `afterLeave`, the
+  root-ref cleanup completes the pending hide instead of leaving it unresolved.
 - No console-error suppression, private Vuetify mutation or timer delay is used.
 
 Awaiting `hide()` now means the close transition has completed, not just that

@@ -42,7 +42,6 @@ export declare class DialogForm extends UIBase {
     private dialogRoot;
     private leavePromise;
     private resolveLeave;
-    private returnFocus;
     private static defaultParams;
     constructor(params?: DialogParams, options?: DialogFormOptions);
     static setDefault(value: DialogParams, reset?: boolean): void;

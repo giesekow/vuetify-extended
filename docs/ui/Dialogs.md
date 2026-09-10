@@ -248,6 +248,12 @@ In both modes:
 - cancel resolves `undefined`
 - the dialog runs in `create` mode by default
 - the prompt form uses `sub: true` and `auto: true` internally, so it does not try to save through the backend and does not show the extra “Save data?” confirmation flow
+- prompt resolution waits for the Vuetify leave transition, preventing the
+  rendered dialog from being removed while Vuetify is still closing its overlay
+- the control focused before opening is restored after close when it is still
+  connected
+- opening another prompt dismisses the current prompt with `undefined`; stale
+  callbacks and slower concurrent requests cannot close the newer prompt
 
 ### Single-field Prompt
 

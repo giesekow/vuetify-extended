@@ -1,4 +1,4 @@
-import { Ref, defineComponent, h, markRaw, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
+import { Ref, defineComponent, h, markRaw, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
 import { VBtn, VCard, VCardActions, VCardText, VCardTitle, VCol, VDialog, VIcon, VLayout, VMenu, VOverlay, VProgressCircular, VRow, VSnackbar, VSpacer } from 'vuetify/components';
 import { Master } from "../master";
 import { Button } from "./button";
@@ -148,6 +148,7 @@ export class Dialogs {
   private static promptVersion: Ref<number> = ref(0);
   private static promptResolver: ((value: any) => void)|undefined;
   private static promptRequest = 0;
+  private static promptReturnFocus: HTMLElement|undefined;
 
   private static options: Ref<DialogOptions> = ref({});
   private static confirmDefaults: ConfirmParams = {};
@@ -1231,9 +1232,11 @@ export class Dialogs {
     const request = ++Dialogs.promptRequest;
     const promptParams = Dialogs.resolvePromptParams(params);
     const promptOptions = options || {};
+    const returnFocus = Dialogs.promptReturnFocus || Dialogs.captureActiveElement();
 
     if (Dialogs.promptResolver) {
-      await Dialogs.closePrompt(undefined);
+      // A replacement prompt inherits the original external focus target.
+      await Dialogs.closePrompt(undefined, Dialogs.promptForm.value, false);
     }
 
     const [{ DialogForm }, { Form }, { Field }] = await Promise.all([
@@ -1298,6 +1301,7 @@ export class Dialogs {
 
     return new Promise((resolve) => {
       Dialogs.promptResolver = resolve;
+      Dialogs.promptReturnFocus = returnFocus;
 
       dialog = new DialogForm(
         {
@@ -1431,9 +1435,10 @@ export class Dialogs {
     Dialogs.progressDialog.value = false;
   }
 
-  private static async closePrompt(value: any, dialog = Dialogs.promptForm.value) {
+  private static async closePrompt(value: any, dialog = Dialogs.promptForm.value, restoreFocus = true) {
     if (dialog !== Dialogs.promptForm.value) return;
     const resolve = Dialogs.promptResolver;
+    const returnFocus = Dialogs.promptReturnFocus;
     await dialog?.hide();
     // A superseded callback must never tear down a newer prompt.
     if (dialog !== Dialogs.promptForm.value || resolve !== Dialogs.promptResolver) return;
@@ -1441,14 +1446,36 @@ export class Dialogs {
     Dialogs.promptForm.value = undefined;
     Dialogs.promptVersion.value += 1;
     Dialogs.promptResolver = undefined;
+    Dialogs.promptReturnFocus = undefined;
 
     if (dialog) {
       dialog.removeEventListeners();
       dialog.clearListeners();
     }
 
+    if (restoreFocus) {
+      await Dialogs.restorePromptFocus(returnFocus);
+    }
+
     if (resolve) {
       resolve(value);
+    }
+  }
+
+  private static captureActiveElement(): HTMLElement|undefined {
+    if (typeof document === 'undefined' || typeof HTMLElement === 'undefined') {
+      return undefined;
+    }
+
+    const active = document.activeElement;
+    return active instanceof HTMLElement && active !== document.body ? active : undefined;
+  }
+
+  private static async restorePromptFocus(target?: HTMLElement) {
+    if (!target) return;
+    await nextTick();
+    if (target.isConnected && typeof target.focus === 'function') {
+      target.focus({ preventScroll: true });
     }
   }
 

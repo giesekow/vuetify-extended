@@ -9,7 +9,10 @@ class Element {
   focused = 0;
   focus() { this.focused++; }
 }
+
 const focusTarget = new Element();
+const documentMock = { activeElement: focusTarget, body: new Element() };
+
 function load(file, dependencies) {
   const exports = {};
   const source = fs.readFileSync(path.join(__dirname, '../src/ui', file), 'utf8');
@@ -17,7 +20,9 @@ function load(file, dependencies) {
     compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS },
   }).outputText;
   vm.runInNewContext(code, {
-    exports, HTMLElement: Element, document: { activeElement: focusTarget },
+    exports,
+    HTMLElement: Element,
+    document: documentMock,
     require(name) {
       if (name in dependencies) return dependencies[name];
       throw new Error('Unexpected dependency: ' + name);
@@ -25,74 +30,222 @@ function load(file, dependencies) {
   });
   return exports;
 }
+
 const vue = {
-  ref: value => ({ value }), shallowRef: value => ({ value }),
+  ref: value => ({ value }),
+  shallowRef: value => ({ value }),
+  markRaw: value => value,
   nextTick: () => Promise.resolve(),
 };
+
+class UIBase {
+  $makeRef(value) { return { value }; }
+  setMaster() {}
+  emit() {}
+  get $h() {
+    return (component, props, slots) => ({ component, props, slots });
+  }
+}
+
 const { DialogForm } = load('dialogform.ts', {
-  vue, 'vuetify/components': {},
-  './base': { UIBase: class { $makeRef(value) { return { value }; } setMaster() {} } },
-  '../master': { Master: class {} }, './form': {}, './lib': {}, './runtime': {},
-});
-const { Dialogs } = load('dialogs.ts', {
-  vue, 'vuetify/components': {}, '../master': {}, './button': {}, './runtime': {},
+  vue,
+  'vuetify/components': {},
+  './base': { UIBase },
+  '../master': { Master: class {} },
+  './form': {},
+  './lib': {},
+  './runtime': {},
 });
 
-async function main() {
+class MockMaster {
+  constructor(params = {}) {
+    this.$type = params.type;
+    this.$id = params.id;
+    this.$idField = params.idField;
+    this.$parent = params.parent;
+    this.$data = {};
+  }
+
+  $get(key) { return this.$data[key]; }
+}
+
+class MockField {
+  constructor(params, options) {
+    this.params = params;
+    this.options = options;
+  }
+}
+
+class MockForm {
+  constructor(params, options) {
+    this.params = params;
+    this.options = options;
+  }
+}
+
+class MockDialogForm {
+  static instances = [];
+
+  constructor(params, options) {
+    this.params = params;
+    this.options = options;
+    this.component = {};
+    this.hideResult = Promise.resolve();
+    this.hideCalls = 0;
+    this.cleaned = 0;
+    MockDialogForm.instances.push(this);
+  }
+
+  show() { this.shown = true; }
+  hide() {
+    this.hideCalls++;
+    return this.hideResult;
+  }
+  removeEventListeners() { this.cleaned++; }
+  clearListeners() { this.cleaned++; }
+}
+
+const { Dialogs } = load('dialogs.ts', {
+  vue,
+  'vuetify/components': {},
+  '../master': { Master: MockMaster },
+  './button': {},
+  './runtime': {},
+  './dialogform': { DialogForm: MockDialogForm },
+  './form': { Form: MockForm },
+  './field': { Field: MockField },
+});
+
+function deferred() {
+  let resolve;
+  const promise = new Promise(done => { resolve = done; });
+  return { promise, resolve };
+}
+
+async function flush() {
+  await new Promise(resolve => setImmediate(resolve));
+}
+
+async function testDialogFormLeaveLifecycle() {
   const dialog = new DialogForm();
+  dialog.loaded = true;
+  const rendered = dialog.render({}, {});
+  assert.equal(rendered.props.transition, 'dialog-transition');
+  assert.equal(typeof rendered.props.onAfterLeave, 'function');
   dialog.dialogRoot.value = new Element();
   await dialog.show();
+
   let closed = false;
   const closing = dialog.hide().then(() => { closed = true; });
   const duplicate = dialog.hide();
   await Promise.resolve();
   assert.equal(closed, false, 'mounted dialog must survive until afterLeave');
-  dialog.finishLeave();
+  rendered.props.onAfterLeave();
   await Promise.all([closing, duplicate]);
   assert.equal(closed, true);
-  assert.equal(focusTarget.focused, 1, 'restore focus once');
-  await dialog.show();
-  dialog.finishLeave();
-  const second = dialog.hide();
-  dialog.finishLeave();
-  await second;
-  const unmounted = new DialogForm();
-  await unmounted.show();
-  await unmounted.hide();
+  assert.equal(focusTarget.focused, 0, 'DialogForm must not duplicate AppMain focus restoration');
 
-  let leave;
+  const externallyUnmounted = new DialogForm();
+  externallyUnmounted.dialogRoot.value = new Element();
+  await externallyUnmounted.show();
+  const unmountedClosing = externallyUnmounted.hide();
+  await Promise.resolve();
+  externallyUnmounted.setDialogRoot(undefined);
+  await unmountedClosing;
+
+  const neverMounted = new DialogForm();
+  await neverMounted.show();
+  await neverMounted.hide();
+
+  let cancelFinished = false;
+  const cancellable = new DialogForm(undefined, {
+    cancel: async () => {
+      await Promise.resolve();
+      cancelFinished = true;
+    },
+  });
+  await cancellable.show();
+  await cancellable.forceCancel();
+  assert.equal(cancelFinished, true, 'forceCancel must await the async cancel lifecycle');
+}
+
+async function testOnlyLatestConcurrentPromptMounts() {
+  const first = Dialogs.$prompt({ title: 'First' });
+  const second = Dialogs.$prompt({ title: 'Second' });
+
+  assert.equal(await first, undefined);
+  await flush();
+  assert.equal(MockDialogForm.instances.length, 1, 'only the latest concurrent request should mount');
+  const active = MockDialogForm.instances[0];
+  assert.equal(active.shown, true);
+
+  await active.options.cancel();
+  assert.equal(await second, undefined);
+  assert.equal(active.cleaned, 2);
+  assert.equal(focusTarget.focused, 1, 'the public prompt API restores focus once');
+}
+
+async function testPromptReplacementWaitsForLeave() {
+  const originalPromise = Dialogs.$prompt({ title: 'Original' });
+  await flush();
+  const original = MockDialogForm.instances[1];
+  const leave = deferred();
+  original.hideResult = leave.promise;
+
+  const replacementPromise = Dialogs.$prompt({ title: 'Replacement' });
+  await flush();
+  assert.equal(MockDialogForm.instances.length, 2, 'replacement must wait for the active prompt to leave');
+  assert.equal(focusTarget.focused, 1, 'replacement must not focus the page between prompts');
+
+  leave.resolve();
+  assert.equal(await originalPromise, undefined);
+  await flush();
+  assert.equal(MockDialogForm.instances.length, 3);
+  const replacement = MockDialogForm.instances[2];
+  assert.equal(replacement.shown, true);
+
+  await replacement.options.cancel();
+  assert.equal(await replacementPromise, undefined);
+  assert.equal(focusTarget.focused, 2, 'the original external target is restored after replacement closes');
+}
+
+async function testStaleCloseCannotTearDownReplacement() {
+  const leave = deferred();
   let resolved = 0;
-  let cleaned = 0;
   const old = {
-    hide: () => new Promise(resolve => { leave = resolve; }),
-    removeEventListeners: () => cleaned++,
-    clearListeners: () => cleaned++,
+    hide: () => leave.promise,
+    removeEventListeners: () => {},
+    clearListeners: () => {},
   };
-  Dialogs.promptForm.value = old;
-  Dialogs.promptResolver = () => resolved++;
-  const pending = Dialogs.closePrompt('saved', old);
-  assert.equal(Dialogs.promptForm.value, old);
-  assert.equal(resolved, 0, 'do not resolve before leave');
-  leave();
-  await pending;
-  assert.equal(Dialogs.promptForm.value, undefined);
-  assert.equal(resolved, 1);
-  assert.equal(cleaned, 2);
   const newer = {};
-  Dialogs.promptForm.value = newer;
-  await Dialogs.closePrompt('stale', old);
-  assert.equal(Dialogs.promptForm.value, newer, 'stale callbacks cannot close a replacement');
+
   Dialogs.promptForm.value = old;
   Dialogs.promptResolver = () => resolved++;
-  const replacedWhileLeaving = Dialogs.closePrompt('old', old);
+  const pending = Dialogs.closePrompt('old', old);
   Dialogs.promptForm.value = newer;
   const newResolver = () => {};
   Dialogs.promptResolver = newResolver;
-  leave();
-  await replacedWhileLeaving;
+  leave.resolve();
+  await pending;
+
   assert.equal(Dialogs.promptForm.value, newer);
   assert.equal(Dialogs.promptResolver, newResolver);
-  assert.equal(resolved, 1, 'a stale close cannot resolve the replacement promise');
+  assert.equal(resolved, 0, 'a stale close cannot resolve the replacement promise');
+
+  Dialogs.promptForm.value = undefined;
+  Dialogs.promptResolver = undefined;
+  Dialogs.promptReturnFocus = undefined;
+}
+
+async function main() {
+  await testDialogFormLeaveLifecycle();
+  await testOnlyLatestConcurrentPromptMounts();
+  await testPromptReplacementWaitsForLeave();
+  await testStaleCloseCannotTearDownReplacement();
   console.log('Prompt close lifecycle tests passed.');
 }
-main().catch(error => { console.error(error); process.exitCode = 1; });
+
+main().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});

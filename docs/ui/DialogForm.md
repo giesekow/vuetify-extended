@@ -63,6 +63,25 @@ export class DialogForm extends UIBase {
 
 - `static setDefault(value: DialogParams, reset?: boolean)`
 - `render(props: any, context: any)`
+- `show(): Promise<void>`
+- `hide(): Promise<void>`
+- `forceCancel(): Promise<void>`
+
+## Close Lifecycle And Focus
+
+`hide()` changes the dialog model to inactive and waits for Vuetify's leave
+transition before resolving. Keep the `DialogForm` component mounted until the
+returned promise settles. If the component is externally unmounted during the
+transition, ref cleanup safely completes the pending hide.
+
+`forceCancel()` awaits that close lifecycle before running the cancel callback
+and emitting the `cancel` event. When a dialog is shown through `AppMain`, the
+shell captures and restores focus. `DialogForm` deliberately does not perform a
+second local restoration. Standalone prompts created by `Dialogs.$prompt(...)`
+have their own equivalent focus handling in `Dialogs`.
+
+See [Prompt teardown regression](../prompt-close-verification.md) for the
+underlying Vuetify lifecycle failure and regression coverage.
 
 ## Sizing And Defaults
 

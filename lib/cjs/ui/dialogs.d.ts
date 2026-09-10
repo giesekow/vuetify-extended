@@ -131,6 +131,7 @@ export declare class Dialogs {
     private static promptVersion;
     private static promptResolver;
     private static promptRequest;
+    private static promptReturnFocus;
     private static options;
     private static confirmDefaults;
     private static infoDefaults;
@@ -192,6 +193,8 @@ export declare class Dialogs {
     static $updateProgress({ value, text }: any): void;
     static $hideProgress(): void;
     private static closePrompt;
+    private static captureActiveElement;
+    private static restorePromptFocus;
     private static resolvePromptParams;
     private static mergePromptParams;
     private static createPromptMaster;
