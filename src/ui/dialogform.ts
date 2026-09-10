@@ -45,6 +45,9 @@ export class DialogForm extends UIBase {
   private loading: Ref<boolean>;
   private currentForm: Form|undefined;
   private dialogRoot: Ref<HTMLElement|undefined>;
+  private leavePromise: Promise<void>|undefined;
+  private resolveLeave: (() => void)|undefined;
+  private returnFocus: HTMLElement|undefined;
   private static defaultParams: DialogParams = {};
 
   constructor(params?: DialogParams, options?: DialogFormOptions) {
@@ -136,7 +139,10 @@ export class DialogForm extends UIBase {
         maxHeight: this.params.value.fullscreen ? undefined : this.params.value.maxHeight,
         minHeight: this.params.value.fullscreen ? undefined : this.params.value.minHeight,
         fullscreen: this.params.value.fullscreen,
+        // Programmatic dialogs have no geometric activator to scale from.
+        transition: 'dialog-transition',
         onAfterEnter: () => this.focusPrimaryInput(),
+        onAfterLeave: () => this.finishLeave(),
       },
       () => h(
         'div',
@@ -269,11 +275,30 @@ export class DialogForm extends UIBase {
   }
 
   async show() {
+    this.returnFocus = typeof document !== 'undefined' && document.activeElement instanceof HTMLElement
+      ? document.activeElement : undefined;
     this.dialog.value = true;
   }
 
   async hide() {
+    if (this.leavePromise) return this.leavePromise;
+    if (!this.dialog.value) return;
+    const mounted = !!this.dialogRoot.value;
+    if (mounted) {
+      this.leavePromise = new Promise<void>((resolve) => { this.resolveLeave = resolve; });
+    }
     this.dialog.value = false;
+    // Let Vuetify's inactive watcher finish while its overlay ref still exists.
+    await nextTick();
+    if (mounted) await this.leavePromise;
+    this.leavePromise = undefined;
+    if (this.returnFocus?.isConnected) this.returnFocus.focus({ preventScroll: true });
+    this.returnFocus = undefined;
+  }
+
+  private finishLeave() {
+    this.resolveLeave?.();
+    this.resolveLeave = undefined;
   }
 
   async form(props: any, context: any): Promise<Form|undefined> {

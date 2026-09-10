@@ -147,6 +147,7 @@ export class Dialogs {
   private static promptForm = shallowRef<DialogForm|undefined>();
   private static promptVersion: Ref<number> = ref(0);
   private static promptResolver: ((value: any) => void)|undefined;
+  private static promptRequest = 0;
 
   private static options: Ref<DialogOptions> = ref({});
   private static confirmDefaults: ConfirmParams = {};
@@ -1227,6 +1228,7 @@ export class Dialogs {
   }
 
   static async $prompt(params?: PromptParams, options?: PromptOptions): Promise<any|undefined> {
+    const request = ++Dialogs.promptRequest;
     const promptParams = Dialogs.resolvePromptParams(params);
     const promptOptions = options || {};
 
@@ -1239,6 +1241,7 @@ export class Dialogs {
       import('./form'),
       import('./field'),
     ]);
+    if (request !== Dialogs.promptRequest) return undefined;
 
     const workingMaster = Dialogs.createPromptMaster(promptOptions.master);
     const hasCustomChildren = typeof promptOptions.children === 'function';
@@ -1323,16 +1326,14 @@ export class Dialogs {
             }
 
             const result = hasCustomChildren ? workingMaster.$data : workingMaster.$get(storageKey);
-            await dialog.hide();
-            await Dialogs.closePrompt(result);
+            await Dialogs.closePrompt(result, dialog);
           },
           cancel: async () => {
             if (dialogOptions.cancel) {
               await dialogOptions.cancel();
             }
 
-            await dialog.hide();
-            await Dialogs.closePrompt(undefined);
+            await Dialogs.closePrompt(undefined, dialog);
           },
         },
       );
@@ -1430,9 +1431,12 @@ export class Dialogs {
     Dialogs.progressDialog.value = false;
   }
 
-  private static async closePrompt(value: any) {
-    const dialog = Dialogs.promptForm.value;
+  private static async closePrompt(value: any, dialog = Dialogs.promptForm.value) {
+    if (dialog !== Dialogs.promptForm.value) return;
     const resolve = Dialogs.promptResolver;
+    await dialog?.hide();
+    // A superseded callback must never tear down a newer prompt.
+    if (dialog !== Dialogs.promptForm.value || resolve !== Dialogs.promptResolver) return;
 
     Dialogs.promptForm.value = undefined;
     Dialogs.promptVersion.value += 1;

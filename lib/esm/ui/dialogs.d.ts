@@ -130,6 +130,7 @@ export declare class Dialogs {
     private static promptForm;
     private static promptVersion;
     private static promptResolver;
+    private static promptRequest;
     private static options;
     private static confirmDefaults;
     private static infoDefaults;

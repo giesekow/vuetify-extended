@@ -40,6 +40,9 @@ export declare class DialogForm extends UIBase {
     private loading;
     private currentForm;
     private dialogRoot;
+    private leavePromise;
+    private resolveLeave;
+    private returnFocus;
     private static defaultParams;
     constructor(params?: DialogParams, options?: DialogFormOptions);
     static setDefault(value: DialogParams, reset?: boolean): void;
@@ -58,6 +61,7 @@ export declare class DialogForm extends UIBase {
     private buildBody;
     show(): Promise<void>;
     hide(): Promise<void>;
+    private finishLeave;
     form(props: any, context: any): Promise<Form | undefined>;
     private initialize;
     private onCancelClicked;
