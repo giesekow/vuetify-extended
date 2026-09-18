@@ -81,6 +81,7 @@ export declare class Report extends UIBase {
     private hasExportAccess;
     private options;
     private loaded;
+    private initializing;
     private topButtonInstances;
     private bottomButtonInstances;
     private sideButtonInstances;

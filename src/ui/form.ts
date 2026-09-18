@@ -293,11 +293,14 @@ export class Form extends UIBase {
     await nextTick();
 
     for (let i = 0; i < 5; i++) {
+      // Automatic focus must not interrupt a user who already chose a control.
+      if (this.cardRoot.value?.contains(document.activeElement)) return;
       if (await this.focusSpecialFieldTarget()) {
         return;
       }
 
       const target = this.findFocusTarget();
+      if (this.cardRoot.value?.contains(document.activeElement)) return;
       if (target && typeof target.focus === 'function') {
         target.focus();
         return;

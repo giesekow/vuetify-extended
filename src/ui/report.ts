@@ -92,6 +92,7 @@ export class Report extends UIBase {
   private hasExportAccess: Ref<boolean>;
   private options: ReportOptions;
   private loaded = false;
+  private initializing = this.$makeRef(true);
   private topButtonInstances: Array<Button> = [];
   private bottomButtonInstances: Array<Button> = [];
   private sideButtonInstances: Array<Button> = [];
@@ -219,6 +220,7 @@ export class Report extends UIBase {
       await this.resolveFormCount(props, context);
       await this.prepareForm(props, context, 0);
       await this.loadObject();
+      this.initializing.value = false;
       await this.focusCurrentForm();
     }
   }
@@ -352,7 +354,7 @@ export class Report extends UIBase {
       this.initialize(props, context);
     }
 
-    if (this.currentIndex.value === -1 || !this.hasAccess.value) {
+    if (this.initializing.value || this.currentIndex.value === -1 || !this.hasAccess.value) {
       return h(
         VContainer,
         {
@@ -563,7 +565,7 @@ export class Report extends UIBase {
         this.currentForm.on('cancel', () => this.oncancel(), this.$id);
         this.currentForm.on('right-menu-changed', () => this.emit('right-menu-changed', this), this.$id);
         this.currentForm.attachEventListeners();
-        this.focusCurrentForm();
+        if (!this.initializing.value) this.focusCurrentForm();
       }
 
     } else {
@@ -1067,12 +1069,14 @@ export class Report extends UIBase {
   }
 
   private async focusCurrentForm() {
-    if (!this.currentForm) {
+    const form = this.currentForm;
+    if (!form) {
       return;
     }
 
     await sleep(50);
-    await this.currentForm.focusPrimaryInput();
+    if (this.currentForm !== form) return;
+    await form.focusPrimaryInput();
   }
 
   private applyStepSubtitle(form: Form, index: number) {
