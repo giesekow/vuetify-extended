@@ -216,13 +216,20 @@ export class Report extends UIBase {
     this.loaded = true;
     await this.runAccess();
 
-    if (this.hasAccess.value) {
+    if (!this.hasAccess.value) {
+      this.initializing.value = false;
+      return;
+    }
+
+    try {
       await this.resolveFormCount(props, context);
       await this.prepareForm(props, context, 0);
       await this.loadObject();
+    } finally {
       this.initializing.value = false;
-      await this.focusCurrentForm();
     }
+
+    await this.focusCurrentForm();
   }
 
   private async runAccess() {

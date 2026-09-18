@@ -3684,21 +3684,34 @@ export class Field extends UIBase {
     }
   }
 
-  private focusHtmlEditor() {
+  private async focusHtmlEditor(): Promise<boolean> {
     const editor = this.htmlEditor;
-    if (!editor || typeof window === 'undefined') {
-      return;
+    if (!editor || typeof window === 'undefined' || typeof document === 'undefined') {
+      return false;
     }
 
-    setTimeout(() => {
-      editor.focus?.();
-      const body = editor.getBody?.();
-      if (body && typeof editor.selection?.select === 'function' && typeof editor.selection?.collapse === 'function') {
-        body.focus?.();
-        editor.selection.select(body, true);
-        editor.selection.collapse(true);
-      }
-    }, 50);
+    const activeElement = document.activeElement;
+    await sleep(50);
+
+    const body = editor.getBody?.();
+    if (this.htmlEditor !== editor || !body || !body.isConnected) {
+      return false;
+    }
+
+    const currentActiveElement = document.activeElement;
+    const editorHasFocus = currentActiveElement === body || body.contains(currentActiveElement);
+    if (!editorHasFocus && currentActiveElement !== activeElement) {
+      return false;
+    }
+
+    editor.focus?.();
+    if (typeof editor.selection?.select === 'function' && typeof editor.selection?.collapse === 'function') {
+      body.focus?.();
+      editor.selection.select(body, true);
+      editor.selection.collapse(true);
+    }
+
+    return true;
   }
 
   private parentForm(): Form|undefined {
@@ -3718,8 +3731,7 @@ export class Field extends UIBase {
     }
 
     if (this.params.value.type === 'html') {
-      this.focusHtmlEditor();
-      return true;
+      return this.focusHtmlEditor();
     }
 
     return false;
