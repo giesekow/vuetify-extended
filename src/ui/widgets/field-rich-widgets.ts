@@ -3,6 +3,7 @@ import { VBtn, VCard, VCol, VIcon, VImg, VRow, VSheet } from 'vuetify/components
 import VueApexCharts from 'vue3-apexcharts';
 import { GoogleMap, Marker, Polygon, Polyline, Circle, Rectangle, MarkerCluster, CustomMarker } from "vue3-google-map";
 import { TiptapHtmlEditor } from "../tiptap-editor";
+import { resolveHtmlEditorToolbar } from "../html-editor-options";
 
 const VAceEditor = defineAsyncComponent(async () => {
   await Promise.all([
@@ -216,6 +217,13 @@ const SafeGoogleMap = defineComponent({
 
 export function buildHTMLWidget(field: RichWidgetContext): VNode {
   const h = field.$h;
+  const allowFullscreen = field.params.value.htmlFullscreen !== false;
+  const toolbar = resolveHtmlEditorToolbar(
+    field.params.value.htmlProfile,
+    field.params.value.htmlToolbar,
+    allowFullscreen,
+  );
+  const showFullscreen = toolbar.includes('fullscreen');
 
   const editor = h(
     TiptapHtmlEditor,
@@ -225,6 +233,9 @@ export function buildHTMLWidget(field: RichWidgetContext): VNode {
       disabled: field.$readonly,
       placeholder: field.$text(field.params.value.placeholder),
       height: field.params.value.height || 300,
+      profile: field.params.value.htmlProfile,
+      toolbar,
+      allowFullscreen,
       class: field.params.value.class || [],
       style: field.params.value.style || {},
       onReady: (editor: any) => {
@@ -297,7 +308,7 @@ export function buildHTMLWidget(field: RichWidgetContext): VNode {
             maxWidth: field.maxWidth.value,
             elevation: 0
           },
-          () => [editor, fullscreenBtn]
+          () => showFullscreen ? [editor, fullscreenBtn] : [editor]
         )
       ),
     ]

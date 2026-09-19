@@ -18,5 +18,6 @@ export * from './shell';
 export * from './dashboard';
 export * from './fullscreen';
 export * from './tiptap-editor';
+export * from './html-editor-options';
 export * from './runtime';
 export * from './table-header';

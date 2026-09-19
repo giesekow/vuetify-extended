@@ -36,6 +36,7 @@ import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { interpolateUITextTemplate, isUITextDescriptor, isUIValidationMessage, resolveUIText, type UIText, type UIValidationResult, type UIValidationRuleResult } from "./runtime";
 import { resolveUITableHeaders, type UITableHeader } from "./table-header";
+import { type HtmlEditorProfile, type HtmlEditorToolbarItem } from "./html-editor-options";
 
 
 export type FieldType = 'text'|'select'|'autocomplete'|'label'|
@@ -180,6 +181,9 @@ export interface FieldParams {
   icon?: string;
   clearable?: boolean;
   autofocus?: boolean;
+  htmlProfile?: HtmlEditorProfile;
+  htmlToolbar?: HtmlEditorToolbarItem[];
+  htmlFullscreen?: boolean;
   inline?: boolean;
   color?: string;
   itemValue?: string;

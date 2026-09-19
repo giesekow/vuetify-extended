@@ -5,6 +5,7 @@ Most flexible input/display primitive in the library. `Field` is the single clas
 ## Source
 
 - [src/ui/field.ts](../../src/ui/field.ts)
+- [src/ui/html-editor-options.ts](../../src/ui/html-editor-options.ts)
 - [src/ui/widgets/field-rich-widgets.ts](../../src/ui/widgets/field-rich-widgets.ts)
 - [src/ui/widgets/field-table-widgets.ts](../../src/ui/widgets/field-table-widgets.ts)
 
@@ -74,6 +75,9 @@ export interface FieldParams {
   icon?: string;
   clearable?: boolean;
   autofocus?: boolean;
+  htmlProfile?: 'minimal'|'standard'|'full';
+  htmlToolbar?: HtmlEditorToolbarItem[];
+  htmlFullscreen?: boolean;
   inline?: boolean;
   color?: string;
   itemValue?: string;
@@ -1043,11 +1047,64 @@ Supported `timeFormat` values:
 - Widget:
   Tiptap-based rich HTML editor
 - Relevant params:
-  `placeholder`, `height`, `class`, `style`
+  `placeholder`, `height`, `class`, `style`, `htmlProfile`, `htmlToolbar`, `htmlFullscreen`
 - Relevant options:
   none special beyond common hooks
 - Notes:
   Supports fullscreen editing, source HTML mode, formula helpers, tables, media embeds, and responsive toolbar overflow.
+
+#### HTML editor toolbar
+
+`htmlProfile` selects a predefined toolbar. It defaults to `full`, preserving the complete editor toolbar used by existing applications.
+
+| Profile | Controls |
+| --- | --- |
+| `minimal` | undo, redo, alignment, bold, italic |
+| `standard` | history, block styles, alignment, bold, italic, underline, bullet/numbered lists, links, clear formatting, source mode, fullscreen |
+| `full` | every supported toolbar control |
+
+Use `htmlToolbar` when a field needs an exact list instead of a preset. An explicit list replaces the selected profile; it does not extend it.
+The list controls visibility; controls retain the editor's standard ordering. Use an empty list to hide the toolbar completely.
+
+```ts
+const summary = $FD({
+  type: 'html',
+  storage: 'summaryHtml',
+  htmlToolbar: ['bold', 'italic', 'align'],
+  htmlFullscreen: false,
+});
+```
+
+Supported `htmlToolbar` values:
+
+- history: `undo`, `redo`
+- block and alignment: `block`, `align`
+- inline formatting: `bold`, `italic`, `underline`, `strike`, `inlineCode`
+- lists: `bulletList`, `orderedList`, `taskList`
+- formulas: `inlineFormula`, `blockFormula`
+- content: `link`, `image`, `video`, `table`, `horizontalRule`
+- utilities: `clearFormatting`, `source`, `fullscreen`
+
+The `block` control contains paragraph, headings 1-6, block quote, code block, and task-list choices. The `link` control includes both insert/edit and remove actions. The `video` and `table` controls include their related edit actions.
+
+`htmlFullscreen` defaults to `true`. Set it to `false` to remove the fullscreen editor button, field-level fullscreen preview, fullscreen dialog, and F11 handling. It overrides both profiles and explicit toolbar lists. Conversely, when using `htmlToolbar`, fullscreen is available only when `fullscreen` is included and `htmlFullscreen` is not false.
+
+Toolbar filtering is applied consistently to wide layouts, compact overflow menus, and the fullscreen editor. It controls the available UI actions without stripping Tiptap extensions, so existing HTML containing tables, media, links, or other rich content remains readable and editable as HTML. Readonly fields continue to hide the editing toolbar entirely.
+
+```ts
+const standardEditor = $FD({
+  type: 'html',
+  storage: 'descriptionHtml',
+  htmlProfile: 'standard',
+});
+
+const fullEditorWithoutFullscreen = $FD({
+  type: 'html',
+  storage: 'contentHtml',
+  htmlProfile: 'full',
+  htmlFullscreen: false,
+});
+```
 
 ### `htmlview`
 

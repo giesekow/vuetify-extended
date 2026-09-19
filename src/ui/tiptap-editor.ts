@@ -10,11 +10,12 @@ import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
-import { defineComponent, h as vueH, mergeProps, onBeforeUnmount, onMounted, PropType, ref, shallowRef, watch } from 'vue';
+import { computed, defineComponent, h as vueH, mergeProps, onBeforeUnmount, onMounted, PropType, ref, shallowRef, watch } from 'vue';
 import { VBtn, VDialog, VDivider, VList, VListItem, VMenu, VSheet, VTextarea, VTooltip } from 'vuetify/components';
 import { Dialogs } from './dialogs';
 import { fileToBase64, selectFile } from '../misc';
 import { resolveUIText } from './runtime';
+import { resolveHtmlEditorToolbar, type HtmlEditorProfile, type HtmlEditorToolbarItem } from './html-editor-options';
 
 type TiptapAdapterEvent = 'init' | 'keydown';
 
@@ -328,6 +329,14 @@ export const TiptapHtmlEditor = defineComponent({
       type: [Number, String] as PropType<number | string | undefined>,
       default: 300,
     },
+    profile: {
+      type: String as PropType<HtmlEditorProfile>,
+      default: 'full',
+    },
+    toolbar: {
+      type: Array as PropType<HtmlEditorToolbarItem[] | undefined>,
+      default: undefined,
+    },
     allowFullscreen: {
       type: Boolean,
       default: true,
@@ -351,6 +360,10 @@ export const TiptapHtmlEditor = defineComponent({
     const pendingEditorActions: Array<() => void> = [];
     const lastSelection = ref<{ from: number; to: number } | undefined>(undefined);
     const toolbarCompact = ref(false);
+    const enabledToolbarItems = computed(() => new Set(
+      resolveHtmlEditorToolbar(props.profile, props.toolbar, props.allowFullscreen),
+    ));
+    const hasToolbarItem = (item: HtmlEditorToolbarItem) => enabledToolbarItems.value.has(item);
     let resizeObserver: ResizeObserver | undefined;
 
     const preventToolbarMouseDown = (event: MouseEvent) => {
@@ -857,11 +870,9 @@ export const TiptapHtmlEditor = defineComponent({
       const withAlt = event.altKey;
       const withShift = event.shiftKey;
 
-      if (event.key === 'F11') {
+      if (event.key === 'F11' && hasToolbarItem('fullscreen')) {
         event.preventDefault();
-        if (props.allowFullscreen) {
-          fullscreenDialog.value = true;
-        }
+        fullscreenDialog.value = true;
         return true;
       }
 
@@ -870,93 +881,93 @@ export const TiptapHtmlEditor = defineComponent({
       }
 
       if (withAlt && !withShift) {
-        if (key === '0') {
+        if (key === '0' && hasToolbarItem('block')) {
           event.preventDefault();
           runEditorCommand((liveEditor) => liveEditor.chain().setParagraph().run());
           return true;
         }
 
-        if (['1', '2', '3', '4', '5', '6'].includes(key)) {
+        if (['1', '2', '3', '4', '5', '6'].includes(key) && hasToolbarItem('block')) {
           event.preventDefault();
           const level = Number(key) as typeof headingLevels[number];
           runEditorCommand((liveEditor) => liveEditor.chain().toggleHeading({ level }).run());
           return true;
         }
 
-        if (key === 'q') {
+        if (key === 'q' && hasToolbarItem('block')) {
           event.preventDefault();
           runEditorCommand((liveEditor) => liveEditor.chain().toggleBlockquote().run());
           return true;
         }
 
-        if (key === 'c') {
+        if (key === 'c' && hasToolbarItem('block')) {
           event.preventDefault();
           runEditorCommand((liveEditor) => liveEditor.chain().toggleCodeBlock().run());
           return true;
         }
 
-        if (key === 'l') {
+        if (key === 'l' && hasToolbarItem('align')) {
           event.preventDefault();
           runEditorCommand((liveEditor) => liveEditor.chain().setTextAlign('left').run());
           return true;
         }
 
-        if (key === 'e') {
+        if (key === 'e' && hasToolbarItem('align')) {
           event.preventDefault();
           runEditorCommand((liveEditor) => liveEditor.chain().setTextAlign('center').run());
           return true;
         }
 
-        if (key === 'r') {
+        if (key === 'r' && hasToolbarItem('align')) {
           event.preventDefault();
           runEditorCommand((liveEditor) => liveEditor.chain().setTextAlign('right').run());
           return true;
         }
 
-        if (key === 'j') {
+        if (key === 'j' && hasToolbarItem('align')) {
           event.preventDefault();
           runEditorCommand((liveEditor) => liveEditor.chain().setTextAlign('justify').run());
           return true;
         }
 
-        if (key === 'k') {
+        if (key === 'k' && hasToolbarItem('link')) {
           event.preventDefault();
           void promptForLink();
           return true;
         }
 
-        if (key === 'i') {
+        if (key === 'i' && hasToolbarItem('image')) {
           event.preventDefault();
           void promptForImage();
           return true;
         }
 
-        if (key === 'v') {
+        if (key === 'v' && hasToolbarItem('video')) {
           event.preventDefault();
           void promptForVideo();
           return true;
         }
 
-        if (key === 't') {
+        if (key === 't' && hasToolbarItem('table')) {
           event.preventDefault();
           void promptForTableInsert();
           return true;
         }
 
-        if (key === 'm') {
+        if (key === 'm' && hasToolbarItem('inlineFormula')) {
           event.preventDefault();
           insertFormula(false);
           return true;
         }
 
-        if (key === 's') {
+        if (key === 's' && hasToolbarItem('source')) {
           event.preventDefault();
           toggleSourceMode();
           return true;
         }
       }
 
-      if (withMeta && withAlt && withShift && key === 'm') {
+      if (withMeta && withAlt && withShift && key === 'm' && hasToolbarItem('blockFormula')) {
         event.preventDefault();
         insertFormula(true);
         return true;
@@ -1101,14 +1112,34 @@ export const TiptapHtmlEditor = defineComponent({
       const instance = editor.value;
       const isReadOnly = props.readonly || props.disabled;
       const height = asCssSize(props.height);
+      const toolbarHeight = !isReadOnly && enabledToolbarItems.value.size > 0 ? 56 : 0;
       const contentMinHeight = typeof props.height === 'number'
-        ? `${Math.max(props.height - 56, 120)}px`
+        ? `${Math.max(props.height - toolbarHeight, 120)}px`
         : '220px';
       const inTable = !!instance?.isActive('table');
       const inEmbeddedVideo = !!instance?.isActive('embeddedVideo');
       const embeddedVideoWidth = String(instance?.getAttributes('embeddedVideo').width || '100%');
+      const toolbarButton = (item: HtmlEditorToolbarItem, options: Parameters<typeof createIconButton>[0]) => (
+        hasToolbarItem(item) ? createIconButton(options) : null
+      );
+      const menuItems = (item: HtmlEditorToolbarItem, items: ToolbarMenuItem[]) => (
+        hasToolbarItem(item) ? items : []
+      );
+      const joinToolbarGroups = (...groups: any[][]): any[] => {
+        const joined: any[] = [];
+        for (const group of groups) {
+          if (group.length === 0) {
+            continue;
+          }
+          if (joined.length > 0) {
+            joined.push(vueH(VDivider, { vertical: true, class: 'mx-1' }));
+          }
+          joined.push(...group);
+        }
+        return joined;
+      };
 
-      const blockMenu = createMenuButton({
+      const blockMenu = hasToolbarItem('block') ? createMenuButton({
         icon: 'mdi-format-paragraph',
         label: instance?.isActive('heading')
           ? getBlockLabel()
@@ -1152,9 +1183,9 @@ export const TiptapHtmlEditor = defineComponent({
             onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleTaskList().run()),
           },
         ],
-      });
+      }) : null;
 
-      const alignMenu = createMenuButton({
+      const alignMenu = hasToolbarItem('align') ? createMenuButton({
         icon: 'mdi-format-align-left',
         label: '',
         title: t('ve.editor.toolbar.alignment', 'Alignment'),
@@ -1184,7 +1215,7 @@ export const TiptapHtmlEditor = defineComponent({
             onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().setTextAlign('justify').run()),
           },
         ],
-      });
+      }) : null;
 
       const tableMenuItems: ToolbarMenuItem[] = [
         {
@@ -1296,13 +1327,13 @@ export const TiptapHtmlEditor = defineComponent({
         },
       ];
 
-      const tableMenu = createMenuButton({
+      const tableMenu = hasToolbarItem('table') ? createMenuButton({
         icon: 'mdi-table',
         label: t('ve.editor.table.shortLabel', 'Tbl'),
         title: t('ve.editor.table.actions', 'Table Actions'),
         active: inTable,
         items: tableMenuItems,
-      });
+      }) : null;
 
       const videoMenuItems: ToolbarMenuItem[] = [
         {
@@ -1334,137 +1365,134 @@ export const TiptapHtmlEditor = defineComponent({
         },
       ];
 
-      const videoMenu = createMenuButton({
+      const videoMenu = hasToolbarItem('video') ? createMenuButton({
         icon: 'mdi-video',
         label: t('ve.editor.video.shortLabel', 'Vid'),
         title: t('ve.editor.video.size', 'Video Size'),
         active: inEmbeddedVideo,
         items: videoMenuItems,
-      });
+      }) : null;
 
-      const sourceToggleButton = createIconButton({
+      const sourceToggleButton = toolbarButton('source', {
         icon: 'mdi-code-braces',
         title: sourceMode.value ? tooltip('ve.editor.source.apply', 'Apply Source Changes', 'Ctrl/Cmd+Alt+S') : tooltip('ve.editor.source.switchToHtml', 'Switch To Source HTML', 'Ctrl/Cmd+Alt+S'),
         active: sourceMode.value,
         onClick: toggleSourceMode,
       });
 
-      const fullscreenButton = props.allowFullscreen ? createIconButton({
+      const fullscreenButton = toolbarButton('fullscreen', {
         icon: 'mdi-fullscreen',
         title: tooltip('ve.editor.fullscreen.open', 'Open Fullscreen Editor', 'F11'),
         onClick: () => {
           fullscreenDialog.value = true;
         },
-      }) : null;
+      });
 
       const secondaryToolbarItems = [
-        createIconButton({
+        toolbarButton('underline', {
           icon: 'mdi-format-underline',
           title: t('ve.editor.mark.underline', 'Underline'),
           active: !!instance?.isActive('underline'),
           onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleUnderline().run()),
         }),
-        createIconButton({
+        toolbarButton('strike', {
           icon: 'mdi-format-strikethrough',
           title: t('ve.editor.mark.strikeThrough', 'Strike Through'),
           active: !!instance?.isActive('strike'),
           onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleStrike().run()),
         }),
-        createIconButton({
+        toolbarButton('inlineCode', {
           icon: 'mdi-code-tags',
           title: t('ve.editor.mark.inlineCode', 'Inline Code'),
           active: !!instance?.isActive('code'),
           onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleCode().run()),
         }),
-        createIconButton({
+        toolbarButton('taskList', {
           icon: 'mdi-format-list-checks',
           title: t('ve.editor.block.taskList', 'Task List'),
           active: !!instance?.isActive('taskList'),
           onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleTaskList().run()),
         }),
-        createIconButton({
+        toolbarButton('inlineFormula', {
           icon: 'mdi-function-variant',
           title: tooltip('ve.editor.formula.inline', 'Insert Inline Formula', 'Ctrl/Cmd+Alt+M'),
           onClick: () => insertFormula(false),
         }),
-        createIconButton({
+        toolbarButton('blockFormula', {
           icon: 'mdi-function',
           title: tooltip('ve.editor.formula.block', 'Insert Block Formula', 'Ctrl/Cmd+Alt+Shift+M'),
           onClick: () => insertFormula(true),
         }),
-        createIconButton({
+        toolbarButton('link', {
           icon: 'mdi-link-variant',
           title: tooltip('ve.editor.link.insertOrEdit', 'Insert Or Edit Link', 'Ctrl/Cmd+Alt+K'),
           active: !!instance?.isActive('link'),
           onClick: promptForLink,
         }),
-        createIconButton({
+        toolbarButton('link', {
           icon: 'mdi-link-variant-off',
           title: t('ve.editor.link.remove', 'Remove Link'),
           disabled: !instance?.isActive('link'),
           onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().extendMarkRange('link').unsetLink().run()),
         }),
-        createIconButton({
+        toolbarButton('image', {
           icon: 'mdi-image-plus',
           title: tooltip('ve.editor.image.insert', 'Insert Image', 'Ctrl/Cmd+Alt+I'),
           onClick: promptForImage,
         }),
-        createIconButton({
+        toolbarButton('video', {
           icon: 'mdi-video-plus',
           title: tooltip('ve.editor.video.insertTitle', 'Insert Video', 'Ctrl/Cmd+Alt+V'),
           onClick: promptForVideo,
         }),
-        createIconButton({
+        toolbarButton('clearFormatting', {
           icon: 'mdi-minus-circle-off-outline',
           title: t('ve.editor.clearFormatting', 'Clear Formatting'),
           onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().unsetAllMarks().clearNodes().run()),
         }),
-        createIconButton({
+        toolbarButton('horizontalRule', {
           icon: 'mdi-minus',
           title: t('ve.editor.insertHorizontalRule', 'Insert Horizontal Rule'),
           onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().setHorizontalRule().run()),
         }),
-      ];
+      ].filter(Boolean) as any[];
 
-      const moreMenu = createMenuButton({
-        icon: 'mdi-dots-horizontal',
-        label: '',
-        title: t('ve.editor.moreActions', 'More Actions'),
-        items: [
-          {
-            title: t('ve.editor.mark.underline', 'Underline'),
-            icon: 'mdi-format-underline',
-            active: !!instance?.isActive('underline'),
-            onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleUnderline().run()),
-          },
-          {
-            title: t('ve.editor.mark.strikeThrough', 'Strike Through'),
-            icon: 'mdi-format-strikethrough',
-            active: !!instance?.isActive('strike'),
-            onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleStrike().run()),
-          },
-          {
-            title: t('ve.editor.mark.inlineCode', 'Inline Code'),
-            icon: 'mdi-code-tags',
-            active: !!instance?.isActive('code'),
-            onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleCode().run()),
-          },
-          {
-            title: t('ve.editor.block.taskList', 'Task List'),
-            icon: 'mdi-format-list-checks',
-            active: !!instance?.isActive('taskList'),
-            onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleTaskList().run()),
-          },
-          {
-            title: t('ve.editor.formula.inline', 'Insert Inline Formula'),
-            icon: 'mdi-function-variant',
-            onClick: () => insertFormula(false),
-          },
-          {
-            title: t('ve.editor.formula.block', 'Insert Block Formula'),
-            icon: 'mdi-function',
-            onClick: () => insertFormula(true),
-          },
+      const moreMenuItems: ToolbarMenuItem[] = [
+        ...menuItems('underline', [{
+          title: t('ve.editor.mark.underline', 'Underline'),
+          icon: 'mdi-format-underline',
+          active: !!instance?.isActive('underline'),
+          onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleUnderline().run()),
+        }]),
+        ...menuItems('strike', [{
+          title: t('ve.editor.mark.strikeThrough', 'Strike Through'),
+          icon: 'mdi-format-strikethrough',
+          active: !!instance?.isActive('strike'),
+          onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleStrike().run()),
+        }]),
+        ...menuItems('inlineCode', [{
+          title: t('ve.editor.mark.inlineCode', 'Inline Code'),
+          icon: 'mdi-code-tags',
+          active: !!instance?.isActive('code'),
+          onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleCode().run()),
+        }]),
+        ...menuItems('taskList', [{
+          title: t('ve.editor.block.taskList', 'Task List'),
+          icon: 'mdi-format-list-checks',
+          active: !!instance?.isActive('taskList'),
+          onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleTaskList().run()),
+        }]),
+        ...menuItems('inlineFormula', [{
+          title: t('ve.editor.formula.inline', 'Insert Inline Formula'),
+          icon: 'mdi-function-variant',
+          onClick: () => insertFormula(false),
+        }]),
+        ...menuItems('blockFormula', [{
+          title: t('ve.editor.formula.block', 'Insert Block Formula'),
+          icon: 'mdi-function',
+          onClick: () => insertFormula(true),
+        }]),
+        ...menuItems('link', [
           {
             title: t('ve.editor.link.insertOrEdit', 'Insert Or Edit Link'),
             icon: 'mdi-link-variant',
@@ -1477,11 +1505,13 @@ export const TiptapHtmlEditor = defineComponent({
             disabled: !instance?.isActive('link'),
             onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().extendMarkRange('link').unsetLink().run()),
           },
-          {
-            title: t('ve.editor.image.insert', 'Insert Image'),
-            icon: 'mdi-image-plus',
-            onClick: promptForImage,
-          },
+        ]),
+        ...menuItems('image', [{
+          title: t('ve.editor.image.insert', 'Insert Image'),
+          icon: 'mdi-image-plus',
+          onClick: promptForImage,
+        }]),
+        ...menuItems('video', [
           {
             title: t('ve.editor.video.insertTitle', 'Insert Video'),
             icon: 'mdi-video-plus',
@@ -1491,64 +1521,75 @@ export const TiptapHtmlEditor = defineComponent({
             ...item,
             title: t('ve.editor.video.prefixedAction', `Video: ${item.title}`, { title: item.title }),
           })),
-          {
-            title: t('ve.editor.clearFormatting', 'Clear Formatting'),
-            icon: 'mdi-minus-circle-off-outline',
-            onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().unsetAllMarks().clearNodes().run()),
-          },
-          {
-            title: t('ve.editor.insertHorizontalRule', 'Insert Horizontal Rule'),
-            icon: 'mdi-minus',
-            onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().setHorizontalRule().run()),
-          },
-          ...tableMenuItems.map((item) => ({
-            ...item,
-            title: t('ve.editor.table.prefixedAction', `Table: ${item.title}`, { title: item.title }),
-          })),
-        ],
-      });
+        ]),
+        ...menuItems('clearFormatting', [{
+          title: t('ve.editor.clearFormatting', 'Clear Formatting'),
+          icon: 'mdi-minus-circle-off-outline',
+          onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().unsetAllMarks().clearNodes().run()),
+        }]),
+        ...menuItems('horizontalRule', [{
+          title: t('ve.editor.insertHorizontalRule', 'Insert Horizontal Rule'),
+          icon: 'mdi-minus',
+          onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().setHorizontalRule().run()),
+        }]),
+        ...menuItems('table', tableMenuItems.map((item) => ({
+          ...item,
+          title: t('ve.editor.table.prefixedAction', `Table: ${item.title}`, { title: item.title }),
+        }))),
+      ];
 
-      const visualToolbarItems = [
-        createIconButton({
+      const moreMenu = moreMenuItems.length > 0 ? createMenuButton({
+        icon: 'mdi-dots-horizontal',
+        label: '',
+        title: t('ve.editor.moreActions', 'More Actions'),
+        items: moreMenuItems,
+      }) : null;
+
+      const historyToolbarItems = [
+        toolbarButton('undo', {
           icon: 'mdi-undo',
           title: tooltip('ve.common.undo', 'Undo', 'Ctrl/Cmd+Z'),
           disabled: !instance?.can().undo(),
           onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().undo().run()),
         }),
-        createIconButton({
+        toolbarButton('redo', {
           icon: 'mdi-redo',
           title: tooltip('ve.common.redo', 'Redo', 'Ctrl/Cmd+Shift+Z'),
           disabled: !instance?.can().redo(),
           onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().redo().run()),
         }),
-        vueH(VDivider, { vertical: true, class: 'mx-1' }),
+      ].filter(Boolean) as any[];
+
+      const formattingToolbarItems = [
         blockMenu,
         alignMenu,
-        createIconButton({
+        toolbarButton('bold', {
           icon: 'mdi-format-bold',
           title: tooltip('ve.editor.mark.bold', 'Bold', 'Ctrl/Cmd+B'),
           active: !!instance?.isActive('bold'),
           onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleBold().run()),
         }),
-        createIconButton({
+        toolbarButton('italic', {
           icon: 'mdi-format-italic',
           title: tooltip('ve.editor.mark.italic', 'Italic', 'Ctrl/Cmd+I'),
           active: !!instance?.isActive('italic'),
           onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleItalic().run()),
         }),
-        createIconButton({
+        toolbarButton('bulletList', {
           icon: 'mdi-format-list-bulleted',
           title: tooltip('ve.editor.list.bulleted', 'Bullet List', 'Ctrl/Cmd+Shift+8'),
           active: !!instance?.isActive('bulletList'),
           onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleBulletList().run()),
         }),
-        createIconButton({
+        toolbarButton('orderedList', {
           icon: 'mdi-format-list-numbered',
           title: tooltip('ve.editor.list.numbered', 'Numbered List', 'Ctrl/Cmd+Shift+7'),
           active: !!instance?.isActive('orderedList'),
           onClick: () => runEditorCommand((liveEditor) => liveEditor.chain().toggleOrderedList().run()),
         }),
-      ];
+      ].filter(Boolean) as any[];
+
+      const visualToolbarItems = joinToolbarGroups(historyToolbarItems, formattingToolbarItems);
 
       const compactToolbarItems = [sourceToggleButton, fullscreenButton].filter(Boolean);
 
@@ -1566,19 +1607,21 @@ export const TiptapHtmlEditor = defineComponent({
         fullscreenButton,
       ].filter(Boolean);
 
-      const toolbar = !isReadOnly ? vueH(
+      const expandedToolbarItems = toolbarCompact.value
+        ? (moreMenu ? [moreMenu] : [])
+        : [...secondaryToolbarItems, ...(tableMenu ? [tableMenu] : []), ...(videoMenu ? [videoMenu] : [])];
+      const visualModeToolbarItems = joinToolbarGroups(
+        visualToolbarItems,
+        expandedToolbarItems,
+        compactToolbarItems as any[],
+      );
+      const activeToolbarItems = sourceMode.value ? sourceToolbarItems : visualModeToolbarItems;
+      const toolbar = !isReadOnly && activeToolbarItems.length > 0 ? vueH(
         'div',
         {
           class: 'vef-tiptap__toolbar',
         },
-        sourceMode.value
-          ? sourceToolbarItems as any
-          : [
-            ...visualToolbarItems,
-            ...(toolbarCompact.value ? [moreMenu] : [...secondaryToolbarItems, tableMenu, videoMenu]),
-            vueH(VDivider, { vertical: true, class: 'mx-1' }),
-            ...compactToolbarItems as any,
-          ],
+        activeToolbarItems as any,
       ) : null;
 
       const editorBody = sourceMode.value
@@ -1590,7 +1633,7 @@ export const TiptapHtmlEditor = defineComponent({
             sourceDraft.value = String(value || '');
           },
           autoGrow: false,
-          rows: typeof props.height === 'number' ? Math.max(Math.round((props.height - 56) / 24), 10) : 14,
+          rows: typeof props.height === 'number' ? Math.max(Math.round((props.height - toolbarHeight) / 24), 10) : 14,
           variant: 'plain',
           hideDetails: true,
           class: ['vef-tiptap__source'],
@@ -1648,7 +1691,7 @@ export const TiptapHtmlEditor = defineComponent({
               ],
             },
           ),
-          props.allowFullscreen ? vueH(
+          hasToolbarItem('fullscreen') ? vueH(
             VDialog,
             {
               modelValue: fullscreenDialog.value,
@@ -1670,6 +1713,8 @@ export const TiptapHtmlEditor = defineComponent({
                     disabled: props.disabled,
                     placeholder: props.placeholder,
                     height: 'calc(100vh - 32px)',
+                    profile: props.profile,
+                    toolbar: props.toolbar,
                     allowFullscreen: false,
                     'onUpdate:modelValue': (value: string) => emit('update:modelValue', value),
                   }),

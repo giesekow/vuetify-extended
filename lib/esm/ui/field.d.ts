@@ -11,6 +11,7 @@ import { OnHandler } from "./lib";
 import 'katex/dist/katex.min.css';
 import { type UIText, type UIValidationResult } from "./runtime";
 import { type UITableHeader } from "./table-header";
+import { type HtmlEditorProfile, type HtmlEditorToolbarItem } from "./html-editor-options";
 export type FieldType = 'text' | 'select' | 'autocomplete' | 'label' | 'messagingbox' | 'chart' | 'viewtable' | 'map' | 'map-line' | 'map-circle' | 'map-rectangle' | 'map-polygon' | 'map-heatmap' | 'map-cluster' | 'map-geojson' | 'code' | 'color' | 'html' | 'htmlview' | 'listselect' | 'otp' | 'file-upload' | 'time' | 'date' | 'datetime' | 'button' | 'image' | 'document' | 'password' | 'float' | 'integer' | 'decimal' | 'collection' | 'textarea' | 'boolean' | 'pagination' | 'table' | 'reporttable' | 'servertable';
 export type FieldUploadType = 'base64' | 'file' | 'metadata';
 export type FieldDateFormat = 'YYYY-MM-DD' | 'YYYYMMDD' | 'timestamp';
@@ -102,6 +103,9 @@ export interface FieldParams {
     icon?: string;
     clearable?: boolean;
     autofocus?: boolean;
+    htmlProfile?: HtmlEditorProfile;
+    htmlToolbar?: HtmlEditorToolbarItem[];
+    htmlFullscreen?: boolean;
     inline?: boolean;
     color?: string;
     itemValue?: string;

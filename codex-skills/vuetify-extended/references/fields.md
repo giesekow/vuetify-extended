@@ -127,6 +127,23 @@ report.on('field:html:open-item', (event) => openItem(event.payload.id));
 
 `data-ve-on` may select `click`, `change`, `input`, or `submit`. Optional `data-ve-prevent-default` and `data-ve-stop-propagation` control native event behavior. Read the complete payload and security contract in `docs/ui/Field.md`.
 
+## Rich HTML Editor
+
+Use `htmlProfile: 'minimal' | 'standard' | 'full'` to select a predefined Tiptap toolbar. The default is `full` for backward compatibility.
+
+Use `htmlToolbar` for an exact toolbar. It replaces the profile rather than extending it:
+
+```ts
+$FD({
+  type: 'html',
+  storage: 'summaryHtml',
+  htmlToolbar: ['bold', 'italic', 'align'],
+  htmlFullscreen: false,
+});
+```
+
+`htmlFullscreen: false` disables both fullscreen editing and fullscreen preview, including F11. A custom toolbar must include `fullscreen` for fullscreen to remain available. Filtering also applies to compact overflow and nested fullscreen editors, but does not remove Tiptap extensions or damage existing rich HTML. See `docs/ui/Field.md` for the complete toolbar identifier list and preset contents.
+
 ## Nested `collection` Field
 
 Use `Field type: 'collection'` when one parent record owns a nested array of child objects and the user should add, edit, remove, and review those child rows inside the parent form.

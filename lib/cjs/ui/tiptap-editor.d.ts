@@ -1,4 +1,5 @@
 import { PropType } from 'vue';
+import { type HtmlEditorProfile, type HtmlEditorToolbarItem } from './html-editor-options';
 type TiptapAdapterEvent = 'init' | 'keydown';
 export interface TiptapHtmlEditorAdapter {
     isReady: boolean;
@@ -28,6 +29,14 @@ export declare const TiptapHtmlEditor: import("vue").DefineComponent<import("vue
         type: PropType<string | number | undefined>;
         default: number;
     };
+    profile: {
+        type: PropType<HtmlEditorProfile>;
+        default: string;
+    };
+    toolbar: {
+        type: PropType<HtmlEditorToolbarItem[] | undefined>;
+        default: undefined;
+    };
     allowFullscreen: {
         type: BooleanConstructor;
         default: boolean;
@@ -55,6 +64,14 @@ export declare const TiptapHtmlEditor: import("vue").DefineComponent<import("vue
         type: PropType<string | number | undefined>;
         default: number;
     };
+    profile: {
+        type: PropType<HtmlEditorProfile>;
+        default: string;
+    };
+    toolbar: {
+        type: PropType<HtmlEditorToolbarItem[] | undefined>;
+        default: undefined;
+    };
     allowFullscreen: {
         type: BooleanConstructor;
         default: boolean;
@@ -68,6 +85,8 @@ export declare const TiptapHtmlEditor: import("vue").DefineComponent<import("vue
     height: string | number | undefined;
     modelValue: string;
     placeholder: string;
+    toolbar: HtmlEditorToolbarItem[] | undefined;
     allowFullscreen: boolean;
+    profile: HtmlEditorProfile;
 }, {}, {}, {}, string, import("vue").ComponentProvideOptions, true, {}, any>;
 export {};
