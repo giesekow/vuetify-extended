@@ -2433,7 +2433,9 @@ export function buildImageWidget(field: RichWidgetContext): VNode {
                 }
               }
             },
-            item.pending ? `${item.label} (pending upload)` : item.label
+            item.pending
+              ? `${item.label} (${field.$text({ key: 've.field.fileUpload.pending', fallback: 'pending upload' })})`
+              : item.label
           ),
           h(
             'div',
@@ -2445,9 +2447,9 @@ export function buildImageWidget(field: RichWidgetContext): VNode {
               },
             },
             [
-              item.mimeType || 'file',
+              item.mimeType || field.$text({ key: 've.field.fileTypeFallback', fallback: 'file' }),
               item.size ? ` • ${Math.max(1, Math.round(item.size / 1024))} KB` : '',
-              item.pending ? ' • pending upload' : '',
+              item.pending ? ` • ${field.$text({ key: 've.field.fileUpload.pending', fallback: 'pending upload' })}` : '',
             ].join(''),
           ),
           ...(field.$readonly ? [] : [

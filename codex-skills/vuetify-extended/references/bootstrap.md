@@ -27,7 +27,7 @@ High-level sequence:
 
 Use this path when the user is building a host app from scratch or when the current bootstrap is inconsistent.
 
-Bootstrap defaults include global dialog geometry as well as normal UI primitives. Use `confirm`, `info`, `prompt`, `imagePreview`, `iframe`, and `documentPreview` for `Dialogs` helpers; use `dialogForm` and `selector` for the corresponding class-based dialogs. Call-specific params always override these defaults.
+Bootstrap defaults include global dialog geometry as well as normal UI primitives. Use `confirm`, `info`, `prompt`, `imagePreview`, `iframe`, `documentPreview`, and `filePreview` for `Dialogs` helpers; use `dialogForm` and `selector` for the corresponding class-based dialogs. Call-specific params always override these defaults.
 
 ## Low-Level Bootstrap Path
 

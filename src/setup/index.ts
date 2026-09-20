@@ -19,6 +19,7 @@ import {
   type ConfirmParams,
   type DialogOptions,
   type DocumentPreviewParams,
+  type FilePreviewParams,
   type IframeParams,
   type ImagePreviewParams,
   type InfoParams,
@@ -47,6 +48,7 @@ export interface VuetifyExtendedDefaults {
   documentPreview?: DocumentPreviewParams;
   environmentTag?: EnvironmentTagParams;
   field?: FieldParams;
+  filePreview?: FilePreviewParams;
   form?: FormParams;
   iframe?: IframeParams;
   imagePreview?: ImagePreviewParams;
@@ -161,6 +163,7 @@ export function configureVuetifyExtendedDefaults(defaults: VuetifyExtendedDefaul
   if (defaults.documentPreview) Dialogs.setDocumentPreviewDefault(defaults.documentPreview, reset);
   if (defaults.environmentTag) EnvironmentTag.setDefault(defaults.environmentTag, reset);
   if (defaults.field) Field.setDefault(defaults.field, reset);
+  if (defaults.filePreview) Dialogs.setFilePreviewDefault(defaults.filePreview, reset);
   if (defaults.form) Form.setDefault(defaults.form, reset);
   if (defaults.iframe) Dialogs.setIframeDefault(defaults.iframe, reset);
   if (defaults.imagePreview) Dialogs.setImagePreviewDefault(defaults.imagePreview, reset);

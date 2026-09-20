@@ -10,12 +10,13 @@ Global modal/dialog manager for alerts, confirms, progress, prompts, and other b
 
 - Expose one mounted root and static helpers such as `$confirm(...)`.
 - Confirm dialogs support keyboard shortcuts like Enter/Y for yes and Escape/N for no.
-- Confirm, info, prompt, image preview, iframe, and document preview dialogs support typed width and height constraints.
+- Confirm, info, prompt, image preview, iframe, document preview, and file preview dialogs support typed width and height constraints.
 - Each global dialog helper supports mergeable application defaults through `Dialogs.set...Default(...)` and bootstrap `defaults`.
 - `$prompt(...)` uses an internal `DialogForm`, so it supports normal `Field`, `Form`, `Part`, and `Master` behavior instead of a one-off input control.
 - `$imagePreview(...)` opens an in-app zoomable image viewer with pan support.
 - `$iframe(...)` opens a generic embedded iframe dialog for browser-renderable content.
 - `$documentPreview(...)` opens an in-app document dialog for PDFs.
+- `$previewFile(...)` detects images, PDFs, browser-renderable content, and unsupported files from URLs, data URLs, `Blob`s, or `File`s.
 
 ## Reference
 
@@ -61,11 +62,11 @@ export interface DialogOptions {
 
 ```ts
 export interface PromptParams extends DialogSizeParams {
-  title?: string;
-  text?: string;
+  title?: UIText;
+  text?: UIText;
   type?: FieldType;
-  confirmText?: string;
-  cancelText?: string;
+  confirmText?: UIText;
+  cancelText?: UIText;
   fieldParams?: FieldParams;
   formParams?: FormParams;
   dialogParams?: DialogParams;
@@ -87,9 +88,20 @@ export interface PromptOptions {
 ### `ImagePreviewParams`
 
 ```ts
+export type IframeSkin = 'inherit'|'light'|'dark';
+
 export interface ImagePreviewParams extends DialogSizeParams {
-  title?: string;
+  title?: UIText;
   fullscreen?: boolean;
+  skin?: IframeSkin;
+  scrim?: string;
+  backgroundColor?: string;
+  toolbarBackground?: string;
+  contentBackground?: string;
+  textColor?: string;
+  cardStyle?: any;
+  toolbarStyle?: any;
+  frameStyle?: any;
 }
 ```
 
@@ -98,12 +110,10 @@ export interface ImagePreviewParams extends DialogSizeParams {
 ### `IframeParams`
 
 ```ts
-export type IframeSkin = 'inherit'|'light'|'dark';
-
 export interface IframeParams extends DialogSizeParams {
   src?: string;
   srcdoc?: string;
-  title?: string;
+  title?: UIText;
   fullscreen?: boolean;
   openUrl?: string;
   downloadUrl?: string;
@@ -134,6 +144,31 @@ export interface IframeOptions {
 export interface DocumentPreviewParams extends Omit<IframeParams, 'src'|'srcdoc'|'openUrl'|'downloadUrl'> {}
 ```
 
+### File Preview Types
+
+```ts
+export type FilePreviewSource = string | Blob | File;
+
+export type UnsupportedFilePreviewBehavior = 'dialog' | 'iframe' | 'download';
+
+export interface FilePreviewParams extends DocumentPreviewParams {
+  mimeType?: string;
+  fileName?: string;
+  fileSize?: number;
+  openUrl?: string;
+  downloadUrl?: string;
+}
+
+export interface FilePreviewOptions {
+  actions?: (
+    params: FilePreviewParams,
+  ) => Promise<Button[] | undefined> | Button[] | undefined;
+  unsupported?: UnsupportedFilePreviewBehavior;
+}
+```
+
+`title` supports `UIText`, so it may be a normal string, `{ key, fallback }`, or another supported translated-text value.
+
 ### `Dialogs`
 
 ```ts
@@ -151,6 +186,7 @@ export class Dialogs {
 - `static $imagePreview(src: string, params?: ImagePreviewParams): Promise<void>`
 - `static $iframe(params?: IframeParams, options?: IframeOptions): Promise<void>`
 - `static $documentPreview(src: string, params?: DocumentPreviewParams, options?: IframeOptions): Promise<void>`
+- `static $previewFile(source: FilePreviewSource, params?: FilePreviewParams, options?: FilePreviewOptions): Promise<void>`
 - `static $warning(text: string)`
 - `static $error(text: string)`
 - `static $success(text: string)`
@@ -191,7 +227,7 @@ await Dialogs.$prompt({
 })
 ```
 
-For image, iframe, and document previews, dimensions apply only in contained mode (`fullscreen: false`). Fullscreen mode intentionally occupies the viewport and ignores contained size constraints.
+For image, iframe, document, and file previews, dimensions apply only in contained mode (`fullscreen: false`). Fullscreen mode intentionally occupies the viewport and ignores contained size constraints.
 
 ## Global Defaults
 
@@ -204,6 +240,7 @@ Dialogs.setPromptDefault({ width: 640, maxWidth: '92vw' })
 Dialogs.setImagePreviewDefault({ fullscreen: false, width: 1100, height: '82vh' })
 Dialogs.setIframeDefault({ fullscreen: false, width: 1200, height: '85vh' })
 Dialogs.setDocumentPreviewDefault({ fullscreen: false, maxWidth: '94vw' })
+Dialogs.setFilePreviewDefault({ fullscreen: false, maxWidth: '94vw' })
 ```
 
 Defaults are merged by default. Pass `true` as the second argument to replace the previous defaults:
@@ -213,6 +250,8 @@ Dialogs.setConfirmDefault({ width: 360 }, true)
 ```
 
 Call-specific params always win over defaults. Prompt defaults merge nested `fieldParams`, `formParams`, and `dialogParams`, allowing a call to override one nested property without losing unrelated defaults.
+
+For `$previewFile(...)`, image previews retain `imagePreview` defaults. PDF previews inherit `iframe`, then `documentPreview`, then `filePreview` defaults; call-specific file params have the final precedence. Other browser-renderable and fallback previews inherit `iframe`, then `filePreview` defaults.
 
 The same defaults can be configured during bootstrap:
 
@@ -225,11 +264,81 @@ createVuetifyExtendedApp({
     imagePreview: { fullscreen: false, height: '82vh' },
     iframe: { fullscreen: false, width: 1200, height: '85vh' },
     documentPreview: { maxWidth: '94vw' },
+    filePreview: { fullscreen: false, maxWidth: '94vw' },
   },
 })
 ```
 
 `DialogForm` and `Selector` are class-based dialogs rather than static `Dialogs` helpers. They accept the same six size properties through `DialogParams` and `SelectorParams`, and their existing `setDefault(...)` methods remain available through the `dialogForm` and `selector` bootstrap default keys.
+
+## `$previewFile(...)`
+
+Use `$previewFile(...)` when the file type may vary or when previewing an already-saved asset. It is also the preview path used internally by `image`, `document`, and `file-upload` fields.
+
+```ts
+await Dialogs.$previewFile(asset.previewUrl ?? asset.downloadUrl, {
+  title: { key: 'assets.invoicePreview', fallback: 'Invoice preview' },
+  fileName: asset.name,
+  fileSize: asset.size,
+  mimeType: asset.mimeType,
+  openUrl: asset.previewUrl,
+  downloadUrl: asset.downloadUrl,
+  fullscreen: false,
+})
+```
+
+Local files and blobs are accepted directly. `Dialogs` creates the required object URL and revokes it when the preview closes or is replaced.
+
+```ts
+await Dialogs.$previewFile(file, {
+  title: file.name,
+  fullscreen: true,
+})
+```
+
+Type resolution uses the following order:
+
+1. Explicit `mimeType`.
+2. `Blob.type` or `File.type`.
+3. A data URL media type.
+4. The filename or URL extension.
+
+Images use the zoomable image viewer. PDFs, text, JSON, XML, audio, and video use the browser viewer. Explicitly unsupported formats show a translated file-information panel with Open and Download actions by default.
+
+Use `unsupported` to change the fallback behavior:
+
+```ts
+await Dialogs.$previewFile(file, params, { unsupported: 'iframe' })
+await Dialogs.$previewFile(file, params, { unsupported: 'download' })
+```
+
+- `dialog` is the default and displays file metadata plus actions.
+- `iframe` lets the browser attempt to render an otherwise unsupported MIME type.
+- `download` immediately starts the download without opening a preview.
+
+Custom menu actions work for both image and document previews:
+
+```ts
+await Dialogs.$previewFile(asset.previewUrl, {
+  fileName: asset.name,
+  mimeType: asset.mimeType,
+  downloadUrl: asset.downloadUrl,
+}, {
+  actions: (params) => [
+    $BTN(
+      {
+        text: { key: 'assets.actions.archive', fallback: 'Archive' },
+        icon: 'mdi-archive-outline',
+      },
+      {
+        onClicked: () => archiveAsset(params.fileName),
+      },
+    ),
+  ],
+})
+```
+
+An iframe or image request cannot attach an application `Authorization` header. For protected endpoints that do not use browser cookies, fetch the content through the API first and pass the resulting `Blob` to `$previewFile(...)`.
 
 ## `$prompt(...)`
 
@@ -358,8 +467,9 @@ await Dialogs.$imagePreview(imageUrl, {
 Notes:
 
 - `fullscreen` defaults to `true`
+- `skin` defaults to `'inherit'`, so the viewer shell follows the active Vuetify light or dark theme
 - this helper is designed for image content
-- non-image document preview behavior is still handled separately by the field/document flow
+- use `$previewFile(...)` when the source type may vary
 
 ## `$documentPreview(...)`
 
@@ -432,10 +542,12 @@ await Dialogs.$iframe(
 Styling notes:
 
 - `skin` defaults to `'inherit'`
-- `'inherit'` means the dialog follows the active Vuetify theme and default surface styling
+- `'inherit'` resolves the shell through Vuetify's active `surface`, `background`, `on-surface`, and outline tokens; live theme changes are reflected automatically
 - use `skin: 'dark'` for a dark dialog shell
 - use `skin: 'light'` when you want to force a light presentation
 - `backgroundColor`, `toolbarBackground`, `contentBackground`, and `textColor` override the selected skin
 - `cardStyle`, `toolbarStyle`, and `frameStyle` provide fine-grained inline styling hooks
+- the same visual options are supported by `$imagePreview(...)` and flow through `$previewFile(...)`
+- iframe/PDF contents are separate browser documents; the library themes the surrounding dialog and loading surface, but cross-origin or browser-provided content controls its own colors
 - `prependActions: true` inserts custom `actions(...)` before the built-in `Open` / `Download` entries
 - when `prependActions` is omitted or `false`, built-in actions appear first and custom actions are appended

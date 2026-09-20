@@ -161,8 +161,20 @@ Dialog-specific labels that are still contextual to dialogs rather than generic 
 - `ve.dialog.promptValue`
 - `ve.dialog.preview.closePreview`
 - `ve.dialog.preview.documentFallback`
+- `ve.dialog.preview.fileName`
+- `ve.dialog.preview.fileSize`
+- `ve.dialog.preview.fileTitle`
+- `ve.dialog.preview.fileType`
+- `ve.dialog.preview.imageAlt`
+- `ve.dialog.preview.imageTitle`
 - `ve.dialog.preview.moreActions`
 - `ve.dialog.preview.resetZoom`
+- `ve.dialog.preview.title`
+- `ve.dialog.preview.unavailable`
+- `ve.dialog.preview.unavailableDescription`
+- `ve.dialog.preview.unknownFile`
+- `ve.dialog.preview.unknownSize`
+- `ve.dialog.preview.unknownType`
 - `ve.dialog.preview.zoomIn`
 - `ve.dialog.preview.zoomOut`
 
@@ -197,8 +209,10 @@ Field-specific helper text, uploads, previews, and asset messages:
 - `ve.field.fileProcessFailed`
 - `ve.field.fileSelectFailed`
 - `ve.field.fileUpload.clearSelected`
+- `ve.field.fileUpload.pending`
 - `ve.field.fileUpload.unsupportedType`
 - `ve.field.fileUpload.uploadSelected`
+- `ve.field.fileTypeFallback`
 - `ve.field.locationIndexed`
 - `ve.field.preview`
 

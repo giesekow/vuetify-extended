@@ -18,7 +18,7 @@ assert.match(dialogs, /interface PromptParams extends DialogSizeParams/);
 assert.match(dialogs, /interface ImagePreviewParams extends DialogSizeParams/);
 assert.match(dialogs, /interface IframeParams extends DialogSizeParams/);
 
-for (const kind of ['Confirm', 'Info', 'Prompt', 'ImagePreview', 'Iframe', 'DocumentPreview']) {
+for (const kind of ['Confirm', 'Info', 'Prompt', 'ImagePreview', 'Iframe', 'DocumentPreview', 'FilePreview']) {
   assert.match(dialogs, new RegExp(`static set${kind}Default\\(`), `Dialogs.set${kind}Default must exist`);
 }
 
@@ -42,6 +42,7 @@ const bootstrapDefaults = [
   ['imagePreview', 'ImagePreview'],
   ['iframe', 'Iframe'],
   ['documentPreview', 'DocumentPreview'],
+  ['filePreview', 'FilePreview'],
 ];
 
 for (const [key, method] of bootstrapDefaults) {

@@ -48,15 +48,24 @@ export interface DialogOptions {
   infoWindowHeight?: number|undefined;
 }
 
+export type IframeSkin = 'inherit'|'light'|'dark';
+
 export interface ImagePreviewParams extends DialogSizeParams {
   title?: UIText;
   fullscreen?: boolean;
+  skin?: IframeSkin;
+  scrim?: string;
+  backgroundColor?: string;
+  toolbarBackground?: string;
+  contentBackground?: string;
+  textColor?: string;
+  cardStyle?: any;
+  toolbarStyle?: any;
+  frameStyle?: any;
 }
 
 /** @deprecated Use ImagePreviewParams. */
 export type ImagePreviewOptions = ImagePreviewParams;
-
-export type IframeSkin = 'inherit'|'light'|'dark';
 
 export interface IframeParams extends DialogSizeParams {
   src?: string;
@@ -82,6 +91,29 @@ export interface IframeOptions {
 }
 
 export interface DocumentPreviewParams extends Omit<IframeParams, 'src'|'srcdoc'|'openUrl'|'downloadUrl'> {}
+
+export type FilePreviewSource = string|Blob|File;
+
+export type UnsupportedFilePreviewBehavior = 'dialog'|'iframe'|'download';
+
+export interface FilePreviewParams extends DocumentPreviewParams {
+  mimeType?: string;
+  fileName?: string;
+  fileSize?: number;
+  openUrl?: string;
+  downloadUrl?: string;
+}
+
+export interface FilePreviewOptions {
+  actions?: (params: FilePreviewParams) => Promise<Button[]|undefined>|Button[]|undefined;
+  unsupported?: UnsupportedFilePreviewBehavior;
+}
+
+interface FilePreviewInfo {
+  fileName: string;
+  mimeType: string;
+  fileSize?: number;
+}
 
 export class Dialogs {
 
@@ -113,11 +145,17 @@ export class Dialogs {
   private static imagePreviewTitle: Ref<UIText | undefined> = ref(undefined);
   private static imagePreviewFullscreen: Ref<boolean> = ref(true);
   private static imagePreviewParams: Ref<ImagePreviewParams> = ref({});
+  private static imagePreviewOpenUrl: Ref<string> = ref('');
+  private static imagePreviewDownloadUrl: Ref<string> = ref('');
+  private static imagePreviewFileName: Ref<string> = ref('');
+  private static imagePreviewPrependActions: Ref<boolean> = ref(false);
+  private static imagePreviewActions: Ref<Button[]> = ref([]);
   private static documentPreviewSrc: Ref<string> = ref('');
   private static documentPreviewSrcdoc: Ref<string> = ref('');
   private static documentPreviewRenderSrc: Ref<string> = ref('');
   private static documentPreviewOpenUrl: Ref<string> = ref('');
   private static documentPreviewDownloadUrl: Ref<string> = ref('');
+  private static documentPreviewFileName: Ref<string> = ref('');
   private static documentPreviewPrependActions: Ref<boolean> = ref(false);
   private static documentPreviewSkin: Ref<IframeSkin> = ref('inherit');
   private static documentPreviewWidth: Ref<number|string|undefined> = ref(undefined);
@@ -137,7 +175,10 @@ export class Dialogs {
   private static documentPreviewActions: Ref<Button[]> = ref([]);
   private static documentPreviewTitle: Ref<UIText | undefined> = ref(undefined);
   private static documentPreviewFullscreen: Ref<boolean> = ref(true);
+  private static documentPreviewFileInfo: Ref<FilePreviewInfo|undefined> = ref(undefined);
   private static documentPreviewObjectUrl?: string;
+  private static filePreviewObjectUrl?: string;
+  private static filePreviewRequest = 0;
 
   private static confirmYes: any = null;
   private static confirmNo: any = null;
@@ -157,6 +198,7 @@ export class Dialogs {
   private static imagePreviewDefaults: ImagePreviewParams = {};
   private static iframeDefaults: IframeParams = {};
   private static documentPreviewDefaults: DocumentPreviewParams = {};
+  private static filePreviewDefaults: FilePreviewParams = {};
 
   static setOptions(options: DialogOptions) {
     Dialogs.options.value = {...Dialogs.options.value , ...options};
@@ -191,6 +233,10 @@ export class Dialogs {
     Dialogs.documentPreviewDefaults = reset ? {...value} : {...Dialogs.documentPreviewDefaults, ...value};
   }
 
+  static setFilePreviewDefault(value: FilePreviewParams, reset?: boolean): void {
+    Dialogs.filePreviewDefaults = reset ? {...value} : {...Dialogs.filePreviewDefaults, ...value};
+  }
+
   static get rootIsMounted(): boolean {
     return Dialogs.rootMounted;
   }
@@ -205,6 +251,9 @@ export class Dialogs {
 
         onUnmounted(() => {
           Dialogs.rootMounted = false;
+          Dialogs.filePreviewRequest += 1;
+          Dialogs.releaseDocumentPreviewObjectUrl();
+          Dialogs.releaseFilePreviewObjectUrl();
         });
 
         const ConfirmDialog = Dialogs.confirmComponent();
@@ -409,7 +458,7 @@ export class Dialogs {
         };
 
         const close = () => {
-          Dialogs.imagePreviewDialog.value = false;
+          Dialogs.closeImagePreview();
         };
 
         const onPointerDown = (ev: PointerEvent) => {
@@ -511,25 +560,46 @@ export class Dialogs {
             maxHeight: Dialogs.imagePreviewFullscreen.value ? undefined : Dialogs.imagePreviewParams.value.maxHeight,
             minHeight: Dialogs.imagePreviewFullscreen.value ? undefined : Dialogs.imagePreviewParams.value.minHeight,
             persistent: false,
-            scrim: 'rgba(7, 10, 17, 0.88)',
+            ...(Dialogs.resolvePreviewTheme(Dialogs.imagePreviewParams.value).scrim
+              ? { scrim: Dialogs.resolvePreviewTheme(Dialogs.imagePreviewParams.value).scrim }
+              : {}),
             transition: 'dialog-bottom-transition',
             "onUpdate:modelValue": (v: boolean) => {
-              Dialogs.imagePreviewDialog.value = v;
+              if (v) {
+                Dialogs.imagePreviewDialog.value = true;
+              } else {
+                Dialogs.closeImagePreview();
+              }
               if (!v) {
                 resetView();
               }
             },
           },
-          () => h(
+          () => {
+            const theme = Dialogs.resolvePreviewTheme(Dialogs.imagePreviewParams.value);
+            const builtInActions = Dialogs.buildPreviewActions(
+              Dialogs.imagePreviewOpenUrl.value,
+              Dialogs.imagePreviewDownloadUrl.value,
+              Dialogs.imagePreviewFileName.value,
+              Dialogs.imagePreviewTitle.value,
+            );
+            const customActions = (Dialogs.imagePreviewActions.value || []).filter((button) => !!button);
+            const menuActions = (Dialogs.imagePreviewPrependActions.value
+              ? customActions.concat(builtInActions)
+              : builtInActions.concat(customActions)
+            ).filter((button) => !!button && !!(button as any).component);
+
+            return h(
             VCard,
             {
               style: {
-                background: '#0f172a',
-                color: 'white',
+                background: theme.cardBackground,
+                color: theme.textColor,
                 display: 'flex',
                 flexDirection: 'column',
                 height: '100%',
                 overflow: 'hidden',
+                ...(Dialogs.imagePreviewParams.value.cardStyle || {}),
               },
             },
             () => [
@@ -541,8 +611,10 @@ export class Dialogs {
                     alignItems: 'center',
                     gap: '8px',
                     padding: '12px 16px',
-                    borderBottom: '1px solid rgba(255,255,255,0.12)',
-                    background: 'rgba(15, 23, 42, 0.94)',
+                    borderBottom: `1px solid ${theme.toolbarBorderColor}`,
+                    background: theme.toolbarBackground,
+                    color: theme.textColor,
+                    ...(Dialogs.imagePreviewParams.value.toolbarStyle || {}),
                   },
                 },
                 [
@@ -558,14 +630,14 @@ export class Dialogs {
                         flex: '1 1 auto',
                       },
                     },
-                    resolveUIText(Dialogs.imagePreviewTitle.value, 'Image Preview'),
+                    resolveUIText(Dialogs.imagePreviewTitle.value, resolveUIText({ key: 've.dialog.preview.imageTitle', fallback: 'Image Preview' })),
                   ),
                   h(
                     VBtn,
                     {
                       icon: true,
                       variant: 'text',
-                      color: 'white',
+                      ...(theme.actionColor ? { color: theme.actionColor } : {}),
                       title: resolveUIText({ key: 've.dialog.preview.zoomOut', fallback: 'Zoom out' }),
                       onClick: () => zoomBy(-0.2),
                     },
@@ -576,7 +648,7 @@ export class Dialogs {
                     {
                       icon: true,
                       variant: 'text',
-                      color: 'white',
+                      ...(theme.actionColor ? { color: theme.actionColor } : {}),
                       title: resolveUIText({ key: 've.dialog.preview.resetZoom', fallback: 'Reset zoom' }),
                       onClick: () => resetView(),
                     },
@@ -587,18 +659,88 @@ export class Dialogs {
                     {
                       icon: true,
                       variant: 'text',
-                      color: 'white',
+                      ...(theme.actionColor ? { color: theme.actionColor } : {}),
                       title: resolveUIText({ key: 've.dialog.preview.zoomIn', fallback: 'Zoom in' }),
                       onClick: () => zoomBy(0.2),
                     },
                     () => h(VIcon, {}, () => 'mdi-magnify-plus-outline'),
                   ),
+                  ...(menuActions.length ? [
+                    h(
+                      VMenu,
+                      {
+                        location: 'bottom end',
+                        closeOnContentClick: true,
+                      },
+                      {
+                        activator: ({ props: activatorProps }: any) => h(
+                          VBtn,
+                          {
+                            ...activatorProps,
+                            icon: true,
+                            variant: 'text',
+                            ...(theme.actionColor ? { color: theme.actionColor } : {}),
+                            title: resolveUIText({ key: 've.dialog.preview.moreActions', fallback: 'More actions' }),
+                          },
+                          () => h(VIcon, {}, () => 'mdi-dots-vertical'),
+                        ),
+                        default: () => h(
+                          VCard,
+                          {
+                            elevation: 8,
+                            rounded: 'lg',
+                            style: {
+                              minWidth: '180px',
+                              maxWidth: 'calc(100vw - 24px)',
+                              overflow: 'hidden',
+                              background: theme.cardBackground,
+                              color: theme.textColor,
+                              border: `1px solid ${theme.toolbarBorderColor}`,
+                            },
+                          },
+                          () => h(
+                            VCardText,
+                            {
+                              style: {
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px',
+                                padding: '12px',
+                              },
+                            },
+                            () => menuActions.map((button, index) => {
+                              const buttonParams = button?.$params;
+                              if (!button || !buttonParams) {
+                                return undefined;
+                              }
+                              return h('div', {
+                                key: `image-preview-action-${index}`,
+                                style: {
+                                  display: 'flex',
+                                  width: '100%',
+                                },
+                              }, [
+                                h(button.component, {
+                                  color: buttonParams.color || theme.actionColor || undefined,
+                                  variant: buttonParams.variant || 'text',
+                                  style: {
+                                    width: '100%',
+                                    justifyContent: 'flex-start',
+                                  },
+                                }),
+                              ]);
+                            }),
+                          ),
+                        ),
+                      },
+                    ),
+                  ] : []),
                   h(
                     VBtn,
                     {
                       icon: true,
                       variant: 'text',
-                      color: 'white',
+                      ...(theme.actionColor ? { color: theme.actionColor } : {}),
                       title: resolveUIText({ key: 've.dialog.preview.closePreview', fallback: 'Close preview' }),
                       onClick: () => close(),
                     },
@@ -616,10 +758,11 @@ export class Dialogs {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'radial-gradient(circle at top, rgba(30,41,59,0.75) 0%, rgba(2,6,23,0.96) 100%)',
+                    background: theme.contentBackground,
                     cursor: scale.value > 1 ? (dragging.value ? 'grabbing' : 'grab') : 'default',
                     userSelect: 'none',
                     touchAction: 'none',
+                    ...(Dialogs.imagePreviewParams.value.frameStyle || {}),
                   },
                   onDblclick: () => {
                     if (scale.value > 1) {
@@ -633,7 +776,7 @@ export class Dialogs {
                 [
                   h('img', {
                     src: Dialogs.imagePreviewSrc.value,
-                    alt: resolveUIText(Dialogs.imagePreviewTitle.value, 'Image preview'),
+                    alt: resolveUIText(Dialogs.imagePreviewTitle.value, resolveUIText({ key: 've.dialog.preview.imageAlt', fallback: 'Image preview' })),
                     draggable: false,
                     style: {
                       maxWidth: '100%',
@@ -655,8 +798,10 @@ export class Dialogs {
                         padding: '6px 10px',
                         borderRadius: '999px',
                         fontSize: '0.82rem',
-                        background: 'rgba(15,23,42,0.74)',
-                        border: '1px solid rgba(255,255,255,0.12)',
+                        background: theme.cardBackground,
+                        color: theme.textColor,
+                        border: `1px solid ${theme.toolbarBorderColor}`,
+                        opacity: 0.9,
                       },
                     },
                     `${Math.round(scale.value * 100)}%`,
@@ -664,7 +809,8 @@ export class Dialogs {
                 ],
               ),
             ],
-          ),
+            );
+          },
         );
       },
     });
@@ -675,68 +821,7 @@ export class Dialogs {
       name: 'VuetifyExtendedIframePreview',
       setup: () => {
         const close = () => {
-          Dialogs.documentPreviewDialog.value = false;
-        };
-
-        const openNewTab = () => {
-          const previewSrc = Dialogs.documentPreviewOpenUrl.value || Dialogs.documentPreviewRenderSrc.value || Dialogs.documentPreviewSrc.value;
-          if (typeof window === 'undefined' || !previewSrc) {
-            return;
-          }
-
-          window.open(previewSrc, '_blank', 'noopener');
-        };
-
-        const downloadDocument = () => {
-          const downloadUrl = Dialogs.documentPreviewDownloadUrl.value || Dialogs.documentPreviewSrc.value;
-          if (typeof document === 'undefined' || !downloadUrl) {
-            return;
-          }
-
-          const link = document.createElement('a');
-          link.href = downloadUrl;
-          link.download = resolveUIText(Dialogs.documentPreviewTitle.value, resolveUIText({ key: 've.dialog.preview.documentFallback', fallback: 'document' }));
-          link.target = '_blank';
-          link.rel = 'noopener';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        };
-
-        const buildBuiltInActions = () => {
-          const actions: Button[] = [];
-
-          if (Dialogs.documentPreviewOpenUrl.value || Dialogs.documentPreviewRenderSrc.value || Dialogs.documentPreviewSrc.value) {
-            actions.push(markRaw(new Button(
-              {
-                text: { key: 've.common.open', fallback: 'Open' },
-                icon: 'mdi-open-in-new',
-                variant: 'text',
-              },
-              {
-                onClicked: () => {
-                  openNewTab();
-                },
-              },
-            )));
-          }
-
-          if (Dialogs.documentPreviewDownloadUrl.value || Dialogs.documentPreviewSrc.value) {
-            actions.push(markRaw(new Button(
-              {
-                text: { key: 've.common.download', fallback: 'Download' },
-                icon: 'mdi-download',
-                variant: 'text',
-              },
-              {
-                onClicked: () => {
-                  downloadDocument();
-                },
-              },
-            )));
-          }
-
-          return actions;
+          Dialogs.closeDocumentPreview();
         };
 
         const onKeydown = (ev: KeyboardEvent) => {
@@ -770,26 +855,26 @@ export class Dialogs {
             maxHeight: Dialogs.documentPreviewFullscreen.value ? undefined : Dialogs.documentPreviewMaxHeight.value,
             minHeight: Dialogs.documentPreviewFullscreen.value ? undefined : Dialogs.documentPreviewMinHeight.value,
             persistent: false,
-            ...(Dialogs.documentPreviewScrim.value
-              ? { scrim: Dialogs.documentPreviewScrim.value }
-              : (Dialogs.documentPreviewSkin.value === 'inherit'
-                ? {}
-                : { scrim: Dialogs.documentPreviewSkin.value === 'dark' ? 'rgba(7, 10, 17, 0.82)' : 'rgba(15, 23, 42, 0.36)' })),
+            ...(Dialogs.resolveDocumentPreviewTheme().scrim
+              ? { scrim: Dialogs.resolveDocumentPreviewTheme().scrim }
+              : {}),
             transition: 'dialog-bottom-transition',
             "onUpdate:modelValue": (v: boolean) => {
-              Dialogs.documentPreviewDialog.value = v;
+              if (v) {
+                Dialogs.documentPreviewDialog.value = true;
+              } else {
+                Dialogs.closeDocumentPreview();
+              }
             },
           },
           () => {
-            const skin = Dialogs.documentPreviewSkin.value;
-            const dark = skin === 'dark';
-            const inheritSkin = skin === 'inherit';
-            const textColor = Dialogs.documentPreviewTextColor.value || (inheritSkin ? '' : (dark ? '#ffffff' : '#0f172a'));
-            const cardBackground = Dialogs.documentPreviewBackgroundColor.value || (inheritSkin ? '' : (dark ? '#0f172a' : '#ffffff'));
-            const toolbarBackground = Dialogs.documentPreviewToolbarBackground.value || (inheritSkin ? '' : (dark ? 'rgba(15, 23, 42, 0.94)' : '#f8fafc'));
-            const contentBackground = Dialogs.documentPreviewContentBackground.value || (inheritSkin ? '' : (dark ? '#111827' : '#e5e7eb'));
-            const toolbarBorderColor = inheritSkin ? '' : (dark ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.08)');
-            const builtInActions = buildBuiltInActions();
+            const theme = Dialogs.resolveDocumentPreviewTheme();
+            const builtInActions = Dialogs.buildPreviewActions(
+              Dialogs.documentPreviewOpenUrl.value || Dialogs.documentPreviewRenderSrc.value || Dialogs.documentPreviewSrc.value,
+              Dialogs.documentPreviewDownloadUrl.value || Dialogs.documentPreviewSrc.value,
+              Dialogs.documentPreviewFileName.value,
+              Dialogs.documentPreviewTitle.value,
+            );
             const customActions = (Dialogs.documentPreviewActions.value || []).filter((button) => !!button);
             const menuActions = (Dialogs.documentPreviewPrependActions.value
               ? customActions.concat(builtInActions)
@@ -804,8 +889,8 @@ export class Dialogs {
                   flexDirection: 'column',
                   height: '100%',
                   overflow: 'hidden',
-                  ...(cardBackground ? { background: cardBackground } : {}),
-                  ...(textColor ? { color: textColor } : {}),
+                  background: theme.cardBackground,
+                  color: theme.textColor,
                   ...(Dialogs.documentPreviewCardStyle.value || {}),
                 },
               },
@@ -818,9 +903,9 @@ export class Dialogs {
                     alignItems: 'center',
                     gap: '8px',
                     padding: '12px 16px',
-                    ...(toolbarBorderColor ? { borderBottom: `1px solid ${toolbarBorderColor}` } : {}),
-                    ...(toolbarBackground ? { background: toolbarBackground } : {}),
-                    ...(textColor ? { color: textColor } : {}),
+                    borderBottom: `1px solid ${theme.toolbarBorderColor}`,
+                    background: theme.toolbarBackground,
+                    color: theme.textColor,
                     ...(Dialogs.documentPreviewToolbarStyle.value || {}),
                   },
                 },
@@ -835,10 +920,10 @@ export class Dialogs {
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
                         flex: '1 1 auto',
-                        ...(textColor ? { color: textColor } : {}),
+                        color: theme.textColor,
                       },
                     },
-                    resolveUIText(Dialogs.documentPreviewTitle.value, 'Preview'),
+                    resolveUIText(Dialogs.documentPreviewTitle.value, resolveUIText({ key: 've.dialog.preview.title', fallback: 'Preview' })),
                   ),
                   ...(menuActions.length ? [
                     h(
@@ -854,7 +939,7 @@ export class Dialogs {
                             ...activatorProps,
                             icon: true,
                             variant: 'text',
-                            ...(textColor ? { color: textColor } : {}),
+                            ...(theme.actionColor ? { color: theme.actionColor } : {}),
                             title: resolveUIText({ key: 've.dialog.preview.moreActions', fallback: 'More actions' }),
                           },
                           () => h(VIcon, {}, () => 'mdi-dots-vertical'),
@@ -868,9 +953,9 @@ export class Dialogs {
                               minWidth: '180px',
                               maxWidth: 'calc(100vw - 24px)',
                               overflow: 'hidden',
-                              ...(cardBackground ? { background: cardBackground } : {}),
-                              ...(textColor ? { color: textColor } : {}),
-                              ...(toolbarBorderColor ? { border: `1px solid ${toolbarBorderColor}` } : {}),
+                              background: theme.cardBackground,
+                              color: theme.textColor,
+                              border: `1px solid ${theme.toolbarBorderColor}`,
                             },
                           },
                           () => h(
@@ -888,12 +973,6 @@ export class Dialogs {
                               if (!button || !buttonParams) {
                                 return undefined;
                               }
-                              if (!buttonParams.color && textColor) {
-                                button.setParams({ color: textColor });
-                              }
-                              if (!buttonParams.variant) {
-                                button.setParams({ variant: 'text' });
-                              }
                               return h('div', {
                                 key: `iframe-action-${index}`,
                                 style: {
@@ -902,6 +981,8 @@ export class Dialogs {
                                 },
                               }, [
                                 h(button.component, {
+                                  color: buttonParams.color || theme.actionColor || undefined,
+                                  variant: buttonParams.variant || 'text',
                                   style: {
                                     width: '100%',
                                     justifyContent: 'flex-start',
@@ -919,7 +1000,7 @@ export class Dialogs {
                     {
                       icon: true,
                       variant: 'text',
-                      ...(textColor ? { color: textColor } : {}),
+                      ...(theme.actionColor ? { color: theme.actionColor } : {}),
                       title: resolveUIText({ key: 've.dialog.preview.closePreview', fallback: 'Close preview' }),
                       onClick: close,
                     },
@@ -933,25 +1014,27 @@ export class Dialogs {
                   style: {
                     flex: '1 1 auto',
                     padding: Dialogs.documentPreviewFullscreen.value ? '0' : '8px',
-                    ...(contentBackground ? { background: contentBackground } : {}),
+                    background: theme.contentBackground,
                   },
                 },
-                [
-                  h('iframe', {
-                    src: Dialogs.documentPreviewSrcdoc.value ? undefined : (Dialogs.documentPreviewRenderSrc.value || Dialogs.documentPreviewSrc.value),
-                    srcdoc: Dialogs.documentPreviewSrcdoc.value || undefined,
-                    title: resolveUIText(Dialogs.documentPreviewTitle.value, 'Preview'),
-                    style: {
-                      width: '100%',
-                      height: '100%',
-                      border: '0',
-                      display: 'block',
-                      background: 'white',
-                      borderRadius: Dialogs.documentPreviewFullscreen.value ? '0' : '12px',
-                      ...(Dialogs.documentPreviewFrameStyle.value || {}),
-                    },
-                  }),
-                ],
+                Dialogs.documentPreviewFileInfo.value
+                  ? [Dialogs.renderUnsupportedFilePreview(Dialogs.documentPreviewFileInfo.value, theme.textColor)]
+                  : [
+                    h('iframe', {
+                      src: Dialogs.documentPreviewSrcdoc.value ? undefined : (Dialogs.documentPreviewRenderSrc.value || Dialogs.documentPreviewSrc.value),
+                      srcdoc: Dialogs.documentPreviewSrcdoc.value || undefined,
+                      title: resolveUIText(Dialogs.documentPreviewTitle.value, resolveUIText({ key: 've.dialog.preview.title', fallback: 'Preview' })),
+                      style: {
+                        width: '100%',
+                        height: '100%',
+                        border: '0',
+                        display: 'block',
+                        background: theme.contentBackground,
+                        borderRadius: Dialogs.documentPreviewFullscreen.value ? '0' : '12px',
+                        ...(Dialogs.documentPreviewFrameStyle.value || {}),
+                      },
+                    }),
+                  ],
               ),
             ],
             );
@@ -1173,27 +1256,75 @@ export class Dialogs {
   }
 
   static async $imagePreview(src: string, params?: ImagePreviewParams): Promise<void> {
+    await Dialogs.openImagePreview(src, params, true);
+  }
+
+  private static async openImagePreview(
+    src: string,
+    params?: ImagePreviewParams,
+    invalidatePending = false,
+    expectedRequest?: number,
+  ): Promise<boolean> {
+    if (invalidatePending) {
+      Dialogs.filePreviewRequest += 1;
+    }
+    if (expectedRequest !== undefined && expectedRequest !== Dialogs.filePreviewRequest) {
+      return false;
+    }
+
+    Dialogs.documentPreviewDialog.value = false;
+    Dialogs.documentPreviewFileInfo.value = undefined;
+    Dialogs.releaseDocumentPreviewObjectUrl();
+    Dialogs.releaseFilePreviewObjectUrl();
     const resolvedParams = {...Dialogs.imagePreviewDefaults, ...(params || {})};
 
     Dialogs.imagePreviewSrc.value = src;
     Dialogs.imagePreviewTitle.value = resolvedParams.title || '';
     Dialogs.imagePreviewFullscreen.value = resolvedParams.fullscreen !== false;
     Dialogs.imagePreviewParams.value = resolvedParams;
+    Dialogs.imagePreviewOpenUrl.value = '';
+    Dialogs.imagePreviewDownloadUrl.value = '';
+    Dialogs.imagePreviewFileName.value = '';
+    Dialogs.imagePreviewPrependActions.value = false;
+    Dialogs.imagePreviewActions.value = [];
     Dialogs.imagePreviewDialog.value = true;
+    return true;
   }
 
   static async $iframe(params?: IframeParams, options?: IframeOptions): Promise<void> {
+    await Dialogs.openIframe(params, options, true);
+  }
+
+  private static async openIframe(
+    params?: IframeParams,
+    options?: IframeOptions,
+    invalidatePending = false,
+    expectedRequest?: number,
+  ): Promise<boolean> {
+    if (invalidatePending) {
+      Dialogs.filePreviewRequest += 1;
+    }
+
     const resolvedParams = {...Dialogs.iframeDefaults, ...(params || {})};
     const resolvedOptions = options || {};
+    const actions = (await resolvedOptions.actions?.(resolvedParams)) || [];
+    if (expectedRequest !== undefined && expectedRequest !== Dialogs.filePreviewRequest) {
+      return false;
+    }
+
+    Dialogs.imagePreviewDialog.value = false;
+    Dialogs.releaseFilePreviewObjectUrl();
+    Dialogs.releaseDocumentPreviewObjectUrl();
     const src = resolvedParams.src || '';
     const renderSrc = src ? Dialogs.createDocumentPreviewRenderSrc(src) : '';
-    const actions = (await resolvedOptions.actions?.(resolvedParams)) || [];
 
+    Dialogs.documentPreviewFileInfo.value = undefined;
     Dialogs.documentPreviewSrc.value = src;
     Dialogs.documentPreviewSrcdoc.value = resolvedParams.srcdoc || '';
     Dialogs.documentPreviewRenderSrc.value = renderSrc;
     Dialogs.documentPreviewOpenUrl.value = resolvedParams.openUrl || renderSrc || src;
     Dialogs.documentPreviewDownloadUrl.value = resolvedParams.downloadUrl || src;
+    Dialogs.documentPreviewFileName.value = '';
     Dialogs.documentPreviewPrependActions.value = resolvedParams.prependActions === true;
     Dialogs.documentPreviewSkin.value = resolvedParams.skin || 'inherit';
     Dialogs.documentPreviewWidth.value = resolvedParams.width;
@@ -1216,6 +1347,7 @@ export class Dialogs {
     Dialogs.documentPreviewTitle.value = resolvedParams.title || '';
     Dialogs.documentPreviewFullscreen.value = resolvedParams.fullscreen !== false;
     Dialogs.documentPreviewDialog.value = true;
+    return true;
   }
 
   static async $documentPreview(src: string, params?: DocumentPreviewParams, options?: IframeOptions): Promise<void> {
@@ -1226,6 +1358,123 @@ export class Dialogs {
       ...resolvedParams,
       downloadUrl: src,
     }, options);
+  }
+
+  static async $previewFile(source: FilePreviewSource, params?: FilePreviewParams, options?: FilePreviewOptions): Promise<void> {
+    const request = ++Dialogs.filePreviewRequest;
+    const resolvedParams = {...Dialogs.filePreviewDefaults, ...(params || {})};
+    const sourceInfo = Dialogs.resolveFilePreviewSource(source, resolvedParams);
+    const title = resolvedParams.title
+      || sourceInfo.fileName
+      || { key: 've.dialog.preview.fileTitle', fallback: 'File Preview' };
+    const effectiveParams: FilePreviewParams = {
+      ...resolvedParams,
+      title,
+      mimeType: sourceInfo.mimeType || undefined,
+      fileName: sourceInfo.fileName || undefined,
+      fileSize: sourceInfo.fileSize,
+      openUrl: resolvedParams.openUrl || sourceInfo.url,
+      downloadUrl: resolvedParams.downloadUrl || sourceInfo.url,
+    };
+    let customActions: Button[]|undefined;
+    try {
+      customActions = await options?.actions?.(effectiveParams);
+    } catch (error) {
+      if (sourceInfo.objectUrl) {
+        URL.revokeObjectURL(sourceInfo.objectUrl);
+      }
+      throw error;
+    }
+    if (request !== Dialogs.filePreviewRequest) {
+      Dialogs.revokeObjectUrl(sourceInfo.objectUrl);
+      return;
+    }
+    const actions = Array.isArray(customActions)
+      ? customActions.filter((button) => !!button).map((button) => markRaw(button))
+      : [];
+    const previewKind = Dialogs.resolveFilePreviewKind(sourceInfo.mimeType, sourceInfo.fileName, sourceInfo.url);
+
+    try {
+      if (previewKind === 'image') {
+        const opened = await Dialogs.openImagePreview(sourceInfo.url, effectiveParams, false, request);
+        if (!opened || request !== Dialogs.filePreviewRequest) {
+          Dialogs.revokeObjectUrl(sourceInfo.objectUrl);
+          return;
+        }
+        Dialogs.imagePreviewOpenUrl.value = effectiveParams.openUrl || sourceInfo.url;
+        Dialogs.imagePreviewDownloadUrl.value = effectiveParams.downloadUrl || sourceInfo.url;
+        Dialogs.imagePreviewFileName.value = sourceInfo.fileName;
+        Dialogs.imagePreviewPrependActions.value = effectiveParams.prependActions === true;
+        Dialogs.imagePreviewActions.value = actions;
+        Dialogs.filePreviewObjectUrl = sourceInfo.objectUrl;
+        return;
+      }
+
+      const {
+        mimeType: _mimeType,
+        fileName: _fileName,
+        fileSize: _fileSize,
+        ...iframeParams
+      } = effectiveParams;
+      const iframeOptions: IframeOptions = {
+        actions: () => actions,
+      };
+      const viewerParams = previewKind === 'pdf'
+        ? {...Dialogs.documentPreviewDefaults, ...iframeParams}
+        : iframeParams;
+
+      if (previewKind === 'pdf' || previewKind === 'iframe' || options?.unsupported === 'iframe') {
+        const opened = await Dialogs.openIframe({
+          ...viewerParams,
+          src: sourceInfo.url,
+          openUrl: effectiveParams.openUrl || sourceInfo.url,
+          downloadUrl: effectiveParams.downloadUrl || sourceInfo.url,
+        }, iframeOptions, false, request);
+        if (!opened || request !== Dialogs.filePreviewRequest) {
+          Dialogs.revokeObjectUrl(sourceInfo.objectUrl);
+          return;
+        }
+        Dialogs.documentPreviewFileName.value = sourceInfo.fileName;
+        Dialogs.filePreviewObjectUrl = sourceInfo.objectUrl;
+        return;
+      }
+
+      if (options?.unsupported === 'download') {
+        Dialogs.downloadPreviewUrl(
+          effectiveParams.downloadUrl || sourceInfo.url,
+          sourceInfo.fileName,
+          title,
+        );
+        if (sourceInfo.objectUrl) {
+          const objectUrl = sourceInfo.objectUrl;
+          setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+        }
+        return;
+      }
+
+      const opened = await Dialogs.openIframe({
+        ...iframeParams,
+        src: '',
+        openUrl: effectiveParams.openUrl || sourceInfo.url,
+        downloadUrl: effectiveParams.downloadUrl || sourceInfo.url,
+      }, iframeOptions, false, request);
+      if (!opened || request !== Dialogs.filePreviewRequest) {
+        Dialogs.revokeObjectUrl(sourceInfo.objectUrl);
+        return;
+      }
+      Dialogs.documentPreviewFileName.value = sourceInfo.fileName;
+      Dialogs.documentPreviewFileInfo.value = {
+        fileName: sourceInfo.fileName,
+        mimeType: sourceInfo.mimeType,
+        fileSize: sourceInfo.fileSize,
+      };
+      Dialogs.filePreviewObjectUrl = sourceInfo.objectUrl;
+    } catch (error) {
+      if (sourceInfo.objectUrl) {
+        URL.revokeObjectURL(sourceInfo.objectUrl);
+      }
+      throw error;
+    }
   }
 
   static async $prompt(params?: PromptParams, options?: PromptOptions): Promise<any|undefined> {
@@ -1526,6 +1775,344 @@ export class Dialogs {
     }
   }
 
+  private static resolvePreviewTheme(params: ImagePreviewParams|IframeParams) {
+    const skin = params.skin || 'inherit';
+    const inheritSkin = skin === 'inherit';
+    const dark = skin === 'dark';
+    const forcedTextColor = dark ? '#ffffff' : '#0f172a';
+    const forcedCardBackground = dark ? '#0f172a' : '#ffffff';
+    const forcedToolbarBackground = dark ? '#111827' : '#f8fafc';
+    const forcedContentBackground = dark ? '#020617' : '#e5e7eb';
+
+    return {
+      textColor: params.textColor || (inheritSkin ? 'rgb(var(--v-theme-on-surface))' : forcedTextColor),
+      actionColor: params.textColor || (inheritSkin ? '' : forcedTextColor),
+      cardBackground: params.backgroundColor || (inheritSkin ? 'rgb(var(--v-theme-surface))' : forcedCardBackground),
+      toolbarBackground: params.toolbarBackground || (inheritSkin ? 'rgb(var(--v-theme-surface))' : forcedToolbarBackground),
+      contentBackground: params.contentBackground || (inheritSkin ? 'rgb(var(--v-theme-background))' : forcedContentBackground),
+      toolbarBorderColor: inheritSkin
+        ? 'rgba(var(--v-theme-on-surface), 0.12)'
+        : (dark ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.10)'),
+      scrim: params.scrim || (inheritSkin ? '' : (dark ? 'rgba(7, 10, 17, 0.82)' : 'rgba(15, 23, 42, 0.36)')),
+    };
+  }
+
+  private static resolveDocumentPreviewTheme() {
+    return Dialogs.resolvePreviewTheme({
+      skin: Dialogs.documentPreviewSkin.value,
+      scrim: Dialogs.documentPreviewScrim.value,
+      backgroundColor: Dialogs.documentPreviewBackgroundColor.value,
+      toolbarBackground: Dialogs.documentPreviewToolbarBackground.value,
+      contentBackground: Dialogs.documentPreviewContentBackground.value,
+      textColor: Dialogs.documentPreviewTextColor.value,
+    });
+  }
+
+  private static closeImagePreview(): void {
+    Dialogs.filePreviewRequest += 1;
+    Dialogs.imagePreviewDialog.value = false;
+    Dialogs.releaseFilePreviewObjectUrl();
+  }
+
+  private static closeDocumentPreview(): void {
+    Dialogs.filePreviewRequest += 1;
+    Dialogs.documentPreviewDialog.value = false;
+    Dialogs.releaseDocumentPreviewObjectUrl();
+    Dialogs.releaseFilePreviewObjectUrl();
+    Dialogs.documentPreviewFileInfo.value = undefined;
+  }
+
+  private static buildPreviewActions(openUrl: string, downloadUrl: string, fileName: string, title?: UIText): Button[] {
+    const actions: Button[] = [];
+
+    if (openUrl) {
+      actions.push(markRaw(new Button(
+        {
+          text: { key: 've.common.open', fallback: 'Open' },
+          icon: 'mdi-open-in-new',
+          variant: 'text',
+        },
+        {
+          onClicked: () => {
+            Dialogs.openPreviewUrl(openUrl);
+          },
+        },
+      )));
+    }
+
+    if (downloadUrl) {
+      actions.push(markRaw(new Button(
+        {
+          text: { key: 've.common.download', fallback: 'Download' },
+          icon: 'mdi-download',
+          variant: 'text',
+        },
+        {
+          onClicked: () => {
+            Dialogs.downloadPreviewUrl(downloadUrl, fileName, title);
+          },
+        },
+      )));
+    }
+
+    return actions;
+  }
+
+  private static openPreviewUrl(url: string): void {
+    if (typeof window === 'undefined' || !url) {
+      return;
+    }
+
+    window.open(url, '_blank', 'noopener');
+  }
+
+  private static downloadPreviewUrl(url: string, fileName: string, title?: UIText): void {
+    if (typeof document === 'undefined' || !url) {
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName
+      || resolveUIText(title, resolveUIText({ key: 've.dialog.preview.documentFallback', fallback: 'document' }));
+    link.target = '_blank';
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  private static resolveFilePreviewSource(source: FilePreviewSource, params: FilePreviewParams): {
+    url: string;
+    objectUrl?: string;
+    fileName: string;
+    mimeType: string;
+    fileSize?: number;
+  } {
+    if (typeof source === 'string') {
+      const fileName = params.fileName || Dialogs.fileNameFromUrl(source);
+      const explicitMimeType = Dialogs.normalizeMimeType(params.mimeType);
+      const mimeType = explicitMimeType || Dialogs.mimeTypeFromSource(source, fileName);
+      return {
+        url: source,
+        fileName,
+        mimeType,
+        fileSize: params.fileSize,
+      };
+    }
+
+    if (typeof Blob === 'undefined' || !(source instanceof Blob)) {
+      throw new TypeError('Dialogs.$previewFile source must be a URL, data URL, Blob, or File.');
+    }
+    if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+      throw new Error('Dialogs.$previewFile cannot preview Blob data because object URLs are unavailable.');
+    }
+
+    const sourceName = typeof File !== 'undefined' && source instanceof File ? source.name : '';
+    const fileName = params.fileName || sourceName;
+    const sourceMimeType = Dialogs.normalizeMimeType(source.type);
+    const explicitMimeType = Dialogs.normalizeMimeType(params.mimeType);
+    const inferredMimeType = Dialogs.mimeTypeFromFileName(fileName);
+    const mimeType = explicitMimeType
+      || (sourceMimeType && sourceMimeType !== 'application/octet-stream' ? sourceMimeType : inferredMimeType || sourceMimeType);
+    const objectUrl = URL.createObjectURL(source);
+
+    return {
+      url: objectUrl,
+      objectUrl,
+      fileName,
+      mimeType,
+      fileSize: params.fileSize ?? source.size,
+    };
+  }
+
+  private static resolveFilePreviewKind(mimeType: string, fileName: string, source: string): 'image'|'pdf'|'iframe'|'unsupported' {
+    const normalizedMimeType = Dialogs.normalizeMimeType(mimeType);
+    if (normalizedMimeType.startsWith('image/')) {
+      return 'image';
+    }
+    if (normalizedMimeType === 'application/pdf') {
+      return 'pdf';
+    }
+    if (
+      normalizedMimeType.startsWith('text/')
+      || normalizedMimeType.startsWith('audio/')
+      || normalizedMimeType.startsWith('video/')
+      || [
+        'application/json',
+        'application/xml',
+        'application/xhtml+xml',
+      ].includes(normalizedMimeType)
+    ) {
+      return 'iframe';
+    }
+
+    if (!normalizedMimeType) {
+      const inferredMimeType = Dialogs.mimeTypeFromSource(source, fileName);
+      if (inferredMimeType) {
+        return Dialogs.resolveFilePreviewKind(inferredMimeType, fileName, source);
+      }
+      // Dynamic endpoints may return browser-renderable content even without an extension.
+      return 'iframe';
+    }
+
+    return 'unsupported';
+  }
+
+  private static normalizeMimeType(mimeType?: string): string {
+    return String(mimeType || '').split(';', 1)[0].trim().toLowerCase();
+  }
+
+  private static mimeTypeFromSource(source: string, fileName: string): string {
+    const dataMimeType = source.match(/^data:([^;,]+)/i)?.[1];
+    return Dialogs.normalizeMimeType(dataMimeType) || Dialogs.mimeTypeFromFileName(fileName || source);
+  }
+
+  private static mimeTypeFromFileName(fileName: string): string {
+    const cleanName = String(fileName || '').split(/[?#]/, 1)[0].toLowerCase();
+    const extension = cleanName.match(/\.([a-z0-9]+)$/)?.[1] || '';
+    const mimeTypes: Record<string, string> = {
+      avif: 'image/avif',
+      bmp: 'image/bmp',
+      gif: 'image/gif',
+      jpeg: 'image/jpeg',
+      jpg: 'image/jpeg',
+      png: 'image/png',
+      svg: 'image/svg+xml',
+      webp: 'image/webp',
+      pdf: 'application/pdf',
+      csv: 'text/csv',
+      htm: 'text/html',
+      html: 'text/html',
+      json: 'application/json',
+      md: 'text/markdown',
+      rtf: 'text/rtf',
+      txt: 'text/plain',
+      xml: 'application/xml',
+      mp3: 'audio/mpeg',
+      ogg: 'audio/ogg',
+      wav: 'audio/wav',
+      m4v: 'video/mp4',
+      mp4: 'video/mp4',
+      webm: 'video/webm',
+      bin: 'application/octet-stream',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      odp: 'application/vnd.oasis.opendocument.presentation',
+      ods: 'application/vnd.oasis.opendocument.spreadsheet',
+      odt: 'application/vnd.oasis.opendocument.text',
+      ppt: 'application/vnd.ms-powerpoint',
+      pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      rar: 'application/vnd.rar',
+      xls: 'application/vnd.ms-excel',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      zip: 'application/zip',
+    };
+    return mimeTypes[extension] || '';
+  }
+
+  private static fileNameFromUrl(source: string): string {
+    if (!source || source.startsWith('data:') || source.startsWith('blob:')) {
+      return '';
+    }
+
+    const cleanSource = source.split(/[?#]/, 1)[0];
+    const fileName = cleanSource.slice(cleanSource.lastIndexOf('/') + 1);
+    try {
+      return decodeURIComponent(fileName);
+    } catch (_error) {
+      return fileName;
+    }
+  }
+
+  private static formatFileSize(size?: number): string {
+    if (typeof size !== 'number' || !Number.isFinite(size) || size < 0) {
+      return resolveUIText({ key: 've.dialog.preview.unknownSize', fallback: 'Unknown' });
+    }
+
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let value = size;
+    let unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024;
+      unitIndex += 1;
+    }
+    const maximumFractionDigits = unitIndex === 0 ? 0 : 1;
+    return `${new Intl.NumberFormat(undefined, { maximumFractionDigits }).format(value)} ${units[unitIndex]}`;
+  }
+
+  private static renderUnsupportedFilePreview(info: FilePreviewInfo, textColor: string) {
+    const fileName = info.fileName || resolveUIText({ key: 've.dialog.preview.unknownFile', fallback: 'Unnamed file' });
+    const mimeType = info.mimeType || resolveUIText({ key: 've.dialog.preview.unknownType', fallback: 'Unknown type' });
+    const rows = [
+      [{ key: 've.dialog.preview.fileName', fallback: 'File name' }, fileName],
+      [{ key: 've.dialog.preview.fileType', fallback: 'File type' }, mimeType],
+      [{ key: 've.dialog.preview.fileSize', fallback: 'File size' }, Dialogs.formatFileSize(info.fileSize)],
+    ] as const;
+
+    return h(
+      'div',
+      {
+        style: {
+          width: '100%',
+          height: '100%',
+          minHeight: '260px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+          ...(textColor ? { color: textColor } : {}),
+        },
+      },
+      [
+        h(
+          'div',
+          {
+            style: {
+              width: 'min(520px, 100%)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px',
+              textAlign: 'center',
+            },
+          },
+          [
+            h(VIcon, { size: 64, color: 'primary' }, () => 'mdi-file-outline'),
+            h('div', { style: { fontSize: '1.15rem', fontWeight: '600' } }, resolveUIText({
+              key: 've.dialog.preview.unavailable',
+              fallback: 'Preview unavailable',
+            })),
+            h('div', { style: { opacity: '0.76', maxWidth: '440px' } }, resolveUIText({
+              key: 've.dialog.preview.unavailableDescription',
+              fallback: 'This file type cannot be displayed in the browser. Use Open or Download from the actions menu.',
+            })),
+            h(
+              'div',
+              {
+                style: {
+                  width: '100%',
+                  marginTop: '8px',
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(90px, auto) minmax(0, 1fr)',
+                  gap: '8px 16px',
+                  textAlign: 'left',
+                },
+              },
+              rows.flatMap(([label, value], index) => [
+                h('div', { key: `file-preview-label-${index}`, style: { fontWeight: '600', opacity: '0.78' } }, resolveUIText(label)),
+                h('div', {
+                  key: `file-preview-value-${index}`,
+                  style: { overflowWrap: 'anywhere' },
+                }, value),
+              ]),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   private static createDocumentPreviewRenderSrc(src: string): string {
     Dialogs.releaseDocumentPreviewObjectUrl();
 
@@ -1552,6 +2139,21 @@ export class Dialogs {
 
     URL.revokeObjectURL(Dialogs.documentPreviewObjectUrl);
     Dialogs.documentPreviewObjectUrl = undefined;
+  }
+
+  private static releaseFilePreviewObjectUrl() {
+    if (!Dialogs.filePreviewObjectUrl) {
+      return;
+    }
+
+    URL.revokeObjectURL(Dialogs.filePreviewObjectUrl);
+    Dialogs.filePreviewObjectUrl = undefined;
+  }
+
+  private static revokeObjectUrl(objectUrl?: string) {
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
+    }
   }
 
   private static decodeDataUrl(src: string): { mimeType: string; bytes: Uint8Array } | undefined {

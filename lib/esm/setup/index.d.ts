@@ -6,7 +6,7 @@ import { AppMain, type AppOptions, type AppParams } from '../ui/appmain';
 import { type ButtonParams } from '../ui/button';
 import { type CollectionParams } from '../ui/collection';
 import { type DialogParams } from '../ui/dialogform';
-import { type ConfirmParams, type DialogOptions, type DocumentPreviewParams, type IframeParams, type ImagePreviewParams, type InfoParams, type PromptParams } from '../ui/dialogs';
+import { type ConfirmParams, type DialogOptions, type DocumentPreviewParams, type FilePreviewParams, type IframeParams, type ImagePreviewParams, type InfoParams, type PromptParams } from '../ui/dialogs';
 import { NotificationOptions } from '../ui/notifications';
 import { type FieldParams } from '../ui/field';
 import { type FormParams } from '../ui/form';
@@ -29,6 +29,7 @@ export interface VuetifyExtendedDefaults {
     documentPreview?: DocumentPreviewParams;
     environmentTag?: EnvironmentTagParams;
     field?: FieldParams;
+    filePreview?: FilePreviewParams;
     form?: FormParams;
     iframe?: IframeParams;
     imagePreview?: ImagePreviewParams;

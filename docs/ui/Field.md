@@ -1330,7 +1330,7 @@ pagination.on('itemsPerPageChanged', (event) => console.log(event.limit));
 - Notes:
   In direct mode values are usually base64/data URLs but can also be remote renderable URLs.
   In asset mode the field stores only asset ids in `Master`, while preview/display is driven by resolved asset records.
-  Clicking the preview opens the in-app image preview dialog. `previewFullscreen` defaults to `true`; set it to `false` to use the contained dialog mode instead.
+  Clicking the preview routes through `Dialogs.$previewFile(...)` and opens the zoomable in-app image viewer. `previewFullscreen` defaults to `true`; set it to `false` to use the contained dialog mode instead.
 
 ### `document`
 
@@ -1346,7 +1346,7 @@ pagination.on('itemsPerPageChanged', (event) => console.log(event.limit));
 - Notes:
   Defaults accepted types to PDF-related values when not explicitly set.
   In asset mode the stored `Master` value becomes the asset id or asset id array, not the document content itself.
-  PDF previews now open in the in-app document preview dialog. `previewFullscreen` defaults to `true`; set it to `false` for the contained dialog mode. Viewer controls such as zoom or page navigation depend on the browser's embedded PDF/document renderer.
+  Preview clicks route through `Dialogs.$previewFile(...)`; PDFs open in the in-app document viewer. `previewFullscreen` defaults to `true`; set it to `false` for the contained dialog mode. Viewer controls such as zoom or page navigation depend on the browser's embedded PDF/document renderer.
 
 ### `file-upload`
 
@@ -1368,6 +1368,7 @@ pagination.on('itemsPerPageChanged', (event) => console.log(event.limit));
   Use direct mode when the form should persist actual file payloads or metadata directly in `Master`.
   Use asset mode when your application stores binary content in a centralized asset service/table and other records should only reference asset ids.
   Even in metadata mode, `field.$selectedFiles` still exposes the currently selected raw `File[]` for validation or custom upload handling.
+  Available files use `Dialogs.$previewFile(...)`, so image, PDF, browser-renderable, and unsupported-file behavior matches direct dialog previews.
 
 ### `messagingbox`
 

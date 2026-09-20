@@ -42,13 +42,22 @@ export interface DialogOptions {
     /** @deprecated Use Dialogs.setInfoDefault({ maxHeight }). */
     infoWindowHeight?: number | undefined;
 }
+export type IframeSkin = 'inherit' | 'light' | 'dark';
 export interface ImagePreviewParams extends DialogSizeParams {
     title?: UIText;
     fullscreen?: boolean;
+    skin?: IframeSkin;
+    scrim?: string;
+    backgroundColor?: string;
+    toolbarBackground?: string;
+    contentBackground?: string;
+    textColor?: string;
+    cardStyle?: any;
+    toolbarStyle?: any;
+    frameStyle?: any;
 }
 /** @deprecated Use ImagePreviewParams. */
 export type ImagePreviewOptions = ImagePreviewParams;
-export type IframeSkin = 'inherit' | 'light' | 'dark';
 export interface IframeParams extends DialogSizeParams {
     src?: string;
     srcdoc?: string;
@@ -71,6 +80,19 @@ export interface IframeOptions {
     actions?: (params: IframeParams) => Promise<Button[] | undefined> | Button[] | undefined;
 }
 export interface DocumentPreviewParams extends Omit<IframeParams, 'src' | 'srcdoc' | 'openUrl' | 'downloadUrl'> {
+}
+export type FilePreviewSource = string | Blob | File;
+export type UnsupportedFilePreviewBehavior = 'dialog' | 'iframe' | 'download';
+export interface FilePreviewParams extends DocumentPreviewParams {
+    mimeType?: string;
+    fileName?: string;
+    fileSize?: number;
+    openUrl?: string;
+    downloadUrl?: string;
+}
+export interface FilePreviewOptions {
+    actions?: (params: FilePreviewParams) => Promise<Button[] | undefined> | Button[] | undefined;
+    unsupported?: UnsupportedFilePreviewBehavior;
 }
 export declare class Dialogs {
     private static confirmDialog;
@@ -97,11 +119,17 @@ export declare class Dialogs {
     private static imagePreviewTitle;
     private static imagePreviewFullscreen;
     private static imagePreviewParams;
+    private static imagePreviewOpenUrl;
+    private static imagePreviewDownloadUrl;
+    private static imagePreviewFileName;
+    private static imagePreviewPrependActions;
+    private static imagePreviewActions;
     private static documentPreviewSrc;
     private static documentPreviewSrcdoc;
     private static documentPreviewRenderSrc;
     private static documentPreviewOpenUrl;
     private static documentPreviewDownloadUrl;
+    private static documentPreviewFileName;
     private static documentPreviewPrependActions;
     private static documentPreviewSkin;
     private static documentPreviewWidth;
@@ -121,7 +149,10 @@ export declare class Dialogs {
     private static documentPreviewActions;
     private static documentPreviewTitle;
     private static documentPreviewFullscreen;
+    private static documentPreviewFileInfo;
     private static documentPreviewObjectUrl?;
+    private static filePreviewObjectUrl?;
+    private static filePreviewRequest;
     private static confirmYes;
     private static confirmNo;
     private static infoClose;
@@ -139,6 +170,7 @@ export declare class Dialogs {
     private static imagePreviewDefaults;
     private static iframeDefaults;
     private static documentPreviewDefaults;
+    private static filePreviewDefaults;
     static setOptions(options: DialogOptions): void;
     static setConfirmDefault(value: ConfirmParams, reset?: boolean): void;
     static setInfoDefault(value: InfoParams, reset?: boolean): void;
@@ -146,6 +178,7 @@ export declare class Dialogs {
     static setImagePreviewDefault(value: ImagePreviewParams, reset?: boolean): void;
     static setIframeDefault(value: IframeParams, reset?: boolean): void;
     static setDocumentPreviewDefault(value: DocumentPreviewParams, reset?: boolean): void;
+    static setFilePreviewDefault(value: FilePreviewParams, reset?: boolean): void;
     static get rootIsMounted(): boolean;
     static rootComponent(): import("vue").DefineComponent<{}, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
         [key: string]: any;
@@ -181,8 +214,11 @@ export declare class Dialogs {
     static $info(text: UIText, title?: UIText, params?: InfoParams): Promise<void>;
     static hasBlockingDialog(): boolean;
     static $imagePreview(src: string, params?: ImagePreviewParams): Promise<void>;
+    private static openImagePreview;
     static $iframe(params?: IframeParams, options?: IframeOptions): Promise<void>;
+    private static openIframe;
     static $documentPreview(src: string, params?: DocumentPreviewParams, options?: IframeOptions): Promise<void>;
+    static $previewFile(source: FilePreviewSource, params?: FilePreviewParams, options?: FilePreviewOptions): Promise<void>;
     static $prompt(params?: PromptParams, options?: PromptOptions): Promise<any | undefined>;
     private static installConfirmKeydownHandler;
     private static removeConfirmKeydownHandler;
@@ -199,7 +235,24 @@ export declare class Dialogs {
     private static mergePromptParams;
     private static createPromptMaster;
     private static clonePromptData;
+    private static resolvePreviewTheme;
+    private static resolveDocumentPreviewTheme;
+    private static closeImagePreview;
+    private static closeDocumentPreview;
+    private static buildPreviewActions;
+    private static openPreviewUrl;
+    private static downloadPreviewUrl;
+    private static resolveFilePreviewSource;
+    private static resolveFilePreviewKind;
+    private static normalizeMimeType;
+    private static mimeTypeFromSource;
+    private static mimeTypeFromFileName;
+    private static fileNameFromUrl;
+    private static formatFileSize;
+    private static renderUnsupportedFilePreview;
     private static createDocumentPreviewRenderSrc;
     private static releaseDocumentPreviewObjectUrl;
+    private static releaseFilePreviewObjectUrl;
+    private static revokeObjectUrl;
     private static decodeDataUrl;
 }

@@ -1306,39 +1306,16 @@ export class Field extends UIBase {
       return;
     }
 
-    if (item.previewUrl || item.downloadUrl) {
-      this.showFullscreen(item.previewUrl || item.downloadUrl);
-      return;
-    }
-
-    if (typeof item.raw === 'string') {
-      this.showFullscreen(item.raw);
-      return;
-    }
-
-    if (item.raw instanceof File) {
-      const objectUrl = URL.createObjectURL(item.raw);
-      if (item.raw.type.startsWith('image/')) {
-        void Dialogs.$imagePreview(objectUrl, {
-          title: item.label || this.params.value.label,
-          fullscreen: this.params.value.previewFullscreen !== false,
-        });
-        return;
-      }
-
-      if (item.raw.type === 'application/pdf') {
-        void Dialogs.$documentPreview(objectUrl, {
-          title: item.label || this.params.value.label,
-          fullscreen: this.params.value.previewFullscreen !== false,
-        });
-        return;
-      }
-
-      void Dialogs.$iframe({
-        src: objectUrl,
+    const source = item.previewUrl || item.downloadUrl || item.raw;
+    if (typeof source === 'string' || (typeof Blob !== 'undefined' && source instanceof Blob)) {
+      await Dialogs.$previewFile(source, {
         title: item.label || this.params.value.label,
+        fileName: item.label || undefined,
+        mimeType: item.mimeType || undefined,
+        fileSize: item.size,
+        openUrl: item.previewUrl || undefined,
+        downloadUrl: item.downloadUrl || undefined,
         fullscreen: this.params.value.previewFullscreen !== false,
-        downloadUrl: objectUrl,
       });
     }
   }
@@ -4508,33 +4485,7 @@ export class Field extends UIBase {
   }
 
   private showFullscreen (data: string) {
-    const isImageData = typeof data === 'string' && (
-      data.startsWith('data:image/')
-      || /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(data)
-    );
-    const isPdfData = typeof data === 'string' && (
-      data.startsWith('data:application/pdf')
-      || /\.pdf(\?.*)?$/i.test(data)
-    );
-
-    if (isImageData) {
-      void Dialogs.$imagePreview(data, {
-        title: this.$text(this.params.value.label),
-        fullscreen: this.params.value.previewFullscreen !== false,
-      });
-      return;
-    }
-
-    if (isPdfData) {
-      void Dialogs.$documentPreview(data, {
-        title: this.$text(this.params.value.label),
-        fullscreen: this.params.value.previewFullscreen !== false,
-      });
-      return;
-    }
-
-    void Dialogs.$iframe({
-      src: data,
+    void Dialogs.$previewFile(data, {
       title: this.$text(this.params.value.label),
       fullscreen: this.params.value.previewFullscreen !== false,
       downloadUrl: data,

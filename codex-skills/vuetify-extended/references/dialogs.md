@@ -26,8 +26,10 @@ If the task is a confirmation, prompt, progress indicator, image preview, docume
   Blocking long-running operation feedback.
 - `Dialogs.$prompt(...)`
   Data-entry dialog that reuses the normal `Field` / `Form` / `Master` stack.
+- `Dialogs.$previewFile(...)`
+  Preferred high-level preview for saved URLs, data URLs, `Blob`s, and `File`s; it routes images, PDFs, browser content, and unsupported files automatically.
 - `Dialogs.$imagePreview(...)`
-  In-app image preview without `window.open(...)`.
+  Specialized in-app image preview without `window.open(...)`.
 - `Dialogs.$iframe(...)`
   Generic embedded browser-renderable content.
 - `Dialogs.$documentPreview(...)`
@@ -63,6 +65,7 @@ If prompt behavior is changed, verify this validation chain still holds.
 
 Prefer in-app preview helpers over new tabs/windows:
 
+- mixed or unknown file types => `Dialogs.$previewFile(...)`
 - images => `Dialogs.$imagePreview(...)`
 - PDFs/documents => `Dialogs.$documentPreview(...)`
 - arbitrary browser-renderable content => `Dialogs.$iframe(...)`
@@ -75,6 +78,10 @@ Prefer in-app preview helpers over new tabs/windows:
 - `prependActions` to place custom actions before defaults
 - dialog visual tuning through `IframeParams`
 
+`Dialogs.$previewFile(...)` accepts explicit `mimeType`, `fileName`, `fileSize`, `openUrl`, and `downloadUrl` metadata. Pass protected assets as an authenticated `Blob`; an iframe or image URL cannot attach an application authorization header. Temporary object URLs are owned and released by `Dialogs`.
+
+Preview dialogs default to `skin: 'inherit'` and use Vuetify `surface`, `background`, `on-surface`, and outline tokens. Keep that default unless a caller deliberately needs `skin: 'light'`, `skin: 'dark'`, or explicit color/style overrides. Embedded iframe/PDF content remains controlled by its source document or browser renderer.
+
 ## Sizing And Defaults
 
 Use the shared `DialogSizeParams` properties for contained dialogs:
@@ -82,7 +89,7 @@ Use the shared `DialogSizeParams` properties for contained dialogs:
 - `width`, `maxWidth`, `minWidth`
 - `height`, `maxHeight`, `minHeight`
 
-Confirm and info accept these as their third argument. Prompt accepts them directly in `PromptParams`. Image, iframe, and document preview dimensions apply when `fullscreen` is `false`.
+Confirm and info accept these as their third argument. Prompt accepts them directly in `PromptParams`. Image, iframe, document, and file preview dimensions apply when `fullscreen` is `false`.
 
 Prefer application defaults when a project needs consistent geometry:
 
@@ -95,11 +102,12 @@ createVuetifyExtendedApp({
     imagePreview: { fullscreen: false, height: '82vh' },
     iframe: { fullscreen: false, width: 1200, height: '85vh' },
     documentPreview: { maxWidth: '94vw' },
+    filePreview: { fullscreen: false, maxWidth: '94vw' },
   },
 })
 ```
 
-Direct equivalents are `Dialogs.setConfirmDefault`, `setInfoDefault`, `setPromptDefault`, `setImagePreviewDefault`, `setIframeDefault`, and `setDocumentPreviewDefault`. Their second `reset` argument replaces existing defaults when `true`; otherwise defaults merge. Per-call params win.
+Direct equivalents are `Dialogs.setConfirmDefault`, `setInfoDefault`, `setPromptDefault`, `setImagePreviewDefault`, `setIframeDefault`, `setDocumentPreviewDefault`, and `setFilePreviewDefault`. Their second `reset` argument replaces existing defaults when `true`; otherwise defaults merge. Per-call params win.
 
 ## Review Checklist
 
