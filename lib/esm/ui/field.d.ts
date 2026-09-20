@@ -483,6 +483,9 @@ export declare class Field extends UIBase {
     private hasDefaultValue;
     private resolveDefaultValue;
     updateValue(): void;
+    private decimalPlaces;
+    private validateDecimalValue;
+    private decimalComparisonRule;
     private synchronizeValue;
     private renderMathInHtml;
     private renderLatex;

@@ -1,5 +1,6 @@
 import moment, { Moment } from "moment-timezone";
 import 'katex/dist/katex.min.css';
+import { type DecimalExcessDigits, type DecimalFormatInput, type ExactDecimalInput, type NumberDecimalValue } from './decimal';
 export declare function sleep(time: number): Promise<unknown>;
 export declare function selectFile(accept?: any, multiple?: boolean): Promise<FileList>;
 export declare function fileToBase64(rawFile: File, maxSize?: any): Promise<unknown>;
@@ -39,15 +40,14 @@ export declare const $amt: (v: any, def?: number) => number;
 export interface fAmtOptions {
     decimalPlaces?: number;
     showZeros?: boolean;
-    def?: number;
+    def?: DecimalFormatInput;
     thouSep?: string;
     decimalSep?: string;
+    excessDigits?: DecimalExcessDigits;
 }
-export declare const $famt: (amount: any, options?: fAmtOptions) => string;
+export declare const $famt: (amount: DecimalFormatInput | null | undefined, options?: fAmtOptions) => string;
 export declare const $zFill: (v: any, precision?: number) => string;
-export declare const toDecimal: (value: any, decimals?: number) => {
-    $numberDecimal: string;
-};
+export declare const toDecimal: (value: ExactDecimalInput, decimals?: number) => NumberDecimalValue;
 export interface arrayToObjectOptions {
     key?: string;
     select?: string | string[];

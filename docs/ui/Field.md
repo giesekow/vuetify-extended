@@ -1019,15 +1019,28 @@ Supported `timeFormat` values:
 - Stored datatype:
   `{ $numberDecimal: string }`
 - UI datatype:
-  string/number-like value
+  `string`
 - Widget:
-  numeric `VTextField`
+  text `VTextField` with `inputmode="decimal"`
 - Relevant params:
   `decimalPlaces`, `validation`
 - Relevant options:
   `validate`, `changed`
 - Notes:
-  On blur, decimal text is normalized to the configured number of decimal places.
+  Decimal values remain strings throughout the field lifecycle and are never converted through JavaScript `Number`. The default `decimalPlaces` is `2`; values from `0` through `100` are supported. Values with fewer fractional digits are padded on blur and before storage. Values with more fractional digits are not rounded: validation rejects them through `ve.validation.decimalPlaces`. Invalid decimal syntax is rejected through `ve.validation.decimal`.
+
+  `$value` returns the exact normalized decimal string, while `Master` receives the API representation `{ $numberDecimal: string }`. Use plain decimal notation such as `"90071992547409.93"`; exponential notation such as `"9e2"` is not accepted. Define decimal defaults and validation bounds as strings when exactness matters. Numeric `validation` constraints (`range`, `min`, `max`, `gt`, `gte`, `lt`, `lte`, `eq`, and `neq`) compare decimal strings exactly without converting them to `Number`.
+
+```ts
+$FD(
+  {
+    type: 'decimal',
+    storage: 'journalAmount',
+    label: 'Journal amount',
+    decimalPlaces: 2,
+  },
+)
+```
 
 ### `color`
 
@@ -1710,7 +1723,7 @@ Useful runtime properties:
 - `Field` pushes changes back into `Master` through `storage` whenever the bound UI value changes.
 - `options.modifies` receives the same resolved value that is written into `Master`.
 - `date` is normalized to the browser input format first, then stored according to `dateFormat`; `time` is normalized to `HH:mm` first, then stored according to `timeFormat`; `datetime` is not normalized beyond what the datepicker emits.
-- `decimal` is normalized into `{ $numberDecimal: string }` before storage.
+- `decimal` remains an exact string in the UI and `$value`, and is normalized into `{ $numberDecimal: string }` before storage. Excess fractional digits are rejected rather than rounded.
 - Some display widgets such as `label`, `button`, and many `chart` uses do not need meaningful `storage`.
 
 ## Example

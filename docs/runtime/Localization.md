@@ -157,7 +157,7 @@ The built-in catalog now also includes feature and infrastructure namespaces suc
 - `ve.shell.*` and `ve.user.*` for shell accessibility and user-menu helper text
 - `ve.shortcut.*` for modifier names
 - `ve.editor.*` for the rich HTML editor toolbar, prompts, table actions, and video actions
-- `ve.validation.*` for required, range, comparison, list, length, regex, file-size, and Master validation messages
+- `ve.validation.*` for required, decimal syntax and scale, range, comparison, list, length, regex, file-size, and Master validation messages
 
 ## Translation-Aware Validation
 

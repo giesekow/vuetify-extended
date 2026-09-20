@@ -35,6 +35,7 @@ import { OnHandler } from "./lib";
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { interpolateUITextTemplate, isUITextDescriptor, isUIValidationMessage, resolveUIText, type UIText, type UIValidationResult, type UIValidationRuleResult } from "./runtime";
+import { compareExactDecimals, normalizeExactDecimal, resolveDecimalPlaces } from "../misc/decimal";
 import { resolveUITableHeaders, type UITableHeader } from "./table-header";
 import { type HtmlEditorProfile, type HtmlEditorToolbarItem } from "./html-editor-options";
 
@@ -552,7 +553,10 @@ export class Field extends UIBase {
   get $value() {
     const val = this.postprocess(this.modelValue.value);
     if (this.params.value.type === 'decimal') {
-      if (val?.$numberDecimal !== undefined) return Number(val.$numberDecimal);
+      if (Array.isArray(val)) {
+        return val.map((item: any) => item?.$numberDecimal ?? item);
+      }
+      if (val?.$numberDecimal !== undefined) return val.$numberDecimal;
     }
     return val
   }
@@ -1467,6 +1471,70 @@ export class Field extends UIBase {
     this.synchronizeValue();
   }
 
+  private decimalPlaces() {
+    return resolveDecimalPlaces(this.params.value.decimalPlaces);
+  }
+
+  private validateDecimalValue(value: any): UIValidationResult {
+    if (this.params.value.type !== 'decimal') {
+      return undefined;
+    }
+
+    const values = Array.isArray(value) ? value : [value];
+    for (const item of values) {
+      const result = normalizeExactDecimal(item, this.decimalPlaces());
+      if (result.empty) {
+        continue;
+      }
+      if (!result.valid) {
+        return this.$uiText('ve.validation.decimal', 'Enter a valid decimal value.');
+      }
+      if (result.exceedsScale) {
+        return this.$uiText(
+          've.validation.decimalPlaces',
+          'Value cannot exceed {places} decimal places.',
+          { places: this.decimalPlaces() },
+        );
+      }
+    }
+
+    return undefined;
+  }
+
+  private decimalComparisonRule(
+    expected: any,
+    operator: 'lt'|'lte'|'gt'|'gte'|'eq'|'neq',
+    key: string,
+    fallback: string,
+    values: Record<string, any>,
+  ) {
+    return (value: any) => {
+      const candidates = Array.isArray(value) ? value : [value];
+      for (const candidate of candidates) {
+        if (candidate === undefined || candidate === null || candidate === '') {
+          continue;
+        }
+
+        const comparison = compareExactDecimals(candidate, expected);
+        if (comparison === undefined) {
+          continue;
+        }
+
+        const valid = operator === 'lt' ? comparison < 0
+          : operator === 'lte' ? comparison <= 0
+            : operator === 'gt' ? comparison > 0
+              : operator === 'gte' ? comparison >= 0
+                : operator === 'eq' ? comparison === 0
+                  : comparison !== 0;
+        if (!valid) {
+          return this.$uiText(key, fallback, values);
+        }
+      }
+
+      return true;
+    };
+  }
+
   private synchronizeValue(options: FieldUpdateOptions = {}, forceInitialization = false) {
     if (!this.changing) {
       const previousValue = this.modelValue.value;
@@ -1648,17 +1716,9 @@ export class Field extends UIBase {
     }
 
     if (this.params.value.type === 'decimal') {
-      const dp = this.params.value.decimalPlaces || 2;
-      if (value.$numberDecimal !== undefined) {
-        return Number(value.$numberDecimal).toFixed(dp)
-      } else {
-        try {
-          const dvalue = Number(value).toFixed(dp)
-          return dvalue
-        } catch (error) {
-          
-        }
-      }
+      const values = Array.isArray(value) ? value : [value];
+      const normalized = values.map((item: any) => normalizeExactDecimal(item, this.decimalPlaces()).value);
+      return Array.isArray(value) ? normalized : normalized[0];
     }
 
     return value;
@@ -1686,10 +1746,15 @@ export class Field extends UIBase {
     }
 
     if (this.params.value.type === 'decimal') {
-      if (value.$numberDecimal === undefined && value !== undefined && value !== null) {
-        const dp = this.params.value.decimalPlaces || 2;
-        return { $numberDecimal: Number(value || 0).toFixed(dp) }
-      }
+      const values = Array.isArray(value) ? value : [value];
+      const normalized = values.map((item: any) => {
+        const result = normalizeExactDecimal(item, this.decimalPlaces());
+        if (result.empty || !result.valid || result.exceedsScale) {
+          return result.value;
+        }
+        return { $numberDecimal: result.value };
+      });
+      return Array.isArray(value) ? normalized : normalized[0];
     }
 
     if (this.params.value.type === 'float') {
@@ -2786,6 +2851,8 @@ export class Field extends UIBase {
 
   async validate(): Promise<UIValidationResult> {
     if (this.params.value.invisible) return undefined;
+    const decimalResult = this.validateDecimalValue(this.modelValue.value);
+    if (isUIValidationMessage(decimalResult)) return decimalResult;
     const validationVersion = ++this.htmlValidationVersion;
     const value = this.modelValue.value;
     const result = this.options.validate ? await this.options.validate(this) : undefined;
@@ -2801,6 +2868,10 @@ export class Field extends UIBase {
 
   private rules(): any[] {
     const items: any[] = this.options.rules ? this.options.rules(this) : [];
+
+    if (this.params.value.type === 'decimal') {
+      items.unshift((value: any) => this.validateDecimalValue(value) || true);
+    }
 
     if (this.options.rules) {
       return items.map((rule) => this.resolveValidationRule(rule));
@@ -2821,15 +2892,22 @@ export class Field extends UIBase {
       if (this.params.value.type === 'time') converter = (v: any) => (new SimpleTime(v)).toNumber();
 
 
-      if (v.range) items.push($v.range(v.range.from, v.range.to, v.range.converter || converter));
-      if (v.max) items.push($v.max(v.max.value, v.max.converter || converter));
-      if (v.min) items.push($v.min(v.min.value, v.min.converter || converter));
-      if (v.gt) items.push($v.gt(v.gt.value, v.gt.converter || converter));
-      if (v.lt) items.push($v.lt(v.lt.value, v.lt.converter || converter));
-      if (v.gte) items.push($v.gte(v.gte.value, v.gte.converter || converter));
-      if (v.lte) items.push($v.lte(v.lte.value, v.lte.converter || converter));
-      if (v.neq) items.push($v.neq(v.neq.value, v.neq.converter || converter));
-      if (v.eq) items.push($v.eq(v.eq.value, v.eq.converter || converter));
+      if (v.range) {
+        items.push(this.params.value.type === 'decimal'
+          ? this.decimalComparisonRule(v.range.to, 'lte', 've.validation.max', 'Value cannot exceed {max}', { max: v.range.to })
+          : $v.max(v.range.to, v.range.converter || converter));
+        items.push(this.params.value.type === 'decimal'
+          ? this.decimalComparisonRule(v.range.from, 'gte', 've.validation.min', 'Value cannot be below {min}', { min: v.range.from })
+          : $v.min(v.range.from, v.range.converter || converter));
+      }
+      if (v.max) items.push(this.params.value.type === 'decimal' ? this.decimalComparisonRule(v.max.value, 'lte', 've.validation.max', 'Value cannot exceed {max}', { max: v.max.value }) : $v.max(v.max.value, v.max.converter || converter));
+      if (v.min) items.push(this.params.value.type === 'decimal' ? this.decimalComparisonRule(v.min.value, 'gte', 've.validation.min', 'Value cannot be below {min}', { min: v.min.value }) : $v.min(v.min.value, v.min.converter || converter));
+      if (v.gt) items.push(this.params.value.type === 'decimal' ? this.decimalComparisonRule(v.gt.value, 'gt', 've.validation.greaterThan', 'Value should be greater than {value}', { value: v.gt.value }) : $v.gt(v.gt.value, v.gt.converter || converter));
+      if (v.lt) items.push(this.params.value.type === 'decimal' ? this.decimalComparisonRule(v.lt.value, 'lt', 've.validation.lessThan', 'Value should be less than {value}', { value: v.lt.value }) : $v.lt(v.lt.value, v.lt.converter || converter));
+      if (v.gte) items.push(this.params.value.type === 'decimal' ? this.decimalComparisonRule(v.gte.value, 'gte', 've.validation.greaterThanOrEqual', 'Value should be greater than or equal to {value}', { value: v.gte.value }) : $v.gte(v.gte.value, v.gte.converter || converter));
+      if (v.lte) items.push(this.params.value.type === 'decimal' ? this.decimalComparisonRule(v.lte.value, 'lte', 've.validation.lessThanOrEqual', 'Value should be less than or equal to {value}', { value: v.lte.value }) : $v.lte(v.lte.value, v.lte.converter || converter));
+      if (v.neq) items.push(this.params.value.type === 'decimal' ? this.decimalComparisonRule(v.neq.value, 'neq', 've.validation.notEqual', 'Value cannot be equal to {value}', { value: v.neq.value }) : $v.neq(v.neq.value, v.neq.converter || converter));
+      if (v.eq) items.push(this.params.value.type === 'decimal' ? this.decimalComparisonRule(v.eq.value, 'eq', 've.validation.equal', 'Value must be equal to {value}', { value: v.eq.value }) : $v.eq(v.eq.value, v.eq.converter || converter));
       if (v.in) items.push($v.in(v.in));
       if (v.nin) items.push($v.nin(v.nin));
       if (v.includes !== undefined ) items.push($v.includes(v.includes));
@@ -2904,8 +2982,9 @@ export class Field extends UIBase {
       case 'file-upload':
         return this.buildFileUpload(props, context);
       case 'float':
-      case 'decimal':
         return this.buildText(props, context, 'number');
+      case 'decimal':
+        return this.buildText(props, context, 'text');
       case 'map':
       case 'map-line':
       case 'map-circle':
@@ -2976,6 +3055,7 @@ export class Field extends UIBase {
           readonly: this.$readonly,
           multiple: true,
           type,
+          inputmode: this.params.value.type === 'decimal' ? 'decimal' : undefined,
           chips: true,
           items: [],
           class: this.params.value.class || [],
@@ -3003,6 +3083,7 @@ export class Field extends UIBase {
           style: this.params.value.style || {},
           rules: this.rules(),
           type,
+          inputmode: this.params.value.type === 'decimal' ? 'decimal' : undefined,
           "onUpdate:focused": (ev) => this.onFocusChanged(ev)
         },
       );
@@ -4701,12 +4782,15 @@ export class Field extends UIBase {
 
   onFocusChanged(focused: any) {
     if (this.isEditting && !focused) {
-      if (this.params.value.type === 'decimal' && this.modelValue.value) {
+      if (this.params.value.type === 'decimal' && this.modelValue.value !== undefined && this.modelValue.value !== null) {
         this.changing = true;
-        const dp = this.params.value.decimalPlaces || 2;
-        const dvalue = Array.isArray(this.modelValue.value) ? this.modelValue.value.map((v: any) => Number(v).toFixed(dp)) : Number(this.modelValue.value).toFixed(dp)
-        this.modelValue.value = dvalue
-        this.changing = false;
+        try {
+          const values = Array.isArray(this.modelValue.value) ? this.modelValue.value : [this.modelValue.value];
+          const dvalue = values.map((value: any) => normalizeExactDecimal(value, this.decimalPlaces()).value);
+          this.modelValue.value = Array.isArray(this.modelValue.value) ? dvalue : dvalue[0];
+        } finally {
+          this.changing = false;
+        }
       }
     }
     this.isEditting = focused

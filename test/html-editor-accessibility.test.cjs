@@ -24,7 +24,10 @@ function sourceClass(file, names) {
     .map(node => node.getText(ast));
   assert.equal(methods.length, names.length);
   const js = ts.transpileModule(`class Subject {${methods.join('\n')}}\nSubject;`, {}).outputText;
-  return vm.runInNewContext(js);
+  return vm.runInNewContext(js, {
+    isUIValidationMessage: value => typeof value === 'string' || typeof value === 'function'
+      || (!!value && typeof value === 'object' && typeof value.key === 'string'),
+  });
 }
 
 (async () => {
@@ -85,6 +88,7 @@ field.htmlValidationResult = { value: undefined };
 field.htmlValidationVersion = 0;
 field.changing = false;
 field.options = {};
+field.validateDecimalValue = () => undefined;
 field.postprocess = value => value;
 field.renderLatex = async () => {};
 field.notifyChanged = () => {};

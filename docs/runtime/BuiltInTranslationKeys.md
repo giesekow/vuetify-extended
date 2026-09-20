@@ -77,6 +77,8 @@ Shared mode labels used by forms and reports:
 Shared validation messages used by `FieldParams.required`, `FieldParams.validation`, the exported `$v` helpers, file-size checks, and `Master` validation errors:
 
 - `ve.validation.equal`
+- `ve.validation.decimal`
+- `ve.validation.decimalPlaces`
 - `ve.validation.error`
 - `ve.validation.excludes`
 - `ve.validation.fileMaxSize`
@@ -98,6 +100,7 @@ Shared validation messages used by `FieldParams.required`, `FieldParams.validati
 Interpolation values:
 
 - `ve.validation.equal`, `notEqual`, `greaterThan`, `greaterThanOrEqual`, `lessThan`, `lessThanOrEqual`, `includes`, and `excludes`: `{ value }`
+- `ve.validation.decimalPlaces`: `{ places }`
 - `ve.validation.max` and `maxLength`: `{ max }`
 - `ve.validation.min` and `minLength`: `{ min }`
 - `ve.validation.oneOf` and `notOneOf`: `{ values }`

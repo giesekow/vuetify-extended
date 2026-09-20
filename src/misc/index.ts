@@ -4,3 +4,4 @@ export * from './excel';
 export * from './print';
 export * from './html-to-printer';
 export * from './general';
+export * from './decimal';

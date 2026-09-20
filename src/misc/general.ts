@@ -4,6 +4,16 @@ import { Buffer } from "buffer";
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { Master } from '../master';
+import {
+  normalizeExactDecimal,
+  parseExactDecimal,
+  resolveDecimalPlaces,
+  roundExactDecimal,
+  type DecimalExcessDigits,
+  type DecimalFormatInput,
+  type ExactDecimalInput,
+  type NumberDecimalValue,
+} from './decimal';
 
 export function sleep(time: number) {
   return new Promise((resolve: any) => {
@@ -220,27 +230,49 @@ export const $amt = (v: any, def?: number): number => {
 export interface fAmtOptions {
   decimalPlaces?: number;
   showZeros?: boolean;
-  def?: number;
+  def?: DecimalFormatInput;
   thouSep?: string;
   decimalSep?: string;
+  excessDigits?: DecimalExcessDigits;
 }
 
-export const $famt = (amount: any, options?: fAmtOptions) => {
-  const v = $amt(amount, options?.def);
-  if (!(v || options?.showZeros)) {
-    return ''
-  }
+export const $famt = (amount: DecimalFormatInput|null|undefined, options?: fAmtOptions): string => {
+  const places = resolveDecimalPlaces(options?.decimalPlaces);
+  const excessDigits = options?.excessDigits ?? 'round';
+  const normalize = (value: DecimalFormatInput|null|undefined) => {
+    const result = normalizeExactDecimal(value, places);
+    if (!result.valid || result.empty) {
+      return undefined;
+    }
+    if (!result.exceedsScale) {
+      return result.value;
+    }
+    if (excessDigits === 'reject') {
+      return undefined;
+    }
+    if (excessDigits === 'preserve') {
+      return parseExactDecimal(value)?.normalized;
+    }
+    return roundExactDecimal(value, places).value;
+  };
 
-  if (Number.isNaN(Number(v))) {
+  const normalized = normalize(amount) ?? normalize(options?.def);
+  if (!normalized) {
     return '';
   }
 
-  const n = options?.decimalPlaces || 2
-  const s = options?.thouSep || ','
-  const c = options?.decimalSep || '.'
-  const re = '\\d(?=(\\d{' + 3 + '})+' + (n > 0 ? '\\D' : '$') + ')'
-  const num = Number(v).toFixed(Math.max(0, ~~n));
-  return (c ? num.replace('.', c) : num).replace(new RegExp(re, 'g'), '$&' + (s || ','));
+  const parsed = parseExactDecimal(normalized)!;
+  if (!options?.showZeros && !/[1-9]/.test(`${parsed.integer}${parsed.fraction}`)) {
+    return '';
+  }
+
+  const thousandSeparator = options?.thouSep || ',';
+  const decimalSeparator = options?.decimalSep || '.';
+  const groupedInteger = thousandSeparator
+    ? parsed.integer.replace(/\B(?=(\d{3})+(?!\d))/g, () => thousandSeparator)
+    : parsed.integer;
+  const fraction = parsed.fraction ? `${decimalSeparator}${parsed.fraction}` : '';
+  return `${parsed.negative ? '-' : ''}${groupedInteger}${fraction}`;
 }
 
 export const $zFill = (v: any, precision?: number): string => {
@@ -248,8 +280,20 @@ export const $zFill = (v: any, precision?: number): string => {
   return String(v).padStart(precision, '0')
 }
 
-export const toDecimal = (value: any, decimals?: number) => {
-  return {$numberDecimal: Number(value || 0).toFixed(decimals || 2)};
+export const toDecimal = (value: ExactDecimalInput, decimals?: number): NumberDecimalValue => {
+  if (typeof value !== 'string' && !(value && typeof value === 'object' && typeof value.$numberDecimal === 'string')) {
+    throw new TypeError('toDecimal requires a decimal string or $numberDecimal value.');
+  }
+
+  const result = normalizeExactDecimal(value, decimals);
+  if (result.empty || !result.valid) {
+    throw new TypeError('toDecimal requires a valid, non-empty decimal value.');
+  }
+  if (result.exceedsScale) {
+    throw new RangeError(`Decimal value cannot exceed ${resolveDecimalPlaces(decimals)} decimal places.`);
+  }
+
+  return { $numberDecimal: result.value };
 }
 
 export interface arrayToObjectOptions {
