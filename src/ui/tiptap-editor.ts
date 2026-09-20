@@ -10,7 +10,7 @@ import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
-import { computed, defineComponent, h as vueH, mergeProps, onBeforeUnmount, onMounted, PropType, ref, shallowRef, watch } from 'vue';
+import { computed, defineComponent, h as vueH, mergeProps, onBeforeUnmount, onMounted, PropType, ref, shallowRef, useId, watch } from 'vue';
 import { VBtn, VDialog, VDivider, VList, VListItem, VMenu, VSheet, VTextarea, VTooltip } from 'vuetify/components';
 import { Dialogs } from './dialogs';
 import { fileToBase64, selectFile } from '../misc';
@@ -325,6 +325,10 @@ export const TiptapHtmlEditor = defineComponent({
       type: String,
       default: '',
     },
+    label: { type: String, default: '' },
+    hint: { type: String, default: '' },
+    errorMessage: { type: String, default: '' },
+    required: { type: Boolean, default: false },
     height: {
       type: [Number, String] as PropType<number | string | undefined>,
       default: 300,
@@ -344,6 +348,22 @@ export const TiptapHtmlEditor = defineComponent({
   },
   emits: ['update:modelValue', 'ready'],
   setup(props, { emit, attrs }) {
+    const accessibilityId = useId();
+    const hintId = `${accessibilityId}-hint`;
+    const errorId = `${accessibilityId}-error`;
+    const accessibleName = () => props.label || props.placeholder || topLevelText('ve.editor.content', 'Content');
+    const editorAttributes = () => ({
+      class: 'vef-tiptap__content ProseMirror',
+      role: 'textbox',
+      'aria-label': accessibleName(),
+      'aria-multiline': 'true',
+      'aria-required': String(props.required),
+      'aria-readonly': String(props.readonly),
+      'aria-disabled': String(props.disabled),
+      'aria-invalid': String(!!props.errorMessage),
+      'aria-describedby': [props.hint ? hintId : '', props.errorMessage ? errorId : ''].filter(Boolean).join(' '),
+      tabindex: props.disabled ? '-1' : '0',
+    });
     const editor = shallowRef<Editor | null>(null);
     const rootEl = ref<any>(null);
     const hostEl = ref<HTMLElement | null>(null);
@@ -354,6 +374,16 @@ export const TiptapHtmlEditor = defineComponent({
     const sourceSnapshot = ref(normalizeHtmlValue(props.modelValue));
     const sourceMode = ref(false);
     const fullscreenDialog = ref(false);
+    let fullscreenReturnFocus: HTMLElement | null = null;
+    const openFullscreen = () => {
+      fullscreenReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      fullscreenDialog.value = true;
+    };
+    const restoreFullscreenFocus = () => {
+      if (fullscreenDialog.value) return;
+      if (fullscreenReturnFocus?.isConnected) fullscreenReturnFocus.focus();
+      fullscreenReturnFocus = null;
+    };
     const editorActionFrame = ref<number | null>(null);
     const initHandlers: Array<(...args: any[]) => void> = [];
     const keydownHandlers: Array<(...args: any[]) => void> = [];
@@ -554,12 +584,15 @@ export const TiptapHtmlEditor = defineComponent({
       VTooltip,
       {
         text: params.title,
+        'aria-label': params.title,
         location: 'top',
         openDelay: 120,
       },
       {
         activator: ({ props: tooltipProps }: any) => vueH(VBtn, mergeProps(tooltipProps, {
           icon: params.icon,
+          'aria-label': params.title,
+          'aria-pressed': params.active === undefined ? undefined : String(params.active),
           variant: params.active ? 'tonal' : 'text',
           density: 'compact',
           size: 'small',
@@ -609,12 +642,14 @@ export const TiptapHtmlEditor = defineComponent({
           VTooltip,
           {
             text: params.title,
+            'aria-label': params.title,
             location: 'top',
             openDelay: 120,
           },
           {
             activator: ({ props: tooltipProps }: any) => vueH(VBtn, mergeProps(menuActivatorProps, tooltipProps, {
               prependIcon: params.icon,
+              'aria-label': params.title,
               appendIcon: 'mdi-menu-down',
               variant: params.active ? 'tonal' : 'text',
               density: 'compact',
@@ -872,7 +907,7 @@ export const TiptapHtmlEditor = defineComponent({
 
       if (event.key === 'F11' && hasToolbarItem('fullscreen')) {
         event.preventDefault();
-        fullscreenDialog.value = true;
+        openFullscreen();
         return true;
       }
 
@@ -1010,9 +1045,7 @@ export const TiptapHtmlEditor = defineComponent({
           TableCell,
         ],
         editorProps: {
-          attributes: {
-            class: 'vef-tiptap__content ProseMirror',
-          },
+          attributes: editorAttributes,
           handleDOMEvents: {
             keydown: (_view, event) => {
               if (onEditorShortcut(event as KeyboardEvent)) {
@@ -1104,6 +1137,11 @@ export const TiptapHtmlEditor = defineComponent({
         editor.value?.setEditable(!(readonly || disabled));
         refreshToolbar();
       },
+    );
+
+    watch(
+      () => [props.label, props.placeholder, props.hint, props.errorMessage, props.required, props.readonly, props.disabled],
+      () => editor.value?.setOptions({ editorProps: { attributes: editorAttributes } }),
     );
 
     return () => {
@@ -1384,7 +1422,7 @@ export const TiptapHtmlEditor = defineComponent({
         icon: 'mdi-fullscreen',
         title: tooltip('ve.editor.fullscreen.open', 'Open Fullscreen Editor', 'F11'),
         onClick: () => {
-          fullscreenDialog.value = true;
+          openFullscreen();
         },
       });
 
@@ -1626,6 +1664,10 @@ export const TiptapHtmlEditor = defineComponent({
 
       const editorBody = sourceMode.value
         ? vueH(VTextarea, {
+          'aria-label': accessibleName(),
+          'aria-describedby': editorAttributes()['aria-describedby'],
+          'aria-invalid': String(!!props.errorMessage),
+          'aria-required': String(props.required),
           modelValue: sourceDraft.value,
           readonly: props.readonly,
           disabled: props.disabled,
@@ -1688,6 +1730,8 @@ export const TiptapHtmlEditor = defineComponent({
                   },
                   editorBody as any,
                 ),
+                props.hint ? vueH('div', { id: hintId, class: 'text-caption mx-3 mb-1' }, props.hint) : null,
+                props.errorMessage ? vueH('div', { id: errorId, class: 'text-error text-caption mx-3 mb-1', role: 'alert' }, props.errorMessage) : null,
               ],
             },
           ),
@@ -1699,6 +1743,8 @@ export const TiptapHtmlEditor = defineComponent({
                 fullscreenDialog.value = value;
               },
               fullscreen: true,
+              'aria-label': accessibleName(),
+              onAfterLeave: restoreFullscreenFocus,
             },
             {
               default: () => vueH(
@@ -1712,6 +1758,10 @@ export const TiptapHtmlEditor = defineComponent({
                     readonly: props.readonly,
                     disabled: props.disabled,
                     placeholder: props.placeholder,
+                    label: props.label,
+                    hint: props.hint,
+                    errorMessage: props.errorMessage,
+                    required: props.required,
                     height: 'calc(100vh - 32px)',
                     profile: props.profile,
                     toolbar: props.toolbar,
@@ -1721,6 +1771,7 @@ export const TiptapHtmlEditor = defineComponent({
                   vueH(VBtn, {
                     icon: 'mdi-close',
                     title: t('ve.editor.fullscreen.close', 'Close Fullscreen'),
+                    'aria-label': t('ve.editor.fullscreen.close', 'Close Fullscreen'),
                     class: ['vef-tiptap__fullscreen-close'],
                     onClick: () => {
                       fullscreenDialog.value = false;

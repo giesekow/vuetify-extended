@@ -42,6 +42,7 @@ export interface RichWidgetContext {
   params: Ref<any>;
   modelValue: Ref<any>;
   maxWidth: Ref<any>;
+  htmlValidationMessage?: () => string;
   getState: <T>(key: string, init: () => T) => T;
   isCreateMode: () => boolean;
   codePreview: Ref<any>;
@@ -232,6 +233,10 @@ export function buildHTMLWidget(field: RichWidgetContext): VNode {
       readonly: field.$readonly,
       disabled: field.$readonly,
       placeholder: field.$text(field.params.value.placeholder),
+      label: field.$text(field.params.value.label),
+      hint: field.$text(field.params.value.hint),
+      errorMessage: field.htmlValidationMessage?.() || '',
+      required: !!field.params.value.required,
       height: field.params.value.height || 300,
       profile: field.params.value.htmlProfile,
       toolbar,
@@ -250,6 +255,7 @@ export function buildHTMLWidget(field: RichWidgetContext): VNode {
 
   const fullscreenBtn = h(VBtn, {
     icon: 'mdi-fullscreen',
+    'aria-label': field.$text({ key: 've.field.preview', fallback: 'Preview' }),
     size: 'small',
     style: {
       'margin-top': '-64px'

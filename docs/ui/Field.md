@@ -1057,6 +1057,22 @@ Supported `timeFormat` values:
 
 `htmlProfile` selects a predefined toolbar. It defaults to `full`, preserving the complete editor toolbar used by existing applications.
 
+HTML fields expose a multiline textbox named with the resolved field `label`.
+Supply a meaningful localized label (a placeholder is not a replacement for a
+visible field label). The resolved `hint` is rendered and associated with the
+textbox. A failed custom `FieldOptions.validate` result is also associated with
+it and marks it invalid; editing clears that stale message. Validation rules and
+save decisions are unchanged. Readonly/disabled and required states are exposed
+to assistive technology. Toolbar buttons have explicit localized names and
+formatting toggles expose their pressed state, retaining normal Tab navigation.
+
+Direct `TiptapHtmlEditor` consumers may pass resolved strings through `label`,
+`hint`, `errorMessage`, and a boolean `required`. These props remain reactive and
+are carried into fullscreen editing with per-instance description IDs. As with
+the existing editor, toolbar configuration is not an HTML security policy.
+Fullscreen editing restores focus to its connected opener after the native
+dialog leave transition, including when opened using F11.
+
 | Profile | Controls |
 | --- | --- |
 | `minimal` | undo, redo, alignment, bold, italic |

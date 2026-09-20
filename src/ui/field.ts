@@ -356,6 +356,7 @@ export interface Refs {
 export class Field extends UIBase {
   private params: Ref<FieldParams>;
   private modelValue = this.$makeRef();
+  private htmlValidationResult = this.$makeRef<UIValidationResult>();
   private options: FieldOptions;
   private changing: boolean;
   private handledModelSyncPending = false;
@@ -1394,6 +1395,7 @@ export class Field extends UIBase {
   }
 
   valueChanged(newValue?: any, origin: FieldValueOrigin = 'programmatic', previousValue?: any) {
+    this.htmlValidationResult.value = undefined;
     if (this.changing) {
       return;
     }
@@ -2782,7 +2784,12 @@ export class Field extends UIBase {
 
   async validate(): Promise<UIValidationResult> {
     if (this.params.value.invisible) return undefined;
-    if (this.options.validate) return await this.options.validate(this);
+    const value = this.modelValue.value;
+    const result = this.options.validate ? await this.options.validate(this) : undefined;
+    if (this.params.value.type === 'html' && value === this.modelValue.value) {
+      this.htmlValidationResult.value = result;
+    }
+    return result;
   }
 
   private rules(): any[] {
@@ -3473,6 +3480,8 @@ export class Field extends UIBase {
       params: this.params,
       modelValue: this.modelValue,
       maxWidth: this.maxWidth,
+      htmlValidationMessage: () => isUIValidationMessage(this.htmlValidationResult.value)
+        ? this.$text(this.htmlValidationResult.value) : '',
       $makeRef: this.$makeRef,
       $watch: this.$watch,
       getState: <T>(key: string, init: () => T): T => {

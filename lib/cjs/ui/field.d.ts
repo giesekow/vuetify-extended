@@ -295,6 +295,7 @@ export interface Refs {
 export declare class Field extends UIBase {
     private params;
     private modelValue;
+    private htmlValidationResult;
     private options;
     private changing;
     private handledModelSyncPending;

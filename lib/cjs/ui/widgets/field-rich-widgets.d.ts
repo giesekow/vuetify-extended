@@ -19,6 +19,7 @@ export interface RichWidgetContext {
     params: Ref<any>;
     modelValue: Ref<any>;
     maxWidth: Ref<any>;
+    htmlValidationMessage?: () => string;
     getState: <T>(key: string, init: () => T) => T;
     isCreateMode: () => boolean;
     codePreview: Ref<any>;

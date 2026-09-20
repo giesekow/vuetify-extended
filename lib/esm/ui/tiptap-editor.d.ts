@@ -25,6 +25,22 @@ export declare const TiptapHtmlEditor: import("vue").DefineComponent<import("vue
         type: StringConstructor;
         default: string;
     };
+    label: {
+        type: StringConstructor;
+        default: string;
+    };
+    hint: {
+        type: StringConstructor;
+        default: string;
+    };
+    errorMessage: {
+        type: StringConstructor;
+        default: string;
+    };
+    required: {
+        type: BooleanConstructor;
+        default: boolean;
+    };
     height: {
         type: PropType<string | number | undefined>;
         default: number;
@@ -60,6 +76,22 @@ export declare const TiptapHtmlEditor: import("vue").DefineComponent<import("vue
         type: StringConstructor;
         default: string;
     };
+    label: {
+        type: StringConstructor;
+        default: string;
+    };
+    hint: {
+        type: StringConstructor;
+        default: string;
+    };
+    errorMessage: {
+        type: StringConstructor;
+        default: string;
+    };
+    required: {
+        type: BooleanConstructor;
+        default: boolean;
+    };
     height: {
         type: PropType<string | number | undefined>;
         default: number;
@@ -81,12 +113,16 @@ export declare const TiptapHtmlEditor: import("vue").DefineComponent<import("vue
     onReady?: ((...args: any[]) => any) | undefined;
 }>, {
     readonly: boolean;
+    label: string;
     disabled: boolean;
     height: string | number | undefined;
     modelValue: string;
+    required: boolean;
+    hint: string;
     placeholder: string;
     toolbar: HtmlEditorToolbarItem[] | undefined;
     allowFullscreen: boolean;
+    errorMessage: string;
     profile: HtmlEditorProfile;
 }, {}, {}, {}, string, import("vue").ComponentProvideOptions, true, {}, any>;
 export {};
