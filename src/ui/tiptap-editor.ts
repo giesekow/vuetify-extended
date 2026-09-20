@@ -61,6 +61,39 @@ const asCssSize = (value: number | string | undefined): string | undefined => {
 
 const normalizeHtmlValue = (value: string | null | undefined): string => value || '';
 
+function withEditorAccessibilityAttributes(editorProps: any, attributes: () => Record<string, string>) {
+  return {
+    ...(editorProps || {}),
+    attributes,
+  };
+}
+
+function buildEditorAccessibilityAttributes(params: {
+  name: string;
+  hint: string;
+  hintId: string;
+  errorMessage: string;
+  errorId: string;
+  required: boolean;
+  readonly: boolean;
+  disabled: boolean;
+}) {
+  return {
+    class: 'vef-tiptap__content ProseMirror',
+    role: 'textbox',
+    'aria-label': params.name,
+    'aria-multiline': 'true',
+    'aria-required': String(params.required),
+    'aria-readonly': String(params.readonly),
+    'aria-disabled': String(params.disabled),
+    'aria-invalid': String(!!params.errorMessage),
+    'aria-describedby': [params.hint ? params.hintId : '', params.errorMessage ? params.errorId : '']
+      .filter(Boolean)
+      .join(' '),
+    tabindex: params.disabled ? '-1' : '0',
+  };
+}
+
 const normalizeUrlInput = (value: string): string => {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -352,17 +385,15 @@ export const TiptapHtmlEditor = defineComponent({
     const hintId = `${accessibilityId}-hint`;
     const errorId = `${accessibilityId}-error`;
     const accessibleName = () => props.label || props.placeholder || topLevelText('ve.editor.content', 'Content');
-    const editorAttributes = () => ({
-      class: 'vef-tiptap__content ProseMirror',
-      role: 'textbox',
-      'aria-label': accessibleName(),
-      'aria-multiline': 'true',
-      'aria-required': String(props.required),
-      'aria-readonly': String(props.readonly),
-      'aria-disabled': String(props.disabled),
-      'aria-invalid': String(!!props.errorMessage),
-      'aria-describedby': [props.hint ? hintId : '', props.errorMessage ? errorId : ''].filter(Boolean).join(' '),
-      tabindex: props.disabled ? '-1' : '0',
+    const editorAttributes = () => buildEditorAccessibilityAttributes({
+      name: accessibleName(),
+      hint: props.hint,
+      hintId,
+      errorMessage: props.errorMessage,
+      errorId,
+      required: props.required,
+      readonly: props.readonly,
+      disabled: props.disabled,
     });
     const editor = shallowRef<Editor | null>(null);
     const rootEl = ref<any>(null);
@@ -1141,7 +1172,15 @@ export const TiptapHtmlEditor = defineComponent({
 
     watch(
       () => [props.label, props.placeholder, props.hint, props.errorMessage, props.required, props.readonly, props.disabled],
-      () => editor.value?.setOptions({ editorProps: { attributes: editorAttributes } }),
+      () => {
+        const instance = editor.value;
+        if (!instance) {
+          return;
+        }
+        instance.setOptions({
+          editorProps: withEditorAccessibilityAttributes(instance.options.editorProps, editorAttributes),
+        });
+      },
     );
 
     return () => {

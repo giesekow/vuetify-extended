@@ -357,6 +357,7 @@ export class Field extends UIBase {
   private params: Ref<FieldParams>;
   private modelValue = this.$makeRef();
   private htmlValidationResult = this.$makeRef<UIValidationResult>();
+  private htmlValidationVersion = 0;
   private options: FieldOptions;
   private changing: boolean;
   private handledModelSyncPending = false;
@@ -1395,6 +1396,7 @@ export class Field extends UIBase {
   }
 
   valueChanged(newValue?: any, origin: FieldValueOrigin = 'programmatic', previousValue?: any) {
+    this.htmlValidationVersion += 1;
     this.htmlValidationResult.value = undefined;
     if (this.changing) {
       return;
@@ -2784,9 +2786,14 @@ export class Field extends UIBase {
 
   async validate(): Promise<UIValidationResult> {
     if (this.params.value.invisible) return undefined;
+    const validationVersion = ++this.htmlValidationVersion;
     const value = this.modelValue.value;
     const result = this.options.validate ? await this.options.validate(this) : undefined;
-    if (this.params.value.type === 'html' && value === this.modelValue.value) {
+    if (
+      this.params.value.type === 'html'
+      && validationVersion === this.htmlValidationVersion
+      && value === this.modelValue.value
+    ) {
       this.htmlValidationResult.value = result;
     }
     return result;

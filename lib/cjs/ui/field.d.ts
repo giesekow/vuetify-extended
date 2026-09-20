@@ -296,6 +296,7 @@ export declare class Field extends UIBase {
     private params;
     private modelValue;
     private htmlValidationResult;
+    private htmlValidationVersion;
     private options;
     private changing;
     private handledModelSyncPending;
