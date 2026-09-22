@@ -9,7 +9,7 @@
     "test:report": "node test/report-refresh.test.cjs && node test/trigger-dashboard-refresh.test.cjs && node test/report-pending-edits.test.cjs",
     "test:dialogs": "node test/dialog-sizing-defaults.test.cjs && node test/file-preview-dialog.test.cjs && node test/prompt-close-lifecycle.test.cjs",
     "test:validation": "node test/validation-localization.test.cjs",
-    "test:menu-a11y": "node test/menu-card-a11y.test.cjs && node test/html-editor-accessibility.test.cjs",
+    "test:menu-a11y": "node test/menu-card-a11y.test.cjs && node test/html-editor-accessibility.test.cjs && node test/footer-resize-lifecycle.test.cjs",
     "test:widgets": "node test/interactive-field-widgets.test.cjs && node test/autocomplete-table-field.test.cjs && node test/table-header-localization.test.cjs && node test/mobile-header-overflow.test.cjs && node test/html-editor-toolbar.test.cjs",
     "test:cli": "npm run build && npm run test:widgets && node test/ui-event-emitter.test.cjs && node test/cli/create-form.test.cjs && node test/cli/advanced-cli.test.cjs",
     "build": "npm run build-esm && npm run build-cjs",
