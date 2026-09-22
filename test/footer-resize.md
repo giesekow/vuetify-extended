@@ -26,7 +26,9 @@ change is included. Reverting this change restores the prior sizing behaviour.
 both builds. Generated `lib/esm` and `lib/cjs` files are retained with source.
 
 For browser verification, install the test-app dependencies and start its Vite
-server (`npm --prefix test run dev`). Install Playwright and its browser/runtime
+server (`FOOTER_TEST=true npm --prefix test run dev`). This disables development
+HMR reloads during the regression, not application error reporting.
+Install Playwright and its browser/runtime
 dependencies in your test environment. Then:
 
 ```sh
