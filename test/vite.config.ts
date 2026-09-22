@@ -18,6 +18,7 @@ export default defineConfig(({ mode }) => {
     root: currentDir,
     server: {
     port: 4190,
+    hmr: process.env.FOOTER_TEST === 'true' ? false : undefined,
     fs: {
       allow: [resolve(currentDir, '..')],
     },

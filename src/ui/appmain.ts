@@ -175,6 +175,7 @@ export class AppMain extends UIBase {
   private footerHeight: Ref<number>;
   private footerElement?: HTMLElement;
   private footerResizeObserver?: ResizeObserver;
+  private footerResizeFrame?: number;
   private viewportWidth: Ref<number>;
   private leftSideMenu: ShallowRef<Menu | undefined>;
   private rightSideMenu: ShallowRef<Menu | undefined>;
@@ -1238,6 +1239,11 @@ export class AppMain extends UIBase {
             VFooter,
             {
               app: true,
+              // Keep intrinsic sizing, but own the layout reservation. VFooter's
+              // auto-height observer otherwise changes ancestor layout during
+              // ResizeObserver delivery (a loop error in WebKit).
+              height: this.footerHeight.value,
+              style: { height: 'auto' },
               elevation: 2,
               class: ['px-4', 'py-2'],
               ref: (el: Element | any) => this.setFooterElement(el),
@@ -2764,16 +2770,15 @@ export class AppMain extends UIBase {
     const root = el instanceof HTMLElement ? el : el?.$el;
     const element = root instanceof HTMLElement ? root : undefined;
     if (element === this.footerElement) {
-      this.updateFooterHeight();
       return;
     }
 
     this.disconnectFooterObserver();
     this.footerElement = element;
-    this.updateFooterHeight();
+    this.scheduleFooterHeight();
 
     if (typeof ResizeObserver !== 'undefined' && this.footerElement) {
-      this.footerResizeObserver = new ResizeObserver(() => this.updateFooterHeight());
+      this.footerResizeObserver = new ResizeObserver(() => this.scheduleFooterHeight());
       this.footerResizeObserver.observe(this.footerElement);
     }
   }
@@ -2782,8 +2787,22 @@ export class AppMain extends UIBase {
     this.footerHeight.value = this.footerElement?.offsetHeight || 0;
   }
 
+  private scheduleFooterHeight() {
+    if (!this.footerElement || this.footerResizeFrame !== undefined) return;
+    // Apply geometry changes in the next rendering frame, outside observer
+    // delivery. Coalesce notifications and measure the latest intrinsic size.
+    this.footerResizeFrame = requestAnimationFrame(() => {
+      this.footerResizeFrame = undefined;
+      this.updateFooterHeight();
+    });
+  }
+
 
   private disconnectFooterObserver() {
+    if (this.footerResizeFrame !== undefined) {
+      cancelAnimationFrame(this.footerResizeFrame);
+      this.footerResizeFrame = undefined;
+    }
     if (this.footerResizeObserver) {
       this.footerResizeObserver.disconnect();
       this.footerResizeObserver = undefined;

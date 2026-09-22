@@ -161,6 +161,7 @@ export declare class AppMain extends UIBase {
     private footerHeight;
     private footerElement?;
     private footerResizeObserver?;
+    private footerResizeFrame?;
     private viewportWidth;
     private leftSideMenu;
     private rightSideMenu;
@@ -339,6 +340,7 @@ export declare class AppMain extends UIBase {
     private detachShellLayoutBreakpoint;
     private setFooterElement;
     private updateFooterHeight;
+    private scheduleFooterHeight;
     private disconnectFooterObserver;
 }
 export declare const $APP: (params?: AppParams, options?: AppOptions) => AppMain;
