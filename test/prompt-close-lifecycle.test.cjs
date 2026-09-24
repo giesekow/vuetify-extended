@@ -47,12 +47,14 @@ class UIBase {
   }
 }
 
+let entryResult = () => Promise.resolve(true);
 const { DialogForm } = load('dialogform.ts', {
   vue,
   'vuetify/components': {},
   './base': { UIBase },
   '../master': { Master: class {} },
   './form': {},
+  './dialog-lifecycle': { finishDialogEntry: () => entryResult() },
   './lib': {},
   './runtime': {},
 });
@@ -238,6 +240,35 @@ async function testStaleCloseCannotTearDownReplacement() {
 }
 
 async function main() {
+  const dialog = new DialogForm();
+  dialog.loaded = true;
+  dialog.focusPrimaryInput = async () => {};
+  assert.equal(dialog.$popupReady, false);
+  await dialog.show();
+  const generation = dialog.$popupGeneration;
+  const vnode = dialog.render({}, {});
+  vnode.props.onBeforeEnter();
+  assert.equal(dialog.$popupReady, false);
+  await vnode.props.onAfterEnter();
+  assert.equal(dialog.$popupReady, true);
+  await dialog.hide();
+  assert.equal(dialog.$popupReady, false);
+  await dialog.show();
+  assert.equal(dialog.$popupReady, false);
+  assert.equal(dialog.$popupGeneration, generation + 1);
+  const pendingEntry = deferred();
+  entryResult = () => pendingEntry.promise;
+  const stale = vnode.props.onAfterEnter();
+  await dialog.hide();
+  await dialog.show();
+  pendingEntry.resolve(true);
+  await stale;
+  assert.equal(dialog.$popupReady, false, 'an old completion cannot release a reopened dialog');
+  entryResult = () => Promise.resolve(false);
+  await vnode.props.onAfterEnter();
+  assert.equal(dialog.$popupReady, false, 'cancelled native entry cannot release popup requests');
+  entryResult = () => Promise.resolve(true);
+
   await testDialogFormLeaveLifecycle();
   await testOnlyLatestConcurrentPromptMounts();
   await testPromptReplacementWaitsForLeave();

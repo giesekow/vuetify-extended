@@ -1755,3 +1755,10 @@ named transition such as `menuTransition: 'fade-transition'`. Omit the option
 to keep Vuetify's default. This applies to select, local/server autocomplete,
 and the table autocomplete add-item input. Server search, menu classes and
 paging remain unchanged. The option does not change dialog transitions.
+
+Select and autocomplete popups inside a `DialogForm` or collection item dialog
+open after all enclosing dialogs finish entering, so popup positioning uses stable
+activator geometry. The library waits for native animation completion as well as
+Vuetify's entry event; it does not assume an animation duration. A request made during entry is retained; Escape or loss of
+focus cancels it, and closing/reopening a dialog does not reuse an old request.
+This lifecycle synchronization also applies when `menuTransition` is omitted.
