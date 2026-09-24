@@ -1,6 +1,6 @@
 {
   "name": "vuetify-extended",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "A plugin to use vuetify in javascript mode",
   "scripts": {
     "test": "npm run test:csp && npm run test:fields && npm run test:report && npm run test:dialogs && npm run test:validation && npm run test:menu-a11y && npm run test:cli",
