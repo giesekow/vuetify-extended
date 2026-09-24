@@ -35,10 +35,10 @@ and closes the child for select and local/server autocomplete. Server cases
 enter a search term rather than expecting options before the minimum search.
 
 Both Playwright page errors and window error/unhandled-rejection events are
-retained. No handler cancels propagation or prevents default handling. Default
-transition observations are a diagnostic baseline; configured cases require
-zero errors. This verifies the isolated layout and library, not the full deployed
-Admin edit/save/reopen journey or stakeholder acceptance.
+retained. No handler cancels propagation or prevents default handling. Every
+transition mode, including the omitted Vuetify default, requires zero errors.
+This verifies the isolated layout and library, not the full deployed Admin
+edit/save/reopen journey or stakeholder acceptance.
 
 ## Compatibility and recovery
 

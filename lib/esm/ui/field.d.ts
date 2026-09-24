@@ -598,7 +598,7 @@ export declare class Field extends UIBase {
     buildPagination(_props: any, _context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;
-    private popupOwner;
+    private popupOwners;
     private popupRequest;
     private collectionPopupReady;
     private collectionPopupGeneration;

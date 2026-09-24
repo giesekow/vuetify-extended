@@ -3172,8 +3172,11 @@ export class Field extends UIBase {
     return buildPaginationWidget(this);
   }
 
-  private popupOwner: any;
-  private popupRequest = this.$makeRef<{ generation: number; open: boolean }>();
+  private popupOwners: any[] = [];
+  private popupRequest = this.$makeRef<{
+    generations: number[];
+    open: boolean;
+  }>();
   private collectionPopupReady = this.$makeRef(false);
   private collectionPopupGeneration = 0;
   private collectionOverlay: { contentEl?: HTMLElement } | null = null;
@@ -3197,24 +3200,29 @@ export class Field extends UIBase {
   }
 
   private popupLifecycleProps(): Record<string, any> {
-    let owner: any;
-    let ready = true;
+    const owners: Array<{ owner: any; generation: number; ready: boolean }> = [];
     for (let parent: any = this.$parent; parent; parent = parent.$parent) {
-      if (typeof parent.$popupReady === 'boolean') {
-        owner ??= parent;
-        ready = parent.$popupReady && ready;
+      const ready = parent.$popupReady;
+      if (typeof ready === 'boolean') {
+        owners.push({ owner: parent, generation: parent.$popupGeneration, ready });
       }
     }
-    if (!owner) return {};
+    if (!owners.length) return {};
     const request = this.popupRequest.value;
+    const ownerChainMatches = !!request && this.popupOwners.length === owners.length &&
+      request.generations.length === owners.length && owners.every((entry, index) =>
+        this.popupOwners[index] === entry.owner && request.generations[index] === entry.generation
+      );
     return {
       // Retain the user's request, but measure the activator only once its
-      // owning dialog has finished entering. No animation duration is assumed.
-      menu: ready && !!request && this.popupOwner === owner &&
-        request.generation === owner.$popupGeneration && request.open,
+      // enclosing dialogs have finished entering. No animation duration is assumed.
+      menu: owners.every(owner => owner.ready) && ownerChainMatches && request?.open === true,
       'onUpdate:menu': (open: boolean) => {
-        this.popupOwner = owner;
-        this.popupRequest.value = { generation: owner.$popupGeneration, open };
+        this.popupOwners = owners.map(owner => owner.owner);
+        this.popupRequest.value = {
+          generations: owners.map(owner => owner.generation),
+          open,
+        };
       },
       onKeydown: (event: KeyboardEvent) => {
         if (event.key === 'Escape') this.popupRequest.value = undefined;
@@ -4806,7 +4814,7 @@ export class Field extends UIBase {
   onFocusChanged(focused: any) {
     // Native selectors briefly transfer focus into their popup after opening.
     // Only cancel intent while entry is still pending; Vuetify owns open-menu blur.
-    if (!focused && this.popupOwner && !this.popupLifecycleProps().menu) {
+    if (!focused && this.popupRequest.value && !this.popupLifecycleProps().menu) {
       this.popupRequest.value = undefined;
     }
     if (this.isEditting && !focused) {

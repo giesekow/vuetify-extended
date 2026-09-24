@@ -63,7 +63,8 @@ for (const kind of ['select', 'local', 'server', 'table-local', 'table-server'])
 console.log(`${cases} select/autocomplete transition cases passed, including default restoration and server menu/search/scroll preservation.`);
 // Exercise pending user intent independently of popup styling/prop forwarding.
 const { ref } = require('vue');
-const owner = { $popupReady: false, $popupGeneration: 1 };
+const outerOwner = { $popupReady: false, $popupGeneration: 1 };
+const owner = { $popupReady: false, $popupGeneration: 1, $parent: outerOwner };
 const field = Object.assign(new context.Field(), {
   $parent: { $parent: owner }, popupRequest: ref(),
   params: ref({ type: 'select' }), handleOn: () => {}, isServerAutocomplete: () => false,
@@ -73,12 +74,19 @@ assert.equal(popup.menu, false);
 popup['onUpdate:menu'](true);
 assert.equal(field.popupLifecycleProps().menu, false, 'entry must hold the opening request');
 owner.$popupReady = true;
-assert.equal(field.popupLifecycleProps().menu, true, 'after-enter replays the request');
-owner.$parent = { $popupReady: false, $popupGeneration: 1 };
 assert.equal(field.popupLifecycleProps().menu, false, 'a nested dialog must also wait for outer entry');
-owner.$parent.$popupReady = true;
-assert.equal(field.popupLifecycleProps().menu, true);
+outerOwner.$popupReady = true;
+assert.equal(field.popupLifecycleProps().menu, true, 'after-enter replays the request once every owner is ready');
+outerOwner.$popupReady = false;
+outerOwner.$popupGeneration++;
+outerOwner.$popupReady = true;
+assert.equal(field.popupLifecycleProps().menu, false, 'outer dialog reopen cannot replay stale user intent');
+field.popupLifecycleProps()['onUpdate:menu'](true);
+assert.equal(field.popupLifecycleProps().menu, true, 'fresh intent captures every enclosing dialog generation');
 owner.$parent = undefined;
+field.onFocusChanged(false);
+assert.equal(field.popupLifecycleProps().menu, false, 'removing an enclosing dialog invalidates its popup request');
+field.popupLifecycleProps()['onUpdate:menu'](true);
 field.onFocusChanged(false);
 assert.equal(field.popupLifecycleProps().menu, true, 'native focus transfer into an open popup must not discard its request');
 field.popupLifecycleProps()['onUpdate:menu'](false);
@@ -126,3 +134,7 @@ assert.equal(diagnostics.length, 0, ts.formatDiagnosticsWithColorAndContext(diag
  getCanonicalFileName: file => file, getCurrentDirectory: () => process.cwd(), getNewLine: () => '\n',
 }));
 console.log('FieldParams transition type contract passed.');
+const browserSource = fs.readFileSync(require.resolve('./select-menu-transition.browser.cjs'), 'utf8');
+assert.doesNotMatch(browserSource, /transition\s*!==\s*['"]default['"]/, 'default transitions must not be excluded from browser failures');
+assert.match(browserSource, /results\.filter\(r => r\.pageErrors\.length \|\| r\.windowErrors\.length\)/);
+console.log('Browser transition suite enforces captured errors for every transition mode.');

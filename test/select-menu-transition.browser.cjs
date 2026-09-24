@@ -41,12 +41,14 @@ const playwright = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     const windowErrors = await page.evaluate(() => window.browserErrors);
     const result = { engine, kind, transition: transition || 'default', pageErrors, windowErrors };
     results.push(result); console.log(JSON.stringify(result));
-    // Default observations are retained for reproduction, never suppressed.
-
     await page.close();
    }
   } finally { await browser.close(); }
  }
  if (process.env.SELECT_RESULTS) require('node:fs').writeFileSync(process.env.SELECT_RESULTS, JSON.stringify(results, null, 2) + '\n');
- assert.deepEqual(results.filter(r => r.transition !== 'default' && (r.pageErrors.length || r.windowErrors.length)), [], 'Configured transitions must have no runtime errors');
+ assert.deepEqual(
+  results.filter(r => r.pageErrors.length || r.windowErrors.length),
+  [],
+  'All select/autocomplete transition modes must have no runtime errors',
+ );
 })().catch(error => { console.error(error); process.exitCode = 1; });
