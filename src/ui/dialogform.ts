@@ -2,6 +2,7 @@ import { VNode, Ref, nextTick } from "vue";
 import { DialogMode, UIBase } from "./base";
 import { VBtn, VCard, VCardActions, VCardText, VDialog, VSpacer } from 'vuetify/components';
 import { Form } from "./form";
+import { finishDialogEntry } from "./dialog-lifecycle";
 import { Master } from "../master";
 import { OnHandler } from "./lib";
 import type { UIValidationResult } from "./runtime";
@@ -41,6 +42,9 @@ export class DialogForm extends UIBase {
   private hasAccess: Ref<boolean>;
   private options: DialogFormOptions;
   private dialog: Ref<boolean>;
+  private popupReady = this.$makeRef(false);
+  private popupGeneration = 0;
+  private overlay: { contentEl?: HTMLElement } | null = null;
   private loaded = false;
   private loading: Ref<boolean>;
   private currentForm: Form|undefined;
@@ -89,6 +93,15 @@ export class DialogForm extends UIBase {
     return this.hasAccess.value;
   }
 
+  /** Popups need stable activator geometry after this dialog's entry transition. */
+  get $popupReady(): boolean {
+    return this.dialog.value && this.popupReady.value;
+  }
+
+  get $popupGeneration(): number {
+    return this.popupGeneration;
+  }
+
   private async runAccess() {
     try {
       this.hasAccess.value = await this.access(this.$params.mode) || false;
@@ -129,6 +142,7 @@ export class DialogForm extends UIBase {
     return h(
       VDialog,
       {
+        ref: (value: any) => { this.overlay = value; },
         modelValue: this.dialog.value,
         persistent: this.params.value.persistent !== false,
         width: this.params.value.fullscreen ? undefined : (this.params.value.width ?? "auto"),
@@ -140,7 +154,15 @@ export class DialogForm extends UIBase {
         fullscreen: this.params.value.fullscreen,
         // Programmatic dialogs have no geometric activator to scale from.
         transition: 'dialog-transition',
-        onAfterEnter: () => this.focusPrimaryInput(),
+        onBeforeEnter: () => { this.popupReady.value = false; },
+        onAfterEnter: async () => {
+          const generation = this.popupGeneration;
+          if (await finishDialogEntry(this.overlay?.contentEl) &&
+              this.dialog.value && generation === this.popupGeneration) {
+            this.popupReady.value = true;
+            return this.focusPrimaryInput();
+          }
+        },
         onAfterLeave: () => this.finishLeave(),
       },
       () => h(
@@ -274,6 +296,10 @@ export class DialogForm extends UIBase {
   }
 
   async show() {
+    if (!this.dialog.value) {
+      this.popupGeneration++;
+      this.popupReady.value = false;
+    }
     this.dialog.value = true;
   }
 

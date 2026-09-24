@@ -36,6 +36,9 @@ export declare class DialogForm extends UIBase {
     private hasAccess;
     private options;
     private dialog;
+    private popupReady;
+    private popupGeneration;
+    private overlay;
     private loaded;
     private loading;
     private currentForm;
@@ -49,6 +52,9 @@ export declare class DialogForm extends UIBase {
     setParams(params: DialogParams): void;
     get $params(): DialogParams;
     get $access(): boolean;
+    /** Popups need stable activator geometry after this dialog's entry transition. */
+    get $popupReady(): boolean;
+    get $popupGeneration(): number;
     private runAccess;
     validate(): Promise<UIValidationResult>;
     saved(): Promise<void>;

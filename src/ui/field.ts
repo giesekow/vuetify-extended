@@ -30,6 +30,7 @@ export type {
 
 import '@vuepic/vue-datepicker/dist/main.css';
 import { Dialogs } from "./dialogs";
+import { finishDialogEntry } from "./dialog-lifecycle";
 import nestedProperty from "nested-property";
 import { OnHandler } from "./lib";
 import katex from 'katex';
@@ -185,6 +186,8 @@ export interface FieldParams {
   htmlProfile?: HtmlEditorProfile;
   htmlToolbar?: HtmlEditorToolbarItem[];
   htmlFullscreen?: boolean;
+  /** Select/autocomplete popup transition. Omit for Vuetify's default; false disables it. */
+  menuTransition?: string | false;
   inline?: boolean;
   color?: string;
   itemValue?: string;
@@ -3169,13 +3172,73 @@ export class Field extends UIBase {
     return buildPaginationWidget(this);
   }
 
+  private popupOwners: any[] = [];
+  private popupRequest = this.$makeRef<{
+    generations: number[];
+    open: boolean;
+  }>();
+  private collectionPopupReady = this.$makeRef(false);
+  private collectionPopupGeneration = 0;
+  private collectionOverlay: { contentEl?: HTMLElement } | null = null;
+
+  get $popupReady(): boolean | undefined {
+    return this.params.value.type === 'collection'
+      ? this.collectionDialog.value && this.collectionPopupReady.value
+      : undefined;
+  }
+
+  get $popupGeneration(): number {
+    return this.collectionPopupGeneration;
+  }
+
+  private openCollectionDialog() {
+    if (!this.collectionDialog.value) {
+      this.collectionPopupGeneration++;
+      this.collectionPopupReady.value = false;
+    }
+    this.collectionDialog.value = true;
+  }
+
+  private popupLifecycleProps(): Record<string, any> {
+    const owners: Array<{ owner: any; generation: number; ready: boolean }> = [];
+    for (let parent: any = this.$parent; parent; parent = parent.$parent) {
+      const ready = parent.$popupReady;
+      if (typeof ready === 'boolean') {
+        owners.push({ owner: parent, generation: parent.$popupGeneration, ready });
+      }
+    }
+    if (!owners.length) return {};
+    const request = this.popupRequest.value;
+    const ownerChainMatches = !!request && this.popupOwners.length === owners.length &&
+      request.generations.length === owners.length && owners.every((entry, index) =>
+        this.popupOwners[index] === entry.owner && request.generations[index] === entry.generation
+      );
+    return {
+      // Retain the user's request, but measure the activator only once its
+      // enclosing dialogs have finished entering. No animation duration is assumed.
+      menu: owners.every(owner => owner.ready) && ownerChainMatches && request?.open === true,
+      'onUpdate:menu': (open: boolean) => {
+        this.popupOwners = owners.map(owner => owner.owner);
+        this.popupRequest.value = {
+          generations: owners.map(owner => owner.generation),
+          open,
+        };
+      },
+      onKeydown: (event: KeyboardEvent) => {
+        if (event.key === 'Escape') this.popupRequest.value = undefined;
+      },
+    };
+  }
+
   buildSelect(props: any, context: any) {
     const h = this.$h;
     return h(
       VSelect,
       {
+        ...this.popupLifecycleProps(),
         ...this.modelBinding(),
         ...this.inputIconProps(),
+        ...(this.params.value.menuTransition !== undefined ? { transition: this.params.value.menuTransition } : {}),
         autofocus: this.params.value.autofocus,
         label: this.resolvedLabel(),
         hint: this.resolvedHint(),
@@ -3401,6 +3464,10 @@ export class Field extends UIBase {
         valueComparator: (left: any, right: any) => this.autocompleteValuesEqual(left, right),
         multiple: this.params.value.multiple,
         ...serverAutocompleteProps,
+        ...this.popupLifecycleProps(),
+        ...(this.params.value.menuTransition !== undefined ? {
+          menuProps: { ...serverAutocompleteProps.menuProps, transition: this.params.value.menuTransition },
+        } : {}),
         class: this.params.value.class || [],
         style: this.params.value.style || {},
         rules: this.rules(),
@@ -3477,6 +3544,10 @@ export class Field extends UIBase {
               valueComparator: (left: any, right: any) => this.autocompleteValuesEqual(left, right),
               rules: tableRules,
               ...serverAutocompleteProps,
+              ...this.popupLifecycleProps(),
+              ...(this.params.value.menuTransition !== undefined ? {
+                menuProps: { ...serverAutocompleteProps.menuProps, transition: this.params.value.menuTransition },
+              } : {}),
               class: 'vef-autocomplete-table__search',
               "onUpdate:focused": (ev: any) => this.onFocusChanged(ev),
             },
@@ -4199,7 +4270,7 @@ export class Field extends UIBase {
                         this.collectionForm.setParent(this);
                         this.collectionFormMaster?.$reset({});
                       }
-                      this.collectionDialog.value = true;
+                      this.openCollectionDialog();
                     }
                   },
                   () => [
@@ -4282,7 +4353,16 @@ export class Field extends UIBase {
             () => h(
               VDialog,
               {
+                ref: (value: any) => { this.collectionOverlay = value; },
                 modelValue: this.collectionDialog.value,
+                onBeforeEnter: () => { this.collectionPopupReady.value = false; },
+                onAfterEnter: async () => {
+                  const generation = this.collectionPopupGeneration;
+                  if (await finishDialogEntry(this.collectionOverlay?.contentEl) &&
+                      this.collectionDialog.value && generation === this.collectionPopupGeneration) {
+                    this.collectionPopupReady.value = true;
+                  }
+                },
                 persistent: true,
                 scrollable: true,
                 "onUpdate:modelValue": (v) => {
@@ -4596,7 +4676,7 @@ export class Field extends UIBase {
       this.collectionForm.setParent(this);
     }
     this.handleOn('item-clicked', this)
-    this.collectionDialog.value = true;
+    this.openCollectionDialog();
   }
 
   format(items: any[]): any[] {
@@ -4732,6 +4812,11 @@ export class Field extends UIBase {
   }
 
   onFocusChanged(focused: any) {
+    // Native selectors briefly transfer focus into their popup after opening.
+    // Only cancel intent while entry is still pending; Vuetify owns open-menu blur.
+    if (!focused && this.popupRequest.value && !this.popupLifecycleProps().menu) {
+      this.popupRequest.value = undefined;
+    }
     if (this.isEditting && !focused) {
       if (this.params.value.type === 'decimal' && this.modelValue.value !== undefined && this.modelValue.value !== null) {
         this.changing = true;

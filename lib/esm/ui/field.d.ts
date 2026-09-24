@@ -106,6 +106,8 @@ export interface FieldParams {
     htmlProfile?: HtmlEditorProfile;
     htmlToolbar?: HtmlEditorToolbarItem[];
     htmlFullscreen?: boolean;
+    /** Select/autocomplete popup transition. Omit for Vuetify's default; false disables it. */
+    menuTransition?: string | false;
     inline?: boolean;
     color?: string;
     itemValue?: string;
@@ -596,6 +598,15 @@ export declare class Field extends UIBase {
     buildPagination(_props: any, _context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;
+    private popupOwners;
+    private popupRequest;
+    private collectionPopupReady;
+    private collectionPopupGeneration;
+    private collectionOverlay;
+    get $popupReady(): boolean | undefined;
+    get $popupGeneration(): number;
+    private openCollectionDialog;
+    private popupLifecycleProps;
     buildSelect(props: any, context: any): VNode<RendererNode, import("vue").RendererElement, {
         [key: string]: any;
     }>;
