@@ -111,6 +111,8 @@ export interface FieldParams {
   mapOptions?: any;
   mapZoom?: number;
   serverSearch?: boolean;
+  /** Select/autocomplete popup: omit for the Vuetify default, false to disable. */
+  menuTransition?: string | false;
   autocompleteFormat?: 'default'|'table';
   autocompleteAddText?: UIText;
   autocompleteSelectedText?: UIText;
@@ -1745,3 +1747,11 @@ new Field(
   },
 )
 ```
+
+### Select and autocomplete menu transitions
+
+Set `menuTransition: false` on a field to disable its popup animation, or use a
+named transition such as `menuTransition: 'fade-transition'`. Omit the option
+to keep Vuetify's default. This applies to select, local/server autocomplete,
+and the table autocomplete add-item input. Server search, menu classes and
+paging remain unchanged. The option does not change dialog transitions.

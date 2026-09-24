@@ -106,6 +106,8 @@ export interface FieldParams {
     htmlProfile?: HtmlEditorProfile;
     htmlToolbar?: HtmlEditorToolbarItem[];
     htmlFullscreen?: boolean;
+    /** Select/autocomplete popup transition. Omit for Vuetify's default; false disables it. */
+    menuTransition?: string | false;
     inline?: boolean;
     color?: string;
     itemValue?: string;

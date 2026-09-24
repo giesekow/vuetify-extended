@@ -185,6 +185,8 @@ export interface FieldParams {
   htmlProfile?: HtmlEditorProfile;
   htmlToolbar?: HtmlEditorToolbarItem[];
   htmlFullscreen?: boolean;
+  /** Select/autocomplete popup transition. Omit for Vuetify's default; false disables it. */
+  menuTransition?: string | false;
   inline?: boolean;
   color?: string;
   itemValue?: string;
@@ -3176,6 +3178,7 @@ export class Field extends UIBase {
       {
         ...this.modelBinding(),
         ...this.inputIconProps(),
+        ...(this.params.value.menuTransition !== undefined ? { transition: this.params.value.menuTransition } : {}),
         autofocus: this.params.value.autofocus,
         label: this.resolvedLabel(),
         hint: this.resolvedHint(),
@@ -3383,6 +3386,7 @@ export class Field extends UIBase {
       {
         ...this.modelBinding(),
         ...this.inputIconProps(),
+        ...(this.params.value.menuTransition !== undefined ? { transition: this.params.value.menuTransition } : {}),
         autofocus: this.params.value.autofocus,
         label: this.resolvedLabel(),
         hint: this.resolvedHint(),
@@ -3460,6 +3464,7 @@ export class Field extends UIBase {
                 this.autocompleteTablePendingItem.value = value;
               },
               ...this.inputIconProps(),
+              ...(this.params.value.menuTransition !== undefined ? { transition: this.params.value.menuTransition } : {}),
               autofocus: this.params.value.autofocus,
               label: this.resolvedLabel(),
               hint: this.resolvedHint(),
