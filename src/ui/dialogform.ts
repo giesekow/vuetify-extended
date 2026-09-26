@@ -44,7 +44,7 @@ export class DialogForm extends UIBase {
   private dialog: Ref<boolean>;
   private popupReady = this.$makeRef(false);
   private popupGeneration = 0;
-  private overlay: { contentEl?: HTMLElement } | null = null;
+  private overlay: { contentEl?: HTMLElement; globalTop?: boolean } | null = null;
   private loaded = false;
   private loading: Ref<boolean>;
   private currentForm: Form|undefined;
@@ -389,8 +389,17 @@ export class DialogForm extends UIBase {
       return;
     }
 
+    const generation = this.popupGeneration;
     await nextTick();
     await this.waitForFocusFrame();
+
+    // Entry/load callbacks can finish after a child dialog or menu takes focus.
+    // Only the current top dialog may supply focus, never overwrite user focus.
+    if (!this.dialog.value || generation !== this.popupGeneration ||
+        this.overlay?.globalTop === false ||
+        this.dialogRoot.value?.contains(document.activeElement)) {
+      return;
+    }
 
     const target = this.findFocusTarget();
     if (target && typeof target.focus === 'function') {

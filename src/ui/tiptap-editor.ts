@@ -601,8 +601,11 @@ export const TiptapHtmlEditor = defineComponent({
 
     const syncToolbarMode = () => {
       const width = getRootElement()?.clientWidth || 0;
-      toolbarCompact.value = width > 0 && width < 860;
-      refreshToolbar();
+      const compact = width > 0 && width < 860;
+      if (toolbarCompact.value !== compact) {
+        toolbarCompact.value = compact;
+        refreshToolbar();
+      }
     };
 
     const createIconButton = (params: {
@@ -1113,6 +1116,8 @@ export const TiptapHtmlEditor = defineComponent({
 
     onMounted(() => {
       createEditor();
+      // Establish compact layout before observing its resulting dimensions.
+      syncToolbarMode();
       if (typeof ResizeObserver !== 'undefined') {
         resizeObserver = new ResizeObserver(() => syncToolbarMode());
         const rootElement = getRootElement();
