@@ -224,7 +224,8 @@ export class Master extends EventEmitter {
 
   $setCollectionObject(key: string, id: any, data: any, idField?: string): boolean {
     let items: any[] = this.$has(key) ? this.$get(key) : [];
-    if (!Array.isArray(items)) items = [items];
+    // Preserve the previous Field snapshot so synchronization can detect changes.
+    items = Array.isArray(items) ? items.slice() : [items];
 
     if (typeof id === "number") {
       if (id < items.length) {
@@ -250,7 +251,7 @@ export class Master extends EventEmitter {
 
   $removeCollectionObject(key: string, ids: any, idField?: string): boolean {
     let items: any = this.$has(key) ? this.$get(key) : [];
-    if (!Array.isArray(items)) items = [items];
+    items = Array.isArray(items) ? items.slice() : [items];
 
     if(!Array.isArray(ids)) {
       const id = ids;
@@ -279,7 +280,6 @@ export class Master extends EventEmitter {
         if (typeof id === "number") {
           if (items.length > id) {
             items.splice(id, 1);
-            this.$set(key, items);
             continue;
           } else {
             continue;
@@ -305,7 +305,7 @@ export class Master extends EventEmitter {
 
   $addCollectionObject(key: string, item: any): void {
     let items: any = this.$has(key) ? this.$get(key) : [];
-    if (!Array.isArray(items)) items = [items];
+    items = Array.isArray(items) ? items.slice() : [items];
     items.push(item)
     this.$set(key, items);
   }
