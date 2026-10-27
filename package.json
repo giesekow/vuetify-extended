@@ -1,6 +1,6 @@
 {
   "name": "vuetify-extended",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "description": "A plugin to use vuetify in javascript mode",
   "scripts": {
     "test": "npm run test:csp && npm run test:fields && npm run test:report && npm run test:dialogs && npm run test:validation && npm run test:menu-a11y && npm run test:cli",
@@ -82,7 +82,6 @@
     "socket.io-client": "4.7.4",
     "vue3-ace-editor": "^2.2.2",
     "vue3-apexcharts": "^1.4.1",
-    "vue3-editor": "^0.1.1",
     "vue3-google-map": "^0.15.0",
     "webfontloader": "^1.0.0",
     "webtex": "^0.20.0"
