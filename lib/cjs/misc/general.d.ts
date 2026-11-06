@@ -65,5 +65,6 @@ export interface computeFunctionOptions {
 }
 export declare const computeFunctionalCodeAsync: (code: string, options: computeFunctionOptions) => Promise<any>;
 export declare const computeFunctionalCode: (code: string, options: computeFunctionOptions) => any;
+export declare const escapeMathError: (math: unknown) => string;
 export declare const renderMathInHtml: (html: string) => string;
 export declare const $moment: typeof moment;

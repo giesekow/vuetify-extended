@@ -3,7 +3,7 @@ import { ReportMode, UIBase } from "./base";
 import { VAutocomplete, VBtn, VCard, VCheckboxBtn, VCol, VColorInput, VCombobox, VDialog, VFileUpload, VIcon, VOtpInput, VRadio, VRadioGroup, VRow, VSelect, VSwitch, VTextField, VTextarea } from 'vuetify/components';
 import { Master } from "../master";
 import { Button } from "./button";
-import { fileToBase64, selectFile, SimpleDate, SimpleTime, sleep } from "../misc";
+import { escapeMathError, fileToBase64, selectFile, SimpleDate, SimpleTime, sleep } from "../misc";
 import { VDataTable, VDataTableFooter } from "vuetify/components";
 import Datepicker from '@vuepic/vue-datepicker';
 import { Form } from "./form";
@@ -1601,18 +1601,18 @@ export class Field extends UIBase {
     
     html = html.replace(/\$\$([\s\S]+?)\$\$/g, (_, math) => {
       try {
-        return katex.renderToString(math, { displayMode: true, output });
+        return katex.renderToString(math, { displayMode: true, output, trust: false });
       } catch (err) {
-        return `<span class="katex-error">${math}</span>`;
+        return `<span class="katex-error">${escapeMathError(math)}</span>`;
       }
     });
 
     // Render inline math ($...$)
     html = html.replace(/\$([^\$]+?)\$/g, (_, math) => {
       try {
-        return katex.renderToString(math, { displayMode: false, output });
+        return katex.renderToString(math, { displayMode: false, output, trust: false });
       } catch (err) {
-        return `<span class="katex-error">${math}</span>`;
+        return `<span class="katex-error">${escapeMathError(math)}</span>`;
       }
     });
 

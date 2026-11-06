@@ -49,6 +49,31 @@ npm install vuetify-extended vue vuetify
 
 If your app uses the richer features in this library, it will also need the relevant runtime dependencies already declared by the package, such as Feathers, TinyMCE, ApexCharts, and Google Maps support.
 
+### Dependency security boundary
+
+KaTeX is pinned to the patched `0.18.2` release. Failed math expressions are
+rendered as escaped text and cannot introduce HTML through the error fallback.
+
+ExcelJS `4.4.0` still declares the unsupported and vulnerable `uuid@8` range
+even though its workbook implementation uses UUID v4. Until ExcelJS publishes a
+release with UUID 11, npm consumers must add this narrowly scoped override to
+their root `package.json`:
+
+```json
+{
+  "overrides": {
+    "exceljs": {
+      "uuid": "11.1.1"
+    }
+  }
+}
+```
+
+npm ignores overrides declared by installed dependencies, so the library's own
+override verifies this repository but does not replace the consumer-root entry.
+Yarn consumers need the equivalent root `resolutions` entry. Do not apply an
+unscoped UUID override to the consumer's complete graph.
+
 ## Build Output
 
 The package publishes:
