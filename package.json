@@ -1,9 +1,10 @@
 {
   "name": "vuetify-extended",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "description": "A plugin to use vuetify in javascript mode",
   "scripts": {
-    "test": "npm run test:csp && npm run test:fields && npm run test:report && npm run test:dialogs && npm run test:validation && npm run test:menu-a11y && npm run test:cli",
+    "test": "npm run test:security && npm run test:csp && npm run test:fields && npm run test:report && npm run test:dialogs && npm run test:validation && npm run test:menu-a11y && npm run test:cli",
+    "test:security": "npm run build && node test/math-excel-security.test.cjs",
     "test:csp": "node test/csp-lazy-code-editor.test.cjs",
     "test:fields": "node test/collection-master-refresh.test.cjs && node test/select-menu-transition.test.cjs && node test/datetime-master-sync.test.cjs && node test/field-change-origin.test.cjs && node test/field-default-master-sync.test.cjs && node test/field-initialization-lifecycle.test.cjs && node test/decimal-field-exactness.test.cjs",
     "test:report": "node test/report-refresh.test.cjs && node test/trigger-dashboard-refresh.test.cjs && node test/report-pending-edits.test.cjs",
@@ -72,7 +73,7 @@
     "hyphenation.de": "^0.2.1",
     "hyphenation.en-us": "^0.2.1",
     "js-base64": "^3.7.5",
-    "katex": "^0.16.24",
+    "katex": "0.18.2",
     "keycloak-js": "^25.0.6",
     "moment": "^2.29.4",
     "moment-timezone": "0.5.45",
@@ -85,5 +86,13 @@
     "vue3-google-map": "^0.15.0",
     "webfontloader": "^1.0.0",
     "webtex": "^0.20.0"
+  },
+  "overrides": {
+    "exceljs": {
+      "uuid": "11.1.1"
+    }
+  },
+  "resolutions": {
+    "exceljs/uuid": "11.1.1"
   }
 }

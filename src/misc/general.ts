@@ -444,6 +444,13 @@ export const computeFunctionalCode = (code: string, options: computeFunctionOpti
   }
 }
 
+export const escapeMathError = (math: unknown): string => String(math)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
 export const renderMathInHtml = (html: string): string => {
   if (!html) return html;
 
@@ -464,18 +471,18 @@ export const renderMathInHtml = (html: string): string => {
   // Render display math first ($$...$$)
   html = html.replace(/\$\$([\s\S]+?)\$\$/g, (_, math) => {
     try {
-      return katex.renderToString(math, { displayMode: true });
+      return katex.renderToString(math, { displayMode: true, trust: false });
     } catch (err) {
-      return `<span class="katex-error">${math}</span>`;
+      return `<span class="katex-error">${escapeMathError(math)}</span>`;
     }
   });
 
   // Render inline math ($...$)
   html = html.replace(/\$([^\$]+?)\$/g, (_, math) => {
     try {
-      return katex.renderToString(math, { displayMode: false });
+      return katex.renderToString(math, { displayMode: false, trust: false });
     } catch (err) {
-      return `<span class="katex-error">${math}</span>`;
+      return `<span class="katex-error">${escapeMathError(math)}</span>`;
     }
   });
 
